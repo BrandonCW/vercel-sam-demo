@@ -13,7 +13,11 @@ export async function POST(request: Request) {
     }
 
     const resetOpp = await resetCrmDatabase(scenarioId);
-    revalidatePath('/');
+    try {
+      revalidatePath('/');
+    } catch {
+      // Ignore during unit tests without Next.js server context
+    }
 
     return NextResponse.json({
       success: true,

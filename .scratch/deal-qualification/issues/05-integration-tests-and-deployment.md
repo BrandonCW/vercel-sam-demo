@@ -5,13 +5,13 @@ A comprehensive end-to-end integration test suite exercising the complete qualif
 
 **Blocked by:** 04: SA Feedback Ingestion, Delta Re-scoring & Atomic CRM Writeback
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Automated integration test suite targeting the primary API route seam (`POST /api/qualification/assess`, `POST /api/qualification/feedback`, `POST /api/crm/reset`).
-- [ ] Deterministic LLM response fixtures for Jev and System 2 (supporting Claude 3.5 Sonnet, Claude 3.5 Haiku, GPT-4o-mini, and Gemini 2.0 Flash schema structures).
-- [ ] End-to-end test verifying Acme Corp Scenario: baseline score calculation $\rightarrow$ Netlify competitor detection $\rightarrow$ Stage 2 gate blocker on Economic Buyer $\rightarrow$ dynamic question generation $\rightarrow$ zero-cost session pause $\rightarrow$ SA feedback submission $\rightarrow$ Delta Re-scoring passing Stage 2 gate $\rightarrow$ atomic writeback of `[QUALIFIED]` Suggested Next Steps string.
-- [ ] End-to-end test verifying Globex FinTech Scenario: AWS Amplify threat detection $\rightarrow$ VPC egress discovery questions $\rightarrow$ writeback of `[IN REVIEW]` Suggested Next Steps string.
-- [ ] End-to-end test verifying CRM reset endpoint cleanly restores default scenario payloads and clears previous interaction telemetry.
-- [ ] Component integration tests verifying `DynamicFormRenderer` input generation, field constraints, and payload packaging.
-- [ ] Middleware security tests verifying unauthenticated access redirection to `/login` when `NODE_ENV !== 'development'` and bypass when in development mode.
-- [ ] Vercel deployment configuration validated for `mvp` branch (Preview) and `main` branch (Production) with required environment variables (`APP_PASSWORD`, `AUTH_SECRET`, `POSTGRES_URL`, `SYSTEM2_MODEL_ID`).
+- [x] Automated integration test suite targeting the primary API route seam (`POST /api/qualification/assess`, `POST /api/qualification/feedback`, `POST /api/crm/reset`).
+- [x] Deterministic LLM response fixtures for Jev and System 2 (supporting Claude 3.5 Sonnet, Claude 3.5 Haiku, GPT-4o-mini, and Gemini 2.0 Flash schema structures).
+- [x] End-to-end test verifying Acme Corp Scenario: baseline score calculation $\rightarrow$ Netlify competitor detection $\rightarrow$ Stage 2 gate blocker on Economic Buyer $\rightarrow$ dynamic question generation $\rightarrow$ zero-cost session pause $\rightarrow$ SA feedback submission $\rightarrow$ Delta Re-scoring passing Stage 2 gate $\rightarrow$ atomic writeback of `[QUALIFIED]` Suggested Next Steps string.
+- [x] End-to-end test verifying Globex FinTech Scenario: AWS Amplify threat detection $\rightarrow$ VPC egress discovery questions $\rightarrow$ writeback of `[IN REVIEW]` Suggested Next Steps string.
+- [x] End-to-end test verifying CRM reset endpoint cleanly restores default scenario payloads and clears previous interaction telemetry.
+- [x] Component integration tests verifying `DynamicFormRenderer` input generation, field constraints, and payload packaging.
+- [x] Middleware security tests verifying unauthenticated access redirection to `/login` when `NODE_ENV !== 'development'` and bypass when in development mode.
+- [x] Vercel deployment configuration validated for `mvp` branch (Preview) and `main` branch (Production) with required environment variables (`APP_PASSWORD`, `AUTH_SECRET`, `POSTGRES_URL`, `SYSTEM2_MODEL_ID`).

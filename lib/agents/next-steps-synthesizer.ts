@@ -45,11 +45,13 @@ export function synthesizeSuggestedNextSteps(input: NextStepsSynthesisInput): st
 
   // 3. Focus (Core Technical or Business Value)
   let focus = 'Enterprise Architecture Validation & Technical Acceptance Benchmarks';
-  if (/turborepo|app router|pages router|isr|cache invalidation/i.test(combinedNotes)) {
+  if (/shopify|headless|storefront/i.test(combinedNotes)) {
+    focus = 'Core Web Vitals Optimization & Headless Storefront Performance';
+  } else if (/turborepo|app router|pages router|isr|cache invalidation/i.test(combinedNotes)) {
     focus = 'Demonstrate Turborepo Remote Caching & ISR Cache Invalidation';
   } else if (/vpc|secure compute|egress|soc2|compliance/i.test(combinedNotes)) {
     focus = 'Secure Compute, VPC Peering & Enterprise Security Architecture';
-  } else if (/core web vitals|lcp|preview branches|shopify/i.test(combinedNotes)) {
+  } else if (/core web vitals|lcp|preview branches/i.test(combinedNotes)) {
     focus = 'Core Web Vitals Optimization & Headless Storefront Performance';
   }
 
@@ -71,7 +73,9 @@ export function synthesizeSuggestedNextSteps(input: NextStepsSynthesisInput): st
   let milestoneAction = '';
   if (statusTag === 'QUALIFIED') {
     const target = stageGate.targetStage || 'Stage 3 (Technical Validation)';
-    if (/turborepo|app router|isr/i.test(combinedNotes)) {
+    if (/shopify|headless|storefront/i.test(combinedNotes)) {
+      milestoneAction = `Advance to ${target}. Schedule technical validation kickoff with customer technical leadership and deploy staging benchmark environment.`;
+    } else if (/turborepo|app router|isr/i.test(combinedNotes)) {
       milestoneAction = `Advance to ${target}. Schedule 60-min deep dive with VP of E-Commerce to demonstrate Turborepo Remote Caching and Next.js 14 App Router ISR cache-invalidation; prepare POC preview environment on Vercel Enterprise.`;
     } else if (/amplify|vpc|secure compute/i.test(combinedNotes)) {
       milestoneAction = `Advance to ${target}. Coordinate with security and platform leads to demonstrate Vercel Secure Compute and VPC peering connectivity; initiate 2-week technical POC.`;
