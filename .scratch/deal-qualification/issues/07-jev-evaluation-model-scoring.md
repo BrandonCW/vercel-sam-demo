@@ -43,7 +43,7 @@ Replace the current "Jev" (actually `openai/gpt-4o-mini` with a "You are Jev" sy
 System 1 now runs on `typesafe-ai/jev` through `evaluate` from `eve/ai`. The `gpt-4o-mini` prompt, `JEV_SYSTEM_PROMPT` and all default-filling are gone.
 
 - `lib/agents/jev-scorer.ts`:
-  - `buildJevEvaluationRequest(input)` builds `state` `{ stageName, amount, aeNotes, saNotes }`, 8 `score` questions with 11 rungs (0 to 10) and 5 competitor `choice` questions (`absent | low | medium | high`), and sets `providerOptions.gateway.zeroDataRetention: true`.
+  - `buildJevEvaluationRequest(input)` builds `state` `{ stageName, amount, aeNotes, saNotes }`, 8 `score` questions with 3 rungs, one per rubric band (Jev allows at most 10 levels; its fractional position on 0–2 is scaled linearly to 0–10), and 5 competitor `choice` questions (`absent | low | medium | high`). `zeroDataRetention` is currently off (see below).
   - `interpretJevEvaluation(input, evaluation)` is pure. It rounds and clamps scores, derives status, and reads confidence from `providerMetadata.typesafe.confidence` (a number, or a map keyed by question id). It keeps only non-`absent` competitors, computes the composite and gates in code, and validates with `JevScoringResultSchema`. It throws on any missing answer or confidence.
   - `scoreOpportunityWithJevAI(input, { abortSignal })` asserts the Gateway key, calls `evaluate` and interprets the result.
 - The rubric wording lives in `RUBRIC_TEXT`, copied verbatim from `docs/meddpicc-rubric.md`. A test fails if the two drift.
@@ -63,3 +63,8 @@ System 1 now runs on `typesafe-ai/jev` through `evaluate` from `eve/ai`. The `gp
 - The single attempt was refused by the Gateway with 403 `ZdrUnauthorizedError`, before any provider attempt (`providerAttemptCount: 0`). The error said Zero Data Retention needs an active Pro or Enterprise plan, and the team is on Pro Trial.
 - No scores were returned, and the shape of `providerMetadata.typesafe.confidence` is still unconfirmed.
 - Next step, for the user to decide: either complete the Vercel plan upgrade, or approve dropping `zeroDataRetention` (the ticket requires it). Then run `JEV_LIVE=1 pnpm vitest run tests/jev.live.test.ts`.
+
+### Deviations after the first live attempts
+
+- **Zero Data Retention is off (user decision).** The Gateway refuses ZDR on the Pro Trial plan. `providerOptions.gateway.zeroDataRetention` is removed, with a TODO in `jev-scorer.ts` and `tests/jev.test.ts` to restore it once the team is on a paid Pro plan.
+- **Score questions now have 3 levels instead of 11.** The second live attempt failed with 400 `TypeSafe Score questions support at most 10 levels`. Each dimension now has one rung per rubric band, and Jev's position is scaled linearly to 0–10. The fix was made test-first. Because of this failure, the live Acme criteria are **still unverified**. A further live run (`JEV_LIVE=1 pnpm vitest run tests/jev.live.test.ts`) needs approval.

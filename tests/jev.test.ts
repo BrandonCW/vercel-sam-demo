@@ -190,14 +190,14 @@ function choiceAnswer(choice: string) {
 function acmeEvaluation(confidence: unknown = 0.82) {
   return {
     answers: {
-      identifyPain: scoreAnswer(8.3),
-      champion: scoreAnswer(6.6),
-      economicBuyer: scoreAnswer(2.9),
-      decisionCriteria: scoreAnswer(7),
-      decisionProcess: scoreAnswer(4),
-      metrics: scoreAnswer(5.2),
-      competition: scoreAnswer(4),
-      paperProcess: scoreAnswer(1.6),
+      identifyPain: scoreAnswer(1.66),
+      champion: scoreAnswer(1.32),
+      economicBuyer: scoreAnswer(0.58),
+      decisionCriteria: scoreAnswer(1.4),
+      decisionProcess: scoreAnswer(0.8),
+      metrics: scoreAnswer(1.04),
+      competition: scoreAnswer(0.8),
+      paperProcess: scoreAnswer(0.32),
       competitor_netlify: choiceAnswer('high'),
       competitor_awsAmplify: choiceAnswer('absent'),
       competitor_cloudflarePages: choiceAnswer('low'),
@@ -220,13 +220,16 @@ describe('System 1 (Jev) - evaluation request', () => {
     for (const key of Object.keys(CANONICAL_DIMENSIONS)) {
       const q = req.questions[key];
       expect(q.type).toBe('score');
-      expect((q as any).criteria).toHaveLength(11);
+      // Jev accepts at most 10 levels per score question; one rung per rubric band.
+      expect((q as any).criteria).toHaveLength(3);
     }
     expect(Object.keys(COMPETITOR_TAXONOMY)).toHaveLength(5);
     const netlify = req.questions.competitor_netlify as any;
     expect(netlify.type).toBe('choice');
     expect(Object.keys(netlify.criteria)).toEqual(['absent', 'low', 'medium', 'high']);
-    expect(req.providerOptions).toEqual({ gateway: { zeroDataRetention: true } });
+    // TODO: restore `providerOptions.gateway.zeroDataRetention: true` once the team is on a paid Pro plan
+    // (ZDR is refused on Pro Trial). Until then the request must not ask for it.
+    expect(req).not.toHaveProperty('providerOptions');
   });
 
   it('keeps rubric wording in questions identical to docs/meddpicc-rubric.md', () => {
@@ -234,7 +237,7 @@ describe('System 1 (Jev) - evaluation request', () => {
     const req = buildJevEvaluationRequest(ACME_INPUT);
     const rungs = (req.questions.economicBuyer as any).criteria as string[];
     expect(rungs[0]).toContain('No mention in AE or SA notes');
-    expect(rungs[10]).toContain('Explicitly verified with documented evidence');
+    expect(rungs[2]).toContain('Explicitly verified with documented evidence');
     for (const [key, text] of Object.entries(RUBRIC_TEXT.focus)) {
       expect(rubric).toContain(text);
       expect((req.questions[key] as any).instructions).toContain(text);

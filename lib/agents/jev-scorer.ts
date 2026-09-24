@@ -230,23 +230,30 @@ const THREAT_CRITERIA = {
   high: RUBRIC_TEXT.threat.high,
 };
 
-/** 11 ordered rungs so Jev's score position maps directly onto the 0-10 scale. */
-function scoreRungs(): string[] {
-  return Array.from({ length: 11 }, (_, n) => {
-    const status = getDimensionStatus(n);
-    return `${n}/10 (${status}): ${RUBRIC_TEXT.bands[status]}`;
-  });
+/**
+ * One ordered rung per rubric band (Jev accepts at most 10 levels per score question).
+ * Jev returns a fractional position in [0, SCORE_RUNGS.length - 1]; it is scaled
+ * linearly onto the 0-10 dimension scale.
+ */
+const SCORE_RUNGS = [
+  `unaddressed (0-3/10): ${RUBRIC_TEXT.bands.unaddressed}`,
+  `partial (4-7/10): ${RUBRIC_TEXT.bands.partial}`,
+  `verified (8-10/10): ${RUBRIC_TEXT.bands.verified}`,
+];
+
+function toTenPointScore(position: number): number {
+  const scaled = (position / (SCORE_RUNGS.length - 1)) * 10;
+  return Math.max(0, Math.min(10, Math.round(scaled)));
 }
 
 export function buildJevEvaluationRequest(input: JevScoringInput) {
-  const rungs = scoreRungs();
   const dimensionQuestions = Object.fromEntries(
     (Object.keys(CANONICAL_DIMENSIONS) as DimensionKey[]).map((key) => [
       key,
       {
         type: 'score' as const,
         instructions: `Score the MEDDPICC dimension "${CANONICAL_DIMENSIONS[key].label}" from the AE and SA notes. Vercel Enterprise evaluation focus: ${RUBRIC_TEXT.focus[key]}`,
-        criteria: rungs,
+        criteria: SCORE_RUNGS,
       },
     ])
   ) as Record<DimensionKey, { type: 'score'; instructions: string; criteria: string[] }>;
@@ -270,7 +277,8 @@ export function buildJevEvaluationRequest(input: JevScoringInput) {
       saNotes: input.saNotes,
     },
     questions: { ...dimensionQuestions, ...competitorQuestions } as Record<string, EvaluationQuestion>,
-    providerOptions: { gateway: { zeroDataRetention: true } },
+    // TODO: add `providerOptions: { gateway: { zeroDataRetention: true } }` back once the team is on a
+    // paid Pro plan. The Gateway refuses ZDR on Pro Trial (403 ZdrUnauthorizedError).
   };
 }
 
@@ -302,7 +310,7 @@ export function interpretJevEvaluation(
     if (answer?.type !== 'score' || typeof answer.score !== 'number') {
       throw new Error(`Jev returned no score answer for "${key}"`);
     }
-    const score = Math.max(0, Math.min(10, Math.round(answer.score)));
+    const score = toTenPointScore(answer.score);
     scores[key] = score;
     dimensions[key] = {
       key,
