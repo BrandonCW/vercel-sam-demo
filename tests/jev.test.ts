@@ -190,14 +190,14 @@ function choiceAnswer(choice: string) {
 function acmeEvaluation(confidence: unknown = 0.82) {
   return {
     answers: {
-      identifyPain: scoreAnswer(1.66),
-      champion: scoreAnswer(1.32),
-      economicBuyer: scoreAnswer(0.58),
-      decisionCriteria: scoreAnswer(1.4),
-      decisionProcess: scoreAnswer(0.8),
-      metrics: scoreAnswer(1.04),
-      competition: scoreAnswer(0.8),
-      paperProcess: scoreAnswer(0.32),
+      identifyPain: scoreAnswer(7.47),
+      champion: scoreAnswer(5.94),
+      economicBuyer: scoreAnswer(2.61),
+      decisionCriteria: scoreAnswer(6.3),
+      decisionProcess: scoreAnswer(3.6),
+      metrics: scoreAnswer(4.68),
+      competition: scoreAnswer(3.6),
+      paperProcess: scoreAnswer(1.44),
       competitor_netlify: choiceAnswer('high'),
       competitor_awsAmplify: choiceAnswer('absent'),
       competitor_cloudflarePages: choiceAnswer('low'),
@@ -220,8 +220,8 @@ describe('System 1 (Jev) - evaluation request', () => {
     for (const key of Object.keys(CANONICAL_DIMENSIONS)) {
       const q = req.questions[key];
       expect(q.type).toBe('score');
-      // Jev accepts at most 10 levels per score question; one rung per rubric band.
-      expect((q as any).criteria).toHaveLength(3);
+      // Jev accepts at most 10 levels per score question.
+      expect((q as any).criteria).toHaveLength(10);
     }
     expect(Object.keys(COMPETITOR_TAXONOMY)).toHaveLength(5);
     const netlify = req.questions.competitor_netlify as any;
@@ -237,7 +237,15 @@ describe('System 1 (Jev) - evaluation request', () => {
     const req = buildJevEvaluationRequest(ACME_INPUT);
     const rungs = (req.questions.economicBuyer as any).criteria as string[];
     expect(rungs[0]).toContain('No mention in AE or SA notes');
-    expect(rungs[2]).toContain('Explicitly verified with documented evidence');
+    expect(rungs[9]).toContain('Explicitly verified with documented evidence');
+    // Level p means round(p * 10 / 9)/10, and each level carries its rubric band.
+    expect(rungs.map((r) => r.split(' ')[0])).toEqual(
+      ['0/10', '1/10', '2/10', '3/10', '4/10', '6/10', '7/10', '8/10', '9/10', '10/10']
+    );
+    expect(rungs[3]).toContain('(unaddressed)');
+    expect(rungs[4]).toContain('(partial)');
+    expect(rungs[6]).toContain('(partial)');
+    expect(rungs[7]).toContain('(verified)');
     for (const [key, text] of Object.entries(RUBRIC_TEXT.focus)) {
       expect(rubric).toContain(text);
       expect((req.questions[key] as any).instructions).toContain(text);

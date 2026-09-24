@@ -231,18 +231,19 @@ const THREAT_CRITERIA = {
 };
 
 /**
- * One ordered rung per rubric band (Jev accepts at most 10 levels per score question).
- * Jev returns a fractional position in [0, SCORE_RUNGS.length - 1]; it is scaled
- * linearly onto the 0-10 dimension scale.
+ * Jev accepts at most 10 levels per score question. Level p (0..9) stands for
+ * round(p * 10 / 9) on the rubric's 0-10 scale, worded with that value's rubric band.
+ * Jev returns a fractional level position, scaled the same way.
  */
-const SCORE_RUNGS = [
-  `unaddressed (0-3/10): ${RUBRIC_TEXT.bands.unaddressed}`,
-  `partial (4-7/10): ${RUBRIC_TEXT.bands.partial}`,
-  `verified (8-10/10): ${RUBRIC_TEXT.bands.verified}`,
-];
+const SCORE_LEVELS = 10;
+const SCORE_RUNGS = Array.from({ length: SCORE_LEVELS }, (_, p) => {
+  const value = Math.round((p * 10) / (SCORE_LEVELS - 1));
+  const status = getDimensionStatus(value);
+  return `${value}/10 (${status}): ${RUBRIC_TEXT.bands[status]}`;
+});
 
 function toTenPointScore(position: number): number {
-  const scaled = (position / (SCORE_RUNGS.length - 1)) * 10;
+  const scaled = (position * 10) / (SCORE_LEVELS - 1);
   return Math.max(0, Math.min(10, Math.round(scaled)));
 }
 

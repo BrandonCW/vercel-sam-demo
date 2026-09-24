@@ -43,7 +43,7 @@ Replace the current "Jev" (actually `openai/gpt-4o-mini` with a "You are Jev" sy
 System 1 now runs on `typesafe-ai/jev` through `evaluate` from `eve/ai`. The `gpt-4o-mini` prompt, `JEV_SYSTEM_PROMPT` and all default-filling are gone.
 
 - `lib/agents/jev-scorer.ts`:
-  - `buildJevEvaluationRequest(input)` builds `state` `{ stageName, amount, aeNotes, saNotes }`, 8 `score` questions with 3 rungs, one per rubric band (Jev allows at most 10 levels; its fractional position on 0–2 is scaled linearly to 0–10), and 5 competitor `choice` questions (`absent | low | medium | high`). `zeroDataRetention` is currently off (see below).
+  - `buildJevEvaluationRequest(input)` builds `state` `{ stageName, amount, aeNotes, saNotes }`, 8 `score` questions with 10 levels, Jev's maximum. Level p stands for round(p × 10 / 9) on the 0–10 scale and is worded with that value's rubric band. Jev's fractional position is scaled the same way, and 5 competitor `choice` questions (`absent | low | medium | high`). `zeroDataRetention` is currently off (see below).
   - `interpretJevEvaluation(input, evaluation)` is pure. It rounds and clamps scores, derives status, and reads confidence from `providerMetadata.typesafe.confidence` (a number, or a map keyed by question id). It keeps only non-`absent` competitors, computes the composite and gates in code, and validates with `JevScoringResultSchema`. It throws on any missing answer or confidence.
   - `scoreOpportunityWithJevAI(input, { abortSignal })` asserts the Gateway key, calls `evaluate` and interprets the result.
 - The rubric wording lives in `RUBRIC_TEXT`, copied verbatim from `docs/meddpicc-rubric.md`. A test fails if the two drift.
@@ -67,4 +67,34 @@ System 1 now runs on `typesafe-ai/jev` through `evaluate` from `eve/ai`. The `gp
 ### Deviations after the first live attempts
 
 - **Zero Data Retention is off (user decision).** The Gateway refuses ZDR on the Pro Trial plan. `providerOptions.gateway.zeroDataRetention` is removed, with a TODO in `jev-scorer.ts` and `tests/jev.test.ts` to restore it once the team is on a paid Pro plan.
-- **Score questions now have 3 levels instead of 11.** The second live attempt failed with 400 `TypeSafe Score questions support at most 10 levels`. Each dimension now has one rung per rubric band, and Jev's position is scaled linearly to 0–10. The fix was made test-first. Because of this failure, the live Acme criteria are **still unverified**. A further live run (`JEV_LIVE=1 pnpm vitest run tests/jev.live.test.ts`) needs approval.
+- **Score questions now have 10 levels instead of 11.** The second live attempt failed with 400 `TypeSafe Score questions support at most 10 levels`. A brief 3-band version was replaced by 10 levels to keep 0–10 granularity. The fix was made test-first.
+
+### Live Acme result (third attempt, 10 levels, no ZDR)
+
+- **Confidence shape:** `providerMetadata.typesafe.confidence` is a map keyed by question id, covering every dimension and every `competitor_*` question, with values from 0 to 1. The existing per-question handling fits it, so no fix was needed.
+- **Usage and cost:** 4,346 input tokens and 380 output tokens; Gateway `marketCost` about $0.00018.
+- **Mapped scores (0–10):**
+
+| Dimension | Score | Confidence |
+|---|---|---|
+| Identify Pain | 6 | 0.77 |
+| Champion | 2 | 0.34 |
+| Economic Buyer | 6 | 0.70 |
+| Decision Criteria | 6 | 0.78 |
+| Decision Process | 3 | 0.49 |
+| Metrics | 5 | 0.69 |
+| Competition | 6 | 0.70 |
+| Paper Process | 1 | 0.53 |
+
+- **Against the acceptance criteria** (the mapping was not tuned toward them):
+
+| Criterion | Actual | Result |
+|---|---|---|
+| Composite 50–58 | 48 | **FAIL** |
+| Identify Pain ≥ 8 | 6 (position 5.31/9) | **FAIL** |
+| Netlify `high` | `high` (p = 0.94); no other competitor flagged | PASS |
+| Gate 2 blocked on Economic Buyer | blocked, but on Champion 2/10 and Overall 48/100. Economic Buyer is 6, above the ≥ 4 gate. | **FAIL** |
+
+- **Why it differs:** the Acme fixture notes say "Met with VP of E-Commerce… Budget allocated ($180k ACV)", which Jev reads as partial Economic Buyer evidence. The notes also name no champion; they say only "Technical decision rests with Head of Platform". The baseline figures (Identify Pain 8, Champion 7, Economic Buyer 3) seem to reflect the spec author's expectations rather than these notes.
+- **Open decision:** either revise the criteria or the Acme fixture notes (ticket 10 seeds the data), or accept Jev's reading.
+- `tests/jev.live.test.ts` still asserts the original criteria, so it fails on the real output. It is opt-in.
