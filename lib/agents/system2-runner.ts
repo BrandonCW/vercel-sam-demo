@@ -20,21 +20,22 @@ export function hasProviderKey(model: System2ModelOption): boolean {
     return false;
   }
 
-  const hasGateway = Boolean(process.env.AI_GATEWAY_API_KEY);
+  const hasGateway = Boolean(process.env.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_TOKEN);
+  if (hasGateway) {
+    return true;
+  }
 
   switch (model) {
     case 'claude-3-5-sonnet':
     case 'claude-3-5-haiku':
-      return Boolean(process.env.ANTHROPIC_API_KEY || hasGateway || process.env.EVE_API_KEY);
+      return Boolean(process.env.ANTHROPIC_API_KEY || process.env.EVE_API_KEY);
     case 'gpt-4o-mini':
-      return Boolean(process.env.OPENAI_API_KEY || hasGateway || process.env.EVE_API_KEY);
+      return Boolean(process.env.OPENAI_API_KEY);
     case 'gemini-2-flash':
       return Boolean(
         process.env.GEMINI_API_KEY ||
           process.env.GOOGLE_API_KEY ||
-          process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-          hasGateway ||
-          process.env.EVE_API_KEY
+          process.env.GOOGLE_GENERATIVE_AI_API_KEY
       );
     default:
       return false;
@@ -229,6 +230,40 @@ async function callLiveModel(
 
       const data = await res.json();
       jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } else if (process.env.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_TOKEN) {
+      const gatewayKey = process.env.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_TOKEN;
+      const gatewayModel =
+        model === 'claude-3-5-sonnet'
+          ? 'anthropic/claude-3-5-sonnet'
+          : model === 'claude-3-5-haiku'
+          ? 'anthropic/claude-3-5-haiku'
+          : model === 'gpt-4o-mini'
+          ? 'openai/gpt-4o-mini'
+          : 'google/gemini-2.0-flash';
+
+      const res = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${gatewayKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: gatewayModel,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Vercel AI Gateway error: ${res.status} ${await res.text()}`);
+      }
+
+      const data = await res.json();
+      jsonText = data.choices?.[0]?.message?.content || '';
     }
 
     if (!jsonText) {
@@ -301,7 +336,7 @@ export async function runSystem2Analysis(
   // High-fidelity, deterministic scenario-aware fallback execution
   const result = executeSystem2Pipeline(effectiveInput);
   result.executionMode = 'deterministic_fallback';
-  result.fallbackReason = `No credentials found for ${model} in environment; fell back to deterministic pipeline`;
+  result.fallbackReason = `No credentials found for ${model} in environment (set AI_GATEWAY_API_KEY or provider API key); fell back to deterministic pipeline`;
 
   // Validate the resulting form strictly
   JsonRenderFormSchema.parse(result.phase3Form);
