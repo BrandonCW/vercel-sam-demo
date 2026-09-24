@@ -214,3 +214,16 @@ The architecture defines two primary seams, keeping the total number of seams to
 - **Interactive UI Prototype Asset**: Available for visual and state reference at [`.scratch/deal-qualification/prototypes/interactive-ui-flow.html`](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/prototypes/interactive-ui-flow.html).
 - **MEDDPICC Rubric Reference**: Formal dimension definitions, weights, and stage exit gate thresholds are documented in [`docs/meddpicc-rubric.md`](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/docs/meddpicc-rubric.md).
 - **Issue Tracking**: Implementation tickets 01 through 07 in `.scratch/deal-qualification/issues/` document the individual technical decisions leading to this master specification.
+
+---
+
+## Amendments (2026-09-25, eve review)
+
+Tracked in issues 06–10.
+
+- **Fail loudly**: No runtime fallbacks (regex scoring, canned System 2 output, in-memory CRM). Missing config or upstream failure throws. Supersedes any fallback behavior implied above.
+- **§4 System 1**: Jev is TypeSafe AI's `typesafe-ai/jev` evaluation model via AI Gateway (`evaluate` from `eve/ai`), answering typed score/choice questions. Composite and stage gates computed in code from its answers.
+- **User story 5 / citations**: Jev returns no text; per-dimension citations and gap callouts are produced by System 2.
+- **§1 / user story 20 models**: Claude 3.5 / GPT-4o-mini / Gemini 2.0 options are retired; replaced with current Gateway IDs (see 08).
+- **§6 Assessment Session**: implemented as a two-turn durable eve session (see 09).
+- **Testing**: fixture-based tests allowed only for pure logic, and only alongside live eve evals against the real Gateway and a Postgres test branch (see 10). Supersedes "LLM endpoints mocked at transport level" as the sole integration strategy.
