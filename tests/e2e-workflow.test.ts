@@ -45,7 +45,7 @@ const PIPE_CONTRACT_REGEX =
 
 describe('End-to-End Workflow Integration Test Suite (tests/e2e-workflow.test.ts)', () => {
   beforeEach(async () => {
-    // Reset all 3 scenarios to pristine fixture baseline before each test
+    // Reset all 3 scenarios to pristine Scenario baseline before each test
     await resetCrmDatabase('scenario_acme_netlify');
     await resetCrmDatabase('scenario_globex_amplify');
     await resetCrmDatabase('scenario_soylent_headless');

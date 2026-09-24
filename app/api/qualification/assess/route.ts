@@ -7,7 +7,8 @@ import { MEDDPICCBreakdown, System2ModelOption } from '@/lib/types/crm';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { opportunityId, model = 'claude-3-5-sonnet' } = body;
+    const { opportunityId, model: requestedModel } = body;
+    const model = requestedModel || process.env.SYSTEM2_MODEL_ID || 'claude-3-5-sonnet';
 
     if (!opportunityId || typeof opportunityId !== 'string') {
       return NextResponse.json(
