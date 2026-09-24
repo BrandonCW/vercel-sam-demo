@@ -18,6 +18,7 @@ export interface StageGateEvaluation {
   currentStage: string;
   targetStage: string;
   gateBlockers: string[];
+  blockingDimensions?: string[];
 }
 
 export type MEDDPICCBreakdown = {
@@ -71,25 +72,8 @@ export interface DealInteraction {
   created_at: string;
 }
 
-export type System2ModelOption =
-  | 'claude-3-5-sonnet'
-  | 'claude-3-5-haiku'
-  | 'gpt-4o-mini'
-  | 'gemini-2-flash';
-
-export interface ModelConfig {
-  id: System2ModelOption;
-  label: string;
-  provider: string;
-  badge: string;
-}
-
-export const SYSTEM2_MODELS: ModelConfig[] = [
-  { id: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet', provider: 'Anthropic', badge: 'Default' },
-  { id: 'claude-3-5-haiku', label: 'Claude 3.5 Haiku', provider: 'Anthropic', badge: 'Fast' },
-  { id: 'gpt-4o-mini', label: 'GPT-4o-mini', provider: 'OpenAI', badge: 'Compact' },
-  { id: 'gemini-2-flash', label: 'Gemini 2.0 Flash', provider: 'Google', badge: 'Low-latency' },
-];
+export { SYSTEM2_MODELS, DEFAULT_SYSTEM2_MODEL } from '@/lib/models';
+export type { System2ModelOption, ModelConfig } from '@/lib/models';
 
 export type AssessmentSessionState =
   | 'initiated'

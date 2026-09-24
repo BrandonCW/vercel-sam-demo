@@ -1,14 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpportunity, updateOpportunity, recordInteraction } from '@/lib/db/crm';
-import { scoreOpportunityWithJevAI } from '@/lib/agents/jev-scorer';
-import { runSystem2Analysis } from '@/lib/agents/system2-runner';
-import { MEDDPICCBreakdown, System2ModelOption } from '@/lib/types/crm';
+import { getOpportunity } from '@/lib/db/crm';
+import {
+  loadLatestJevResult,
+  loadLatestSystem2Result,
+  requireFreshInteractions,
+  snapshotInteractions,
+} from '@/lib/db/assessments';
+import { assertAiGatewayConfigured } from '@/lib/env';
+import { resolveAgentModel, System2ModelSchema } from '@/lib/models';
+import { runAgentTurn } from '@/lib/eve-session';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const { opportunityId, model: requestedModel } = body;
-    const model = requestedModel || process.env.SYSTEM2_MODEL_ID || 'claude-3-5-sonnet';
+    const parsedModel = System2ModelSchema.safeParse(requestedModel ?? resolveAgentModel());
+    if (!parsedModel.success) {
+      return NextResponse.json(
+        { success: false, error: `Unsupported model '${requestedModel}'. Use one of: ${System2ModelSchema.options.join(', ')}` },
+        { status: 400 }
+      );
+    }
+    const model = parsedModel.data;
 
     if (!opportunityId || typeof opportunityId !== 'string') {
       return NextResponse.json(
@@ -24,74 +37,32 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+    assertAiGatewayConfigured();
 
-    // 1. Run System 1 (Jev) scoring model through Vercel AI Gateway
-    const jevResult = await scoreOpportunityWithJevAI({
-      opportunityId: opportunity.id,
-      name: opportunity.name,
-      accountName: opportunity.account_name,
-      stageName: opportunity.stage_name,
-      amount: opportunity.amount,
-      aeNotes: opportunity.ae_notes,
-      saNotes: opportunity.sa_notes,
-    }, { abortSignal: request.signal });
-
-    const breakdown: MEDDPICCBreakdown = {
-      ...jevResult.dimensions,
-      stageGate: jevResult.stageGate,
-    };
-
-    // Update Opportunity in CRM persistence
-    const updatedOpportunity = await updateOpportunity(opportunity.id, {
-      meddpicc_score: jevResult.overallScore,
-      meddpicc_breakdown: breakdown,
-      competitive_flags: jevResult.competitiveFlags.map((c) => c.name),
-      stage_gate: jevResult.stageGate,
-      qualification_status:
-        opportunity.qualification_status === 'unqualified'
-          ? 'in_review'
-          : opportunity.qualification_status,
+    // System 1 (qualification_assessor) and System 2 (playbook_generator) run inside the eve agent.
+    const before = await snapshotInteractions(opportunity.id);
+    await runAgentTurn({
+      origin: request.nextUrl.origin,
+      cookie: request.headers.get('cookie'),
+      signal: request.signal,
+      message:
+        `Assess opportunity ${opportunity.id}. Delegate System 1 Jev scoring to qualification_assessor, ` +
+        `then System 2 to playbook_generator with model ${model}. Do not write back to the CRM yet: ` +
+        `the Solutions Architect answers the discovery form first.`,
+    });
+    await requireFreshInteractions(opportunity.id, before, {
+      initial_scoring: 'run_jev_scoring',
+      questions_generated: 'run_system2_analysis',
     });
 
-    // Record System 1 telemetry event in deal_interactions
-    await recordInteraction({
-      opportunity_id: opportunity.id,
-      actor: 'system1_jev',
-      action: 'initial_scoring',
-      payload: jevResult as unknown as Record<string, unknown>,
-    });
-
-    // 2. Run Phased System 2 Deep Reasoning
-    const system2Result = await runSystem2Analysis(
-      {
-        opportunity: {
-          id: updatedOpportunity.id,
-          name: updatedOpportunity.name,
-          stageName: updatedOpportunity.stage_name,
-          amount: Number(updatedOpportunity.amount),
-          aeNotes: updatedOpportunity.ae_notes,
-          saNotes: updatedOpportunity.sa_notes,
-        },
-        jevResult,
-        model: model as System2ModelOption,
-      },
-      { model: model as System2ModelOption }
-    );
-
-    // 3. Checkpoint active Assessment Session state and generated form in persistence
-    await recordInteraction({
-      opportunity_id: opportunity.id,
-      actor: 'system2_llm',
-      action: 'questions_generated',
-      payload: {
-        form: system2Result.phase3Form,
-        model: system2Result.modelUsed,
-        sessionState: 'pending_feedback',
-        gapsIdentified: system2Result.phase1Gaps.length,
-        competitiveAngles: system2Result.phase2Competitive.length,
-        checkpointTimestamp: new Date().toISOString(),
-      },
-    });
+    const [updatedOpportunity, jevResult, system2Result] = await Promise.all([
+      getOpportunity(opportunity.id),
+      loadLatestJevResult(opportunity.id),
+      loadLatestSystem2Result(opportunity.id),
+    ]);
+    if (system2Result.modelUsed !== model) {
+      throw new Error(`System 2 ran with ${system2Result.modelUsed}, not the selected model ${model}.`);
+    }
 
     return NextResponse.json({
       success: true,
@@ -112,4 +83,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

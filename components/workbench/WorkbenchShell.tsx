@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   Opportunity,
   System2ModelOption,
+  DEFAULT_SYSTEM2_MODEL,
   AssessmentSessionState,
 } from '@/lib/types/crm';
 import { JsonRenderForm } from '@/lib/ui/json-render-schema';
@@ -22,7 +23,7 @@ export function WorkbenchShell({
 }: WorkbenchShellProps) {
   const [opportunity, setOpportunity] = useState<Opportunity>(initialOpportunity);
   const [scenarioId, setScenarioId] = useState<string>(initialScenarioId);
-  const [selectedModel, setSelectedModel] = useState<System2ModelOption>('claude-3-5-sonnet');
+  const [selectedModel, setSelectedModel] = useState<System2ModelOption>(DEFAULT_SYSTEM2_MODEL);
   const [sessionState, setSessionState] = useState<AssessmentSessionState>(
     initialOpportunity.suggested_next_steps ? 'closed' : 'initiated'
   );

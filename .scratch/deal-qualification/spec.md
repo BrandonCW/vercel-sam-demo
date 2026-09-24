@@ -38,7 +38,7 @@ The Deal Qualification System is an automated qualification workbench built on N
 17. As an Account Executive, I want the Opportunity's Qualification Status (Unqualified, In Review, Qualified, Disqualified) updated automatically upon writeback, so that deal pipelines accurately reflect technical readiness.
 18. As a Solutions Architect, I want to select from pre-seeded Scenarios (such as Acme Corp / Netlify, Globex FinTech / AWS Amplify, and Soylent Retail / Headless) from a top navigation bar, so that I can demonstrate different deal qualification paths.
 19. As a Solutions Architect, I want an instant Reset button that restores the active Scenario to its baseline unqualified state, so that I can run clean, repeatable demonstrations on demand.
-20. As a Solutions Architect, I want to select the System 2 reasoning model from a dropdown in the UI (defaulting to Claude 3.5 Sonnet, with Claude 3.5 Haiku, GPT-4o-mini, and Gemini 2.0 Flash as options), so that I can compare reasoning depth, question phrasing, and execution speed across models.
+20. As a Solutions Architect, I want to select the System 2 reasoning model from a dropdown in the UI (defaulting to Claude Sonnet 5, with Claude Haiku 4.5, GPT-5.5, and Gemini 3.5 Flash as options, all routed through Vercel AI Gateway), so that I can compare reasoning depth, question phrasing, and execution speed across models.
 21. As a Platform Administrator, I want the application protected by a lightweight password gate on Preview and Production environments, so that sensitive deal scenarios and agent endpoints are shielded from unauthorized public access.
 22. As a Developer, I want the password authentication gate automatically bypassed when running in local development (`NODE_ENV === 'development'`), so that I can iterate rapidly without repetitive logins.
 23. As an Engineering Lead, I want a Git-driven deployment pipeline where pushes to the `mvp` branch automatically trigger Vercel Preview deployments and merges to `main` deploy to Vercel Production, so that releases are predictable and automated.
@@ -50,7 +50,7 @@ The Deal Qualification System is an automated qualification workbench built on N
 ### 1. Architectural Overview & Split Workbench UI
 
 The user interface follows a persistent two-column Split Workbench layout (derived from prototype `.scratch/deal-qualification/prototypes/interactive-ui-flow.html`):
-- **Header**: Displays Opportunity name, Deal Stage badge, Annual Contract Value (ACV), assigned AE/SA, detected Competitor threat pill, runtime session status, the demo Scenario selector with Reset trigger, and the System 2 Model Selector dropdown (options: Claude 3.5 Sonnet [default], Claude 3.5 Haiku, GPT-4o-mini, Gemini 2.0 Flash).
+- **Header**: Displays Opportunity name, Deal Stage badge, Annual Contract Value (ACV), assigned AE/SA, detected Competitor threat pill, runtime session status, the demo Scenario selector with Reset trigger, and the System 2 Model Selector dropdown (options: Claude Sonnet 5 [default], Claude Haiku 4.5, GPT-5.5, Gemini 3.5 Flash; Gateway IDs in `lib/models.ts`).
 - **Left Column (Context & Real-Time Rubric)**:
   - Read-only AE Notes card.
   - Cumulative SA Notes card.
@@ -224,7 +224,7 @@ Tracked in issues 06–10.
 - **Fail loudly**: No runtime fallbacks (regex scoring, canned System 2 output, in-memory CRM). Missing config or upstream failure throws. Supersedes any fallback behavior implied above.
 - **§4 System 1**: Jev is TypeSafe AI's `typesafe-ai/jev` evaluation model via AI Gateway (`evaluate` from `eve/ai`), answering typed score/choice questions. Composite and stage gates computed in code from its answers.
 - **User story 5 / citations**: Jev returns no text; per-dimension citations and gap callouts are produced by System 2.
-- **§1 / user story 20 models**: Claude 3.5 / GPT-4o-mini / Gemini 2.0 options are retired; replaced with current Gateway IDs (see 08).
+- **§1 / user story 20 models**: the original 2024-era options are retired; replaced with current Gateway IDs `anthropic/claude-sonnet-5` (default), `anthropic/claude-haiku-4.5`, `openai/gpt-5.5`, `google/gemini-3.5-flash`, defined once in `lib/models.ts` (issue 08).
 - **§6 Assessment Session**: implemented as a two-turn durable eve session (see 09).
 - **Testing**: fixture-based tests allowed only for pure logic, and only alongside live eve evals against the real Gateway and a Postgres test branch (see 10). Supersedes "LLM endpoints mocked at transport level" as the sole integration strategy.
 - **Jev request details (issue 07)**: Zero Data Retention is not required; Gateway retention of Jev requests is accepted (user decision). Score questions use 10 levels, because Jev allows at most 10. Level p stands for round(p × 10 / 9), worded with that value's rubric band.

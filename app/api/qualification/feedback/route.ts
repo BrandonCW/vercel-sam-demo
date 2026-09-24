@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { getOpportunity, writebackOpportunityQualification, recordInteraction } from '@/lib/db/crm';
-import { scoreOpportunityWithJevAI } from '@/lib/agents/jev-scorer';
+import { getOpportunity, recordInteraction, updateOpportunity } from '@/lib/db/crm';
+import {
+  loadLatestJevResult,
+  loadLatestSystem2Result,
+  requireFreshInteractions,
+  snapshotInteractions,
+} from '@/lib/db/assessments';
+import { assertAiGatewayConfigured } from '@/lib/env';
+import { runAgentTurn } from '@/lib/eve-session';
 import { SaFeedbackPayloadSchema, formatSaDiscoveryNotes } from '@/lib/agents/feedback-schema';
-import { synthesizeSuggestedNextSteps } from '@/lib/agents/next-steps-synthesizer';
-import { MEDDPICCBreakdown, QualificationStatus } from '@/lib/types/crm';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,80 +36,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Structured discovery note formatter: append to sa_notes; leave ae_notes strictly immutable
-    const originalAeNotes = opportunity.ae_notes;
-    const updatedSaNotes = formatSaDiscoveryNotes(formResponses, notesDelta, opportunity.sa_notes);
-
-    // 2. System 1 Delta Re-scoring trigger via AI Gateway
+    // Fail fast on missing config and on feedback with no System 2 analysis to answer.
+    assertAiGatewayConfigured();
+    await loadLatestSystem2Result(opportunity.id);
     const previousScore = opportunity.meddpicc_score ?? 0;
-    const jevResult = await scoreOpportunityWithJevAI({
-      opportunityId: opportunity.id,
-      name: opportunity.name,
-      accountName: opportunity.account_name,
-      stageName: opportunity.stage_name,
-      amount: opportunity.amount,
-      aeNotes: opportunity.ae_notes,
-      saNotes: updatedSaNotes,
-    }, { abortSignal: request.signal });
 
+    // 1. Append timestamped SA discovery notes; ae_notes is never touched.
+    await updateOpportunity(opportunity.id, {
+      sa_notes: formatSaDiscoveryNotes(formResponses, notesDelta, opportunity.sa_notes),
+    });
+    await recordInteraction({
+      opportunity_id: opportunity.id,
+      actor: 'sa_user',
+      action: 'sa_feedback',
+      payload: { formResponses, notesDelta: notesDelta ?? null },
+    });
+
+    // 2. Delta re-scoring (qualification_assessor) and the code-decided writeback (crm_update_next_steps) run in eve.
+    const before = await snapshotInteractions(opportunity.id);
+    await runAgentTurn({
+      origin: request.nextUrl.origin,
+      cookie: request.headers.get('cookie'),
+      signal: request.signal,
+      message:
+        `The Solutions Architect's discovery answers for opportunity ${opportunity.id} are now in its SA notes. ` +
+        `Delegate delta re-scoring to qualification_assessor, then call crm_update_next_steps for ${opportunity.id}.`,
+    });
+    await requireFreshInteractions(opportunity.id, before, {
+      initial_scoring: 'run_jev_scoring',
+      writeback: 'crm_update_next_steps',
+    });
+
+    const [updatedOpportunity, jevResult] = await Promise.all([
+      getOpportunity(opportunity.id),
+      loadLatestJevResult(opportunity.id),
+    ]);
+    if (!updatedOpportunity?.suggested_next_steps) {
+      throw new Error(`crm_update_next_steps wrote no Suggested Next Steps for ${opportunity.id}`);
+    }
+    const suggestedNextSteps = updatedOpportunity.suggested_next_steps;
+    const qualificationStatus = updatedOpportunity.qualification_status;
     const deltaScore = jevResult.overallScore - previousScore;
-    const combinedNotes = `${opportunity.ae_notes}\n${updatedSaNotes}`.toLowerCase();
 
-    // 3. Qualification Status transition logic
-    let qualificationStatus: QualificationStatus;
-    const hasFatalBlocker =
-      /(strict on-premise|on-premise container mandate|locked into \d+-year competitor renewal|cannot adopt cloud|fatal blocker|disqualif)/i.test(
-        combinedNotes
-      ) ||
-      Object.values(formResponses).some((val) =>
-        /(fatal blocker|disqualified|strict on-premise|cannot migrate)/i.test(
-          Array.isArray(val) ? val.join(' ') : String(val)
-        )
-      );
-
-    if (hasFatalBlocker) {
-      qualificationStatus = 'disqualified';
-    } else if (jevResult.stageGate.gateReady) {
-      qualificationStatus = 'qualified';
-    } else if (deltaScore > 0 || (previousScore !== 0 && jevResult.overallScore > 0)) {
-      qualificationStatus = 'in_review';
-    } else {
-      qualificationStatus = opportunity.qualification_status;
-    }
-
-    // 4. Standardized Suggested Next Steps synthesis
-    const suggestedNextSteps = synthesizeSuggestedNextSteps({
-      opportunity: {
-        ...opportunity,
-        sa_notes: updatedSaNotes,
-      },
-      qualificationStatus,
-      stageGate: jevResult.stageGate,
-      jevResult,
-      formResponses,
-      notesDelta,
-    });
-
-    const updatedBreakdown: MEDDPICCBreakdown = {
-      ...jevResult.dimensions,
-      stageGate: jevResult.stageGate,
-    };
-
-    // 5. Atomic database Writeback: updates ONLY designated fields, leaves ae_notes intact
-    const updatedOpportunity = await writebackOpportunityQualification(opportunity.id, {
-      sa_notes: updatedSaNotes,
-      suggested_next_steps: suggestedNextSteps,
-      qualification_status: qualificationStatus,
-      meddpicc_score: jevResult.overallScore,
-      meddpicc_breakdown: updatedBreakdown,
-    });
-
-    // Verify invariant that ae_notes remained strictly identical
-    if (updatedOpportunity.ae_notes !== originalAeNotes) {
-      console.error('CRITICAL: ae_notes was modified during writeback!');
-    }
-
-    // 6. Audit telemetry interaction in deal_interactions
+    // 3. Audit telemetry: the Assessment Session closes.
     await recordInteraction({
       opportunity_id: opportunity.id,
       actor: 'system1_jev',
@@ -123,7 +97,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 7. Assessment Session marked as closed and revalidate Next.js path
     try {
       revalidatePath('/');
     } catch {

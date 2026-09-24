@@ -5,7 +5,7 @@ Bring `agent/` in line with eve's documented conventions and spec §3 so the age
 
 **Blocked by:** 06, 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Scope
 
@@ -24,7 +24,25 @@ Bring `agent/` in line with eve's documented conventions and spec §3 so the age
 
 ## Acceptance criteria
 
-- [ ] `npx eve info` → 0 errors, 0 warnings; subagents list their tools; built-ins above absent.
-- [ ] No `z.any()` in `agent/tools/`.
-- [ ] Anonymous `POST /eve/v1/session` in a non-dev environment → 401.
-- [ ] No retired model IDs anywhere in `agent/`, `lib/`, `.env.example`, or the spec.
+- [x] `npx eve info` → 0 errors, 0 warnings; subagents list their tools; built-ins above absent.
+- [x] No `z.any()` in `agent/tools/`.
+- [x] Anonymous `POST /eve/v1/session` in a non-dev environment → 401.
+- [x] No retired model IDs anywhere in `agent/`, `lib/`, `.env.example`, or the spec.
+
+## Answer
+
+All agent behaviour now lives in the eve agent under `agent/`; `lib/` keeps only pure helpers and data access, and a test fails if `lib/`, `app/` or `components/` call a model.
+
+- **Root** (`agent/agent.ts`, `instructions.md`): tools `crm_read_deal`, `crm_update_next_steps` (status incl. fatal blocker + Suggested Next Steps decided in code, rejects `ae_notes` changes), `reset_crm_data`; built-ins `bash`, `web_fetch`, `web_search`, `write_file` disabled. Instructions delegate to both subagents and describe the assess, post-feedback and structured-outcome contracts.
+- **`qualification_assessor`**: `crm_read_deal`, `run_jev_scoring` (calls `evaluate` from `eve/ai` directly; request building and interpretation stay pure in `lib/agents/jev-scorer.ts`).
+- **`playbook_generator`**: `run_system2_analysis` (the System 2 `generateText` call moved here from `lib/agents/system2-runner.ts`, now deleted). It returns per-dimension citations and gap callouts, which are merged into `meddpicc_breakdown` so `ContextColumn` fills `dim.evidence`/`dim.gaps` unchanged.
+- **Routes → eve**: `/api/qualification/assess` and `/feedback` call `runAgentTurn` (`lib/eve-session.ts`), which opens an eve session with `eve/client` against the same-origin `/eve/v1/*` mount, forwards the `deal_qual_session` cookie for channel auth, and requires a structured `{ outcome, error }` result. Routes then check that the expected tool rows were freshly persisted (`requireFreshInteractions`) and that System 2 used the selected model, and rebuild the unchanged response shapes from Postgres.
+- **Channel auth**: `localDev()` + `deal_qual_session` `AuthFn`; anonymous non-dev → 401.
+- **Models**: single source `lib/models.ts` (`anthropic/claude-sonnet-5` default).
+
+Deviations / follow-ups:
+- `WorkbenchShell.tsx` default model changed from the retired `'claude-3-5-sonnet'` literal to `DEFAULT_SYSTEM2_MODEL` (one line, no visible change; the old ID is no longer valid).
+- The feedback route appends SA notes before the eve turn; a failed turn leaves them appended (ticket 09 moves this into the session).
+- Freshness checks are per-opportunity, so concurrent runs on the same opportunity could cross (ticket 09 session ownership).
+- Live System 2 on Acme failed twice with schema-invalid structured output (an option missing `value`); Jev itself succeeded. Tracked for ticket 10.
+- UI migration to `useEveAgent` is issue 11.

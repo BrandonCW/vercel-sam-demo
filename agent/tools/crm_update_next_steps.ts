@@ -1,62 +1,23 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import {
-  writebackOpportunityQualification,
-  recordInteraction,
-  getOpportunity,
-} from "@/lib/db/crm";
-import { QualificationStatus, MEDDPICCBreakdown } from "@/lib/types/crm";
+import { requireOpportunity } from "@/lib/db/crm";
+import { loadLatestJevResult, loadLatestSystem2Result, writebackQualification } from "@/lib/db/assessments";
 
 export default defineTool({
   description:
-    "Atomically write back Suggested Next Steps, qualification status, updated SA notes, and MEDDPICC scoring to the simulated Salesforce CRM Opportunity record.",
+    "Write back the assessment to the simulated Salesforce CRM. Loads the latest System 1 and System 2 results, decides the qualification status and the standardized Suggested Next Steps in code, and atomically updates the Opportunity. Rejects the write if ae_notes would change.",
   inputSchema: z.object({
-    opportunityId: z.string().describe("The ID of the Opportunity to update"),
-    suggestedNextSteps: z
-      .string()
-      .describe("Standardized Suggested Next Steps string"),
-    qualificationStatus: z
-      .enum(["unqualified", "in_review", "qualified", "disqualified"])
-      .describe("Updated Qualification Status"),
-    saNotes: z.string().describe("Updated SA Notes"),
-    meddpiccScore: z.number().describe("Composite MEDDPICC score (0-100)"),
-    meddpiccBreakdown: z.any().describe("MEDDPICC breakdown object"),
+    opportunityId: z.string().min(1).describe("The ID of the Opportunity to update"),
   }),
-  async execute({
-    opportunityId,
-    suggestedNextSteps,
-    qualificationStatus,
-    saNotes,
-    meddpiccScore,
-    meddpiccBreakdown,
-  }) {
-    const existing = await getOpportunity(opportunityId);
-    if (!existing) {
-      throw new Error(`Opportunity "${opportunityId}" not found in CRM.`);
-    }
-
-    const updated = await writebackOpportunityQualification(opportunityId, {
-      sa_notes: saNotes,
-      suggested_next_steps: suggestedNextSteps,
-      qualification_status: qualificationStatus as QualificationStatus,
-      meddpicc_score: meddpiccScore,
-      meddpicc_breakdown: meddpiccBreakdown as MEDDPICCBreakdown,
-    });
-
-    await recordInteraction({
-      opportunity_id: opportunityId,
-      actor: "system2_llm",
-      action: "writeback",
-      payload: {
-        suggested_next_steps: suggestedNextSteps,
-        qualification_status: qualificationStatus,
-        meddpicc_score: meddpiccScore,
-      },
-    });
-
-    return {
-      success: true,
-      opportunity: updated,
-    };
+  async execute({ opportunityId }) {
+    const opportunity = await requireOpportunity(opportunityId);
+    const jevResult = await loadLatestJevResult(opportunityId);
+    const system2Result = await loadLatestSystem2Result(opportunityId);
+    const { opportunity: updated, suggestedNextSteps } = await writebackQualification(
+      opportunity,
+      jevResult,
+      system2Result
+    );
+    return { success: true, suggestedNextSteps, opportunity: updated };
   },
 });

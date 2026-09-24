@@ -27,6 +27,8 @@ export const StageGateEvaluationSchema = z.object({
   currentStage: z.string(),
   targetStage: z.string(),
   gateBlockers: z.array(z.string()),
+  /** Dimension keys whose score is below the gate threshold (structured form of gateBlockers). */
+  blockingDimensions: z.array(z.string()).default([]),
 });
 export type StageGateEvaluation = z.infer<typeof StageGateEvaluationSchema>;
 

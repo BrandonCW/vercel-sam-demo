@@ -1,8 +1,11 @@
 import { defineAgent } from "eve";
+import { resolveAgentModel } from "@/lib/models";
 
 export default defineAgent({
   description:
-    "Specializes in deal intake, baseline MEDDPICC scoring coordination via Jev, and delta re-scoring when SA feedback is provided.",
-  model: process.env.SYSTEM2_MODEL_ID || "anthropic/claude-3-5-sonnet",
+    "Reads an Opportunity and scores it with System 1 (the Jev evaluation model): baseline MEDDPICC scoring and delta re-scoring after SA feedback. Send it the opportunityId.",
+  model: resolveAgentModel(),
   modelContextWindowTokens: 200_000,
+  // Only its authored tools (crm_read_deal, run_jev_scoring); no shell, web or file tools.
+  defaultTools: false,
 });

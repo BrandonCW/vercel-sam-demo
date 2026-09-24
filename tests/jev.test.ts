@@ -4,7 +4,6 @@ import {
   computeCompositeScore,
   getDimensionStatus,
   evaluateStageGate,
-  scoreOpportunityWithJevAI,
   buildJevEvaluationRequest,
   interpretJevEvaluation,
   COMPETITOR_TAXONOMY,
@@ -148,26 +147,6 @@ describe('System 1 (Jev) - Stage Gate Readiness Logic', () => {
     expect(evaluation.gateBlockers.some((b) => b.includes('Economic Buyer'))).toBe(true);
     expect(evaluation.gateBlockers.some((b) => b.includes('Decision Process'))).toBe(true);
     expect(evaluation.gateBlockers.some((b) => b.includes('Overall MEDDPICC score'))).toBe(true);
-  });
-});
-
-describe('System 1 (Jev) - fails loudly', () => {
-  it('throws instead of returning a regex-derived score when AI_GATEWAY_API_KEY is unset', async () => {
-    const saved = process.env.AI_GATEWAY_API_KEY;
-    delete process.env.AI_GATEWAY_API_KEY;
-    try {
-      await expect(
-        scoreOpportunityWithJevAI({
-          opportunityId: 'opp_x',
-          name: 'X',
-          stageName: 'Stage 2 - Discovery',
-          aeNotes: 'notes',
-          saNotes: '',
-        })
-      ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
-    } finally {
-      if (saved !== undefined) process.env.AI_GATEWAY_API_KEY = saved;
-    }
   });
 });
 

@@ -3,7 +3,6 @@ import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/qualification/feedback/route';
 import { getOpportunity, resetCrmDatabase, getInteractions } from '@/lib/db/crm';
 import { formatSaDiscoveryNotes } from '@/lib/agents/feedback-schema';
-import { synthesizeSuggestedNextSteps } from '@/lib/agents/next-steps-synthesizer';
 
 function makeFeedbackRequest(body: unknown): NextRequest {
   return new NextRequest('http://localhost:3000/api/qualification/feedback', {
@@ -56,98 +55,6 @@ describe('Feedback Ingestion & Delta Re-scoring (Ticket 04)', () => {
       expect(formatted).toContain('[SA Discovery Update -');
       expect(formatted).toContain('• pain_quant: Deploy queues causing 45-minute engineer blocking');
       expect(formatted.startsWith('[SA Discovery Update -')).toBe(true);
-    });
-  });
-
-  describe('Suggested Next Steps Formatting Contract', () => {
-    const CONTRACT_REGEX =
-      /^\[(QUALIFIED|IN REVIEW|DISQUALIFIED)\] (.+) \| Owner: (.+) \| Focus: (.+) \| Watch: (.+)$/;
-
-    it('generates [QUALIFIED] next steps adhering strictly to the pipe-delimited 4-field contract', () => {
-      const opp = {
-        name: 'Acme Corp - Next.js Migration',
-        stage_name: 'Stage 2 - Discovery',
-        ae_notes: 'Met with VP of E-Commerce. Netlify renewal 30% discount.',
-        sa_notes: 'App Router and Turborepo monorepo with ISR cache invalidation.',
-        competitive_flags: ['Netlify'],
-      };
-
-      const stageGate = {
-        gateReady: true,
-        currentStage: 'Stage 2 - Discovery',
-        targetStage: 'Stage 3 - Technical Validation',
-        gateBlockers: [],
-      };
-
-      const result = synthesizeSuggestedNextSteps({
-        opportunity: opp,
-        qualificationStatus: 'qualified',
-        stageGate,
-      });
-
-      expect(result).toMatch(CONTRACT_REGEX);
-      expect(result.startsWith('[QUALIFIED]')).toBe(true);
-      expect(result).toContain('| Owner: SA (Lead) + AE');
-      expect(result).toContain('| Focus: Demonstrate Turborepo Remote Caching & ISR Cache Invalidation');
-      expect(result).toContain('| Watch: Netlify 30% discount renewal offer.');
-    });
-
-    it('generates [IN REVIEW] next steps when stage gate remains blocked', () => {
-      const opp = {
-        name: 'Acme Corp - Next.js Migration',
-        stage_name: 'Stage 2 - Discovery',
-        ae_notes: 'Initial discussion.',
-        sa_notes: 'Turborepo questions.',
-        competitive_flags: ['Netlify'],
-      };
-
-      const stageGate = {
-        gateReady: false,
-        currentStage: 'Stage 2 - Discovery',
-        targetStage: 'Stage 3 - Technical Validation',
-        gateBlockers: [
-          'Economic Buyer is not verified in discovery notes (score: 3/10, minimum 4/10 required)',
-        ],
-      };
-
-      const result = synthesizeSuggestedNextSteps({
-        opportunity: opp,
-        qualificationStatus: 'in_review',
-        stageGate,
-      });
-
-      expect(result).toMatch(CONTRACT_REGEX);
-      expect(result.startsWith('[IN REVIEW]')).toBe(true);
-      expect(result).toContain('| Owner: AE');
-      expect(result).toContain('Hold at Stage 2 - Discovery');
-    });
-
-    it('generates [DISQUALIFIED] next steps when fatal blocker is detected', () => {
-      const opp = {
-        name: 'Legacy Corp',
-        stage_name: 'Stage 2 - Discovery',
-        ae_notes: 'Customer requires strict on-premise container mandate.',
-        sa_notes: 'Cannot adopt cloud or edge CDN.',
-        competitive_flags: ['Kubernetes'],
-      };
-
-      const stageGate = {
-        gateReady: false,
-        currentStage: 'Stage 2 - Discovery',
-        targetStage: 'Stage 3 - Technical Validation',
-        gateBlockers: ['Fatal blocker: on-premise mandate'],
-      };
-
-      const result = synthesizeSuggestedNextSteps({
-        opportunity: opp,
-        qualificationStatus: 'disqualified',
-        stageGate,
-      });
-
-      expect(result).toMatch(CONTRACT_REGEX);
-      expect(result.startsWith('[DISQUALIFIED]')).toBe(true);
-      expect(result).toContain('| Owner: AE');
-      expect(result).toContain('Archive opportunity');
     });
   });
 

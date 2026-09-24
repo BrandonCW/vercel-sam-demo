@@ -24,6 +24,13 @@ export async function getOpportunity(id: string): Promise<Opportunity | null> {
   return rows.length > 0 ? mapRowToOpportunity(rows[0]) : null;
 }
 
+/** Like getOpportunity, but a missing record throws. */
+export async function requireOpportunity(id: string): Promise<Opportunity> {
+  const opportunity = await getOpportunity(id);
+  if (!opportunity) throw new Error(`Opportunity "${id}" not found in CRM.`);
+  return opportunity;
+}
+
 export async function getOpportunityByScenario(scenarioId: string): Promise<Opportunity | null> {
   const fixture = SCENARIO_FIXTURES[scenarioId];
   if (!fixture) return null;
@@ -75,6 +82,8 @@ export async function updateOpportunity(
 }
 
 export interface QualificationWritebackData {
+  /** The ae_notes the caller read. The write is rejected if the stored value differs (ae_notes is immutable). */
+  expectedAeNotes: string;
   sa_notes: string;
   suggested_next_steps: string;
   qualification_status: QualificationStatus;
@@ -97,10 +106,14 @@ export async function writebackOpportunityQualification(
       meddpicc_score = ${writeback.meddpicc_score},
       meddpicc_breakdown = ${JSON.stringify(writeback.meddpicc_breakdown)}::jsonb,
       updated_at = ${now}
-    WHERE id = ${id}
+    WHERE id = ${id} AND ae_notes = ${writeback.expectedAeNotes}
     RETURNING *;
   `;
-  if (rows.length === 0) throw new Error(`Opportunity ${id} not found`);
+  if (rows.length === 0) {
+    const existing = await getOpportunity(id);
+    if (!existing) throw new Error(`Opportunity ${id} not found`);
+    throw new Error(`Writeback to ${id} rejected: ae_notes changed since it was read; ae_notes is immutable.`);
+  }
   return mapRowToOpportunity(rows[0]);
 }
 

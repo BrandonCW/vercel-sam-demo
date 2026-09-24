@@ -1,8 +1,9 @@
 import { defineAgent } from "eve";
+import { resolveAgentModel } from "@/lib/models";
 
 export default defineAgent({
   description:
-    "Enterprise Deal Qualification Agent orchestrating MEDDPICC rubric evaluation, System 2 deep reasoning, and CRM writeback.",
-  model: process.env.SYSTEM2_MODEL_ID || "anthropic/claude-3-5-sonnet",
+    "Enterprise Deal Qualification Agent orchestrating MEDDPICC scoring (Jev), System 2 deep reasoning, and CRM writeback.",
+  model: resolveAgentModel(),
   modelContextWindowTokens: 200_000,
 });

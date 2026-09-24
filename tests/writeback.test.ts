@@ -45,6 +45,7 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
     };
 
     const writebackResult = await writebackOpportunityQualification('opp_acme_corp_001', {
+      expectedAeNotes: oppBefore!.ae_notes,
       sa_notes: `${oppBefore!.sa_notes}\n[SA Discovery Update - 2026-09-24T00:00:00.000Z]\n• Verified EB signoff`,
       suggested_next_steps:
         '[QUALIFIED] Advance to Stage 3 (Technical Validation). Schedule architecture review with VP of E-Commerce. | Owner: SA (Lead) + AE | Focus: Turborepo Remote Caching | Watch: Netlify 30% discount renewal offer.',
@@ -124,6 +125,7 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
   it('throws error when writing back to non-existent opportunity', async () => {
     await expect(
       writebackOpportunityQualification('opp_non_existent_id', {
+        expectedAeNotes: '',
         sa_notes: 'notes',
         suggested_next_steps: 'steps',
         qualification_status: 'qualified',

@@ -6,9 +6,7 @@ import {
   DimensionStatus,
   StageGateEvaluation,
 } from './jev-schema';
-import { evaluate } from 'eve/ai';
 import type { Experimental_EvaluationQuestion as EvaluationQuestion } from 'ai';
-import { assertAiGatewayConfigured } from '@/lib/env';
 
 export interface DimensionConfig {
   key: keyof JevScoringResult['dimensions'];
@@ -26,6 +24,8 @@ export const CANONICAL_DIMENSIONS: Record<keyof JevScoringResult['dimensions'], 
   competition: { key: 'competition', label: 'Competition', weight: 0.1 },
   paperProcess: { key: 'paperProcess', label: 'Paper Process', weight: 0.05 },
 };
+
+type DimensionKey = keyof JevScoringResult['dimensions'];
 
 export function getDimensionStatus(score: number): DimensionStatus {
   if (score >= 8) return 'verified';
@@ -63,11 +63,13 @@ export function evaluateStageGate(
 
   if (isStage2) {
     const blockers: string[] = [];
+    const blocking: DimensionKey[] = [];
     const targetStage = 'Stage 3 - Technical Validation';
 
     // Gate 2 Rules:
     // Identify Pain >= 6
     if (dimensions.identifyPain.score < 6) {
+      blocking.push('identifyPain');
       blockers.push(
         `Identify Pain score is ${dimensions.identifyPain.score}/10 (minimum 6/10 required with validated business pain)`
       );
@@ -75,6 +77,7 @@ export function evaluateStageGate(
 
     // Champion >= 5
     if (dimensions.champion.score < 5) {
+      blocking.push('champion');
       blockers.push(
         `Champion score is ${dimensions.champion.score}/10 (minimum 5/10 required with identified advocate)`
       );
@@ -82,6 +85,7 @@ export function evaluateStageGate(
 
     // Metrics >= 4
     if (dimensions.metrics.score < 4) {
+      blocking.push('metrics');
       blockers.push(
         `Metrics score is ${dimensions.metrics.score}/10 (minimum 4/10 required with preliminary measurable targets)`
       );
@@ -89,6 +93,7 @@ export function evaluateStageGate(
 
     // Economic Buyer >= 4 (Blocked on Acme Corp baseline where EB = 3)
     if (dimensions.economicBuyer.score < 4) {
+      blocking.push('economicBuyer');
       blockers.push(
         `Economic Buyer is not verified in discovery notes (score: ${dimensions.economicBuyer.score}/10, minimum 4/10 required)`
       );
@@ -106,16 +111,19 @@ export function evaluateStageGate(
       currentStage: stageName,
       targetStage,
       gateBlockers: blockers,
+      blockingDimensions: blocking,
     };
   }
 
   if (isStage3) {
     const blockers: string[] = [];
+    const blocking: DimensionKey[] = [];
     const targetStage = 'Stage 4 - Proposal';
 
     // Gate 3 Rules:
     // Decision Criteria >= 7
     if (dimensions.decisionCriteria.score < 7) {
+      blocking.push('decisionCriteria');
       blockers.push(
         `Decision Criteria score is ${dimensions.decisionCriteria.score}/10 (minimum 7/10 required with locked technical benchmarks)`
       );
@@ -123,6 +131,7 @@ export function evaluateStageGate(
 
     // Economic Buyer >= 6
     if (dimensions.economicBuyer.score < 6) {
+      blocking.push('economicBuyer');
       blockers.push(
         `Economic Buyer score is ${dimensions.economicBuyer.score}/10 (minimum 6/10 required with direct sponsor sign-off)`
       );
@@ -130,6 +139,7 @@ export function evaluateStageGate(
 
     // Decision Process >= 5
     if (dimensions.decisionProcess.score < 5) {
+      blocking.push('decisionProcess');
       blockers.push(
         `Decision Process score is ${dimensions.decisionProcess.score}/10 (minimum 5/10 required with formal evaluation steps mapped)`
       );
@@ -137,6 +147,7 @@ export function evaluateStageGate(
 
     // Identify Pain >= 7
     if (dimensions.identifyPain.score < 7) {
+      blocking.push('identifyPain');
       blockers.push(
         `Identify Pain score is ${dimensions.identifyPain.score}/10 (minimum 7/10 required for commercial proposal)`
       );
@@ -144,6 +155,7 @@ export function evaluateStageGate(
 
     // Champion >= 7
     if (dimensions.champion.score < 7) {
+      blocking.push('champion');
       blockers.push(
         `Champion score is ${dimensions.champion.score}/10 (minimum 7/10 required with executive access)`
       );
@@ -161,6 +173,7 @@ export function evaluateStageGate(
       currentStage: stageName,
       targetStage,
       gateBlockers: blockers,
+      blockingDimensions: blocking,
     };
   }
 
@@ -170,10 +183,9 @@ export function evaluateStageGate(
     currentStage: stageName,
     targetStage: stageName,
     gateBlockers: [],
+    blockingDimensions: [],
   };
 }
-
-type DimensionKey = keyof JevScoringResult['dimensions'];
 
 /**
  * Rubric wording, copied verbatim from docs/meddpicc-rubric.md (the single source
@@ -341,19 +353,4 @@ export function interpretJevEvaluation(
     stageGate: evaluateStageGate(input.stageName, dimensions, overallScore),
     evaluatedAt: new Date().toISOString(),
   });
-}
-
-/**
- * System 1: score an Opportunity with TypeSafe AI's `typesafe-ai/jev` evaluation
- * model through Vercel AI Gateway. Jev answers typed questions; composite and
- * stage gates are computed in code. Throws on missing config or any Jev error.
- */
-export async function scoreOpportunityWithJevAI(
-  input: JevScoringInput,
-  options: { abortSignal?: AbortSignal } = {}
-): Promise<JevScoringResult> {
-  assertAiGatewayConfigured();
-  const request = buildJevEvaluationRequest(input);
-  const evaluation = await evaluate({ ...request, abortSignal: options.abortSignal });
-  return interpretJevEvaluation(input, evaluation);
 }
