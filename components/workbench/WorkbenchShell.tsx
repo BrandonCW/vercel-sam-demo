@@ -123,7 +123,10 @@ export function WorkbenchShell({
     }
   }
 
-  async function handleSubmitFeedback(feedbackData: Record<string, string | string[]>) {
+  async function handleSubmitFeedback(
+    feedbackData: Record<string, string | string[]>,
+    notesDelta?: string
+  ) {
     setIsSubmittingFeedback(true);
     showToast('Submitting discovery findings...');
     try {
@@ -133,6 +136,7 @@ export function WorkbenchShell({
         body: JSON.stringify({
           opportunityId: opportunity.id,
           formResponses: feedbackData,
+          notesDelta,
         }),
       });
 
@@ -157,6 +161,8 @@ export function WorkbenchShell({
 
   const runtimeStatus = isAssessing
     ? 'ANALYZING'
+    : isSubmittingFeedback
+    ? 'EVALUATING'
     : sessionState === 'pending_feedback' && Boolean(dynamicForm)
     ? 'PENDING_FEEDBACK'
     : opportunity.suggested_next_steps || sessionState === 'closed'

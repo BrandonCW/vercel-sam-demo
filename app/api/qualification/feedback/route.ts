@@ -9,15 +9,7 @@ import { MEDDPICCBreakdown, QualificationStatus } from '@/lib/types/crm';
 export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.json().catch(() => ({}));
-
-    // Normalize formResponses / responses for robust API compatibility
-    const normalizedBody = {
-      opportunityId: rawBody.opportunityId,
-      formResponses: rawBody.formResponses ?? rawBody.responses,
-      notesDelta: rawBody.notesDelta,
-    };
-
-    const parseResult = SaFeedbackPayloadSchema.safeParse(normalizedBody);
+    const parseResult = SaFeedbackPayloadSchema.safeParse(rawBody);
     if (!parseResult.success) {
       return NextResponse.json(
         {
@@ -74,8 +66,10 @@ export async function POST(request: NextRequest) {
       qualificationStatus = 'disqualified';
     } else if (jevResult.stageGate.gateReady) {
       qualificationStatus = 'qualified';
-    } else {
+    } else if (deltaScore > 0 || (previousScore !== 0 && jevResult.overallScore > 0)) {
       qualificationStatus = 'in_review';
+    } else {
+      qualificationStatus = opportunity.qualification_status;
     }
 
     // 4. Standardized Suggested Next Steps synthesis

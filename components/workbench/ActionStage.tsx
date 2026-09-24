@@ -29,7 +29,10 @@ interface ActionStageProps {
   dynamicForm: JsonRenderForm | null;
   onStartAssessment?: () => void;
   isAssessing?: boolean;
-  onSubmitFeedback?: (data: Record<string, string | string[]>) => Promise<void> | void;
+  onSubmitFeedback?: (
+    data: Record<string, string | string[]>,
+    notesDelta?: string
+  ) => Promise<void> | void;
   isSubmittingFeedback?: boolean;
 }
 
@@ -49,16 +52,20 @@ export function ActionStage({
   const isCompleted =
     (sessionState === 'closed' || Boolean(opportunity.suggested_next_steps)) &&
     !isPendingFeedback &&
-    !isAssessing;
+    !isAssessing &&
+    !isSubmittingFeedback;
 
   const stageGate = (opportunity.meddpicc_breakdown?.stageGate || opportunity.stage_gate) as
     | StageGateEvaluation
     | undefined;
 
   // Default handler if parent doesn't provide one
-  const handleFormSubmit = async (data: Record<string, string | string[]>) => {
+  const handleFormSubmit = async (
+    data: Record<string, string | string[]>,
+    notesDelta?: string
+  ) => {
     if (onSubmitFeedback) {
-      await onSubmitFeedback(data);
+      await onSubmitFeedback(data, notesDelta);
     }
   };
 
@@ -73,6 +80,24 @@ export function ActionStage({
     }
   };
 
+  if (isSubmittingFeedback) {
+    return (
+      <div className="bg-[#121215] border border-[#27272a] rounded-xl p-8 shadow-sm flex flex-col items-center justify-center min-h-[380px] text-center space-y-4 animate-in fade-in">
+        <div className="w-12 h-12 rounded-full border-2 border-blue-500/20 border-t-[#0070f3] animate-spin flex items-center justify-center">
+          <Sparkles className="w-5 h-5 text-blue-400" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold text-white mb-1">
+            Evaluating Discovery Input &amp; Running Delta Re-scoring
+          </h3>
+          <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
+            System 1 is re-evaluating MEDDPICC dimensions against your new discovery notes, computing Deal Stage Gate criteria, and synthesizing the single standardized Suggested Next Steps string for CRM Writeback...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       {/* 1. Completed State (CRM Writeback Finalized) */}
@@ -85,7 +110,7 @@ export function ActionStage({
                 <div className="flex items-center gap-2 mb-1">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                   <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
-                    Assessment Session: Completed & Synced
+                    Assessment Session: Completed &amp; Written Back
                   </span>
                 </div>
                 <h2 className="text-lg font-bold text-white tracking-tight">

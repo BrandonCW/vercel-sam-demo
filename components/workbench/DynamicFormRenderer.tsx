@@ -17,7 +17,10 @@ import {
 
 export interface DynamicFormRendererProps {
   form: JsonRenderForm;
-  onSubmit: (data: Record<string, string | string[]>) => Promise<void> | void;
+  onSubmit: (
+    data: Record<string, string | string[]>,
+    notesDelta?: string
+  ) => Promise<void> | void;
   isSubmitting?: boolean;
   initialValues?: Record<string, string | string[]>;
   readOnly?: boolean;
@@ -33,6 +36,7 @@ export function DynamicFormRenderer({
   submitButtonText = 'Submit Discovery Findings & Run Delta Re-scoring',
 }: DynamicFormRendererProps) {
   const [formData, setFormData] = useState<Record<string, string | string[]>>(initialValues);
+  const [manualNotes, setManualNotes] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleTextChange = (fieldId: string, val: string) => {
@@ -97,7 +101,11 @@ export function DynamicFormRenderer({
       return;
     }
 
-    await onSubmit(formData);
+    if (manualNotes.trim()) {
+      await onSubmit(formData, manualNotes.trim());
+    } else {
+      await onSubmit(formData);
+    }
   };
 
   const renderCalloutBanner = (section: JsonRenderSection) => {
@@ -351,6 +359,23 @@ export function DynamicFormRenderer({
           </div>
         </div>
       ))}
+
+      {/* Optional Freeform SA Observations */}
+      {!readOnly && (
+        <div className="bg-[#121215] border border-[#27272a] rounded-xl p-5 shadow-sm space-y-2">
+          <label htmlFor="sa_manual_notes" className="block text-xs font-semibold text-zinc-200">
+            Additional SA Notes &amp; Observations <span className="text-zinc-500 font-normal">(Optional)</span>
+          </label>
+          <textarea
+            id="sa_manual_notes"
+            rows={3}
+            placeholder="Document any additional customer architecture context or meeting observations..."
+            value={manualNotes}
+            onChange={(e) => setManualNotes(e.target.value)}
+            className="w-full bg-[#18181b] border border-[#27272a] focus:border-[#0070f3] rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors"
+          />
+        </div>
+      )}
 
       {/* Submit Action */}
       {!readOnly && (
