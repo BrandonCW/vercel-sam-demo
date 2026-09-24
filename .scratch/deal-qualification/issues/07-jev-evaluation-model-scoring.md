@@ -66,7 +66,7 @@ System 1 now runs on `typesafe-ai/jev` through `evaluate` from `eve/ai`. The `gp
 
 ### Deviations after the first live attempts
 
-- **Zero Data Retention is off (user decision).** The Gateway refuses ZDR on the Pro Trial plan. `providerOptions.gateway.zeroDataRetention` is removed, with a TODO in `jev-scorer.ts` and `tests/jev.test.ts` to restore it once the team is on a paid Pro plan.
+- **Zero Data Retention is not used (user decision, permanent).** The Gateway refused ZDR on the Pro Trial plan, and the user then decided it is not required. The request sends no `providerOptions`.
 - **Score questions now have 10 levels instead of 11.** The second live attempt failed with 400 `TypeSafe Score questions support at most 10 levels`. A brief 3-band version was replaced by 10 levels to keep 0–10 granularity. The fix was made test-first.
 
 ### Live Acme result (third attempt, 10 levels, no ZDR)
@@ -98,3 +98,39 @@ System 1 now runs on `typesafe-ai/jev` through `evaluate` from `eve/ai`. The `gp
 - **Why it differs:** the Acme fixture notes say "Met with VP of E-Commerce… Budget allocated ($180k ACV)", which Jev reads as partial Economic Buyer evidence. The notes also name no champion; they say only "Technical decision rests with Head of Platform". The baseline figures (Identify Pain 8, Champion 7, Economic Buyer 3) seem to reflect the spec author's expectations rather than these notes.
 - **Open decision:** either revise the criteria or the Acme fixture notes (ticket 10 seeds the data), or accept Jev's reading.
 - `tests/jev.live.test.ts` still asserts the original criteria, so it fails on the real output. It is opt-in.
+
+### Acme notes rewritten; live Acme check passes
+
+The user decided to rewrite the Acme scenario notes in `lib/db/fixtures.ts` so they tell the demo story. The mapping and scoring were not changed. Two billed runs were made.
+
+**What the notes now say:**
+- **Pain, quantified and verified:** 45-minute builds, a deploy queue that backs up on launch days, and a Black Friday preview outage that cost about $400k according to the customer's own post-mortem.
+- **Named, active champion:** Priya Raman, Head of Platform, who is building the business case herself.
+- **Economic Buyer named but unengaged:** Priya assumes the CFO, Mark Ellis, would sign. We have no contact with him and no budget is approved; the ~$180k ACV is our own estimate.
+- **Netlify as incumbent:** three years in, with a 30% renewal discount on the table and 90 days left on the contract.
+- **SA notes:** no written requirements, no POC or timeline, no build-time target, and no legal or procurement process yet.
+- The strings `tests/crm.test.ts` asserts are kept.
+
+**Run 1** (the first version also had a written requirements list, a POC ask and a target metric): composite 69, Economic Buyer 5, Gate 2 passed. It missed the criteria.
+
+**Run 2** (revised notes):
+
+| Dimension | Score | Confidence |
+|---|---|---|
+| Identify Pain | 9 | 0.80 |
+| Champion | 7 | 0.75 |
+| Economic Buyer | 3 | 0.29 |
+| Decision Criteria | 4 | 0.54 |
+| Decision Process | 3 | 0.50 |
+| Metrics | 7 | 0.63 |
+| Competition | 7 | 0.40 |
+| Paper Process | 3 | 0.33 |
+
+| Criterion | Actual | Result |
+|---|---|---|
+| Composite 50–58 | 58 | PASS, at the upper edge |
+| Identify Pain ≥ 8 | 9 | PASS |
+| Netlify `high` | `high` | PASS |
+| Gate 2 blocked on Economic Buyer | Blocked, with a single blocker: Economic Buyer 3/10 | PASS |
+
+Data seeding and reset for all environments stays with ticket 10.

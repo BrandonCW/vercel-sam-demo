@@ -85,7 +85,7 @@ The Eve Agent framework coordinates the deal qualification lifecycle:
 
 ### 4. System 1 (Jev) Deterministic MEDDPICC & Stage Gate Scoring
 
-System 1 is TypeSafe AI's `typesafe-ai/jev` evaluation model, called through Vercel AI Gateway with `evaluate` from `eve/ai` (`zeroDataRetention` temporarily off; see Amendments). It is not an LLM prompt and returns no text. Jev answers one `score` question per MEDDPICC dimension (10 levels, level p = round(p × 10 / 9) on 0–10, worded from `docs/meddpicc-rubric.md`) and one `choice` question per taxonomy competitor (`absent | low | medium | high`). Per-dimension confidence comes from `providerMetadata.typesafe.confidence`. Status, the weighted composite and the stage gates are computed deterministically in code from those answers. Citations and gap callouts come from System 2.
+System 1 is TypeSafe AI's `typesafe-ai/jev` evaluation model, called through Vercel AI Gateway with `evaluate` from `eve/ai` (no Zero Data Retention; Gateway retention is accepted). It is not an LLM prompt and returns no text. Jev answers one `score` question per MEDDPICC dimension (10 levels, level p = round(p × 10 / 9) on 0–10, worded from `docs/meddpicc-rubric.md`) and one `choice` question per taxonomy competitor (`absent | low | medium | high`). Per-dimension confidence comes from `providerMetadata.typesafe.confidence`. Status, the weighted composite and the stage gates are computed deterministically in code from those answers. Citations and gap callouts come from System 2.
 - **Weighted 8-Dimension Formula**:
   $$\text{Composite Score} = \sum_{i=1}^{8} \left( \text{Dimension Score}_i \times 10 \times \text{Weight}_i \right)$$
   - Identify Pain: 20%
@@ -227,4 +227,4 @@ Tracked in issues 06–10.
 - **§1 / user story 20 models**: Claude 3.5 / GPT-4o-mini / Gemini 2.0 options are retired; replaced with current Gateway IDs (see 08).
 - **§6 Assessment Session**: implemented as a two-turn durable eve session (see 09).
 - **Testing**: fixture-based tests allowed only for pure logic, and only alongside live eve evals against the real Gateway and a Postgres test branch (see 10). Supersedes "LLM endpoints mocked at transport level" as the sole integration strategy.
-- **Jev request details (issue 07)**: `zeroDataRetention` is temporarily **off**, because the Gateway refuses it on the Pro Trial plan. Restore it once the team is on a paid Pro plan. Score questions use 10 levels, because Jev allows at most 10. Level p stands for round(p × 10 / 9), worded with that value's rubric band.
+- **Jev request details (issue 07)**: Zero Data Retention is not required; Gateway retention of Jev requests is accepted (user decision). Score questions use 10 levels, because Jev allows at most 10. Level p stands for round(p × 10 / 9), worded with that value's rubric band.

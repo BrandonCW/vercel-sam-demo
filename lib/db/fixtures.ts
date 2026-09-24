@@ -100,9 +100,9 @@ export const SCENARIO_FIXTURES: Record<string, DealScenario> = {
       ae_name: 'Sarah Jenkins',
       sa_name: 'David Kross',
       ae_notes:
-        'Met with VP of E-Commerce. Netlify contract expires in 90 days. Budget allocated ($180k ACV). Customer is frustrated with build times and lack of ISR support on Next.js 14. Competitor Netlify is offering a 30% discount to renew. Technical decision rests with Head of Platform.',
+        'Disco call w/ Priya Raman (Head of Platform) + 2 of her staff engineers. Netlify contract expires in 90 days; they are the incumbent (3 yrs) and Netlify has already offered a 30% discount on a 2-year renewal, which procurement likes. Pain is real and quantified: builds take 45 min on avg, deploy queue backs up on launch days, and their Black Friday preview outage last Nov cost ~$400k in lost orders per their own post-mortem (Priya shared the doc). Priya is driving this: she set up the call, is building the internal business case for Vercel herself, and wants to bring us to leadership. Not clear who signs. Priya assumes the CFO (Mark Ellis) would have to approve anything this size, but she has never taken a vendor decision to him, we have no contact, and there is no budget for a switch. ACV unknown; we pencilled ~$180k ourselves.',
       sa_notes:
-        'Current stack: Next.js Pages Router migrating to App Router. Monorepo with Turborepo. Core concerns: CDN cache invalidation, edge middleware latency, zero-downtime migration.',
+        'Tech call with Priya\'s engineers. Current stack: Next.js Pages Router migrating to App Router, Turborepo monorepo. They talked about wanting better ISR and faster previews but have no written requirements yet. No POC, evaluation plan or timeline discussed. They would like faster builds but have not set a target. No mention of legal, security review or procurement.',
       suggested_next_steps: null,
       qualification_status: 'unqualified',
       meddpicc_score: null,

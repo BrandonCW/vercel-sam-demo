@@ -278,8 +278,6 @@ export function buildJevEvaluationRequest(input: JevScoringInput) {
       saNotes: input.saNotes,
     },
     questions: { ...dimensionQuestions, ...competitorQuestions } as Record<string, EvaluationQuestion>,
-    // TODO: add `providerOptions: { gateway: { zeroDataRetention: true } }` back once the team is on a
-    // paid Pro plan. The Gateway refuses ZDR on Pro Trial (403 ZdrUnauthorizedError).
   };
 }
 

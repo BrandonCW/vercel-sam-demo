@@ -227,8 +227,7 @@ describe('System 1 (Jev) - evaluation request', () => {
     const netlify = req.questions.competitor_netlify as any;
     expect(netlify.type).toBe('choice');
     expect(Object.keys(netlify.criteria)).toEqual(['absent', 'low', 'medium', 'high']);
-    // TODO: restore `providerOptions.gateway.zeroDataRetention: true` once the team is on a paid Pro plan
-    // (ZDR is refused on Pro Trial). Until then the request must not ask for it.
+    // Zero Data Retention is not required (user decision); the Gateway may retain requests.
     expect(req).not.toHaveProperty('providerOptions');
   });
 
