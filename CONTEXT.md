@@ -35,3 +35,11 @@ _Avoid_: Opportunity rubric, sales scorecard
 **Scenario**:
 A deterministic, pre-canned enterprise customer profile used to seed the simulated CRM for demo and validation purposes.
 _Avoid_: Mock deal, fixture, test case
+
+**System 1**:
+The fast, deterministic rubric evaluation layer (powered by Jev) that extracts structured MEDDPICC dimensions, detects competitors, and computes stage gate thresholds without deep reasoning overhead.
+_Avoid_: Heuristic model, classifier, fast LLM
+
+**Stage Gate**:
+The formal criteria threshold required before an Opportunity can advance from its current Deal Stage to the next milestone in the sales process.
+_Avoid_: Stage exit criteria, deal milestone gate

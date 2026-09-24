@@ -9,6 +9,7 @@ A complete MVP build specification (`.scratch/deal-qualification/spec.md`) for t
 - **Tone & Architecture**: Minimal, clean, easily understandable MVP code rather than over-engineered production monoliths.
 - **Research Policy**: DO NOT automatically trigger background research subagents for deal personas, mock AE/SA notes, or MEDDPICC criteria. The user will provide or manually trigger those research items as needed.
 - **Git & Deployment**: `mvp` branch serves as the Vercel Preview release; `main` branch serves as the Vercel Production release.
+- **MEDDPICC Rubric Reference**: Canonical rubric definition, weights, status levels, competitive taxonomy, and stage gate thresholds are maintained at [`docs/meddpicc-rubric.md`](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/docs/meddpicc-rubric.md).
 - **Security Command**: To generate a secure random password for preview and production environments:
   ```bash
   openssl rand -base64 32
@@ -20,6 +21,8 @@ A complete MVP build specification (`.scratch/deal-qualification/spec.md`) for t
 
 - [Mock Salesforce Schema & Storage Design](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/issues/01-mock-crm-schema-and-db.md): Defined Postgres/Neon tables (opportunities, deal_scenarios, deal_interactions), three realistic enterprise scenarios (Acme Netlify, Globex Amplify, Soylent DTC), and UI/API/Eve reset mechanisms.
 - [Eve Agent Architecture & Sub-agent Decomposition](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/issues/02-eve-agent-structure.md): Structured Eve with DealQualificationAgent orchestrator, phased System 2 analysis tool (gap analysis, competitive playbook, form generation), CRM tools, and QualificationAssessor/PlaybookGenerator sub-agents.
+- [Jev System 1 Fast MEDDPICC & Competitive Scoring](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/issues/03-system1-jev-meddpicc-scoring.md): Defined Jev System 1 rubric evaluation with 8-dimension weighted formula, competitive extraction, stage gate readiness thresholds, and Zod schema.
+- [Authentication Gate & Vercel Deployment Pipeline](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/issues/06-auth-and-vercel-deployment.md): Defined stateless HMAC-SHA256 session cookie middleware with dev bypass, and two-tier Vercel deployment pipeline (`mvp` for preview, `main` for production).
 
 ## Not yet specified
 
