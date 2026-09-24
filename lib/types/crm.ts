@@ -3,14 +3,21 @@ export type QualificationStatus = 'unqualified' | 'in_review' | 'qualified' | 'd
 export type DimensionStatus = 'unaddressed' | 'partial' | 'verified';
 
 export interface DimensionEvaluation {
-  key: string;
-  label: string;
-  weight: number; // e.g. 0.20
+  key?: string;
+  label?: string;
+  weight?: number; // e.g. 0.20
   score: number; // 0 - 10
   status: DimensionStatus;
   confidence: number; // 0.0 - 1.0
   evidence?: string[];
   gaps?: string[];
+}
+
+export interface StageGateEvaluation {
+  gateReady: boolean;
+  currentStage: string;
+  targetStage: string;
+  gateBlockers: string[];
 }
 
 export type MEDDPICCBreakdown = {
@@ -22,7 +29,8 @@ export type MEDDPICCBreakdown = {
   metrics?: DimensionEvaluation;
   competition?: DimensionEvaluation;
   paperProcess?: DimensionEvaluation;
-  [key: string]: DimensionEvaluation | undefined;
+  stageGate?: StageGateEvaluation;
+  [key: string]: DimensionEvaluation | StageGateEvaluation | undefined;
 };
 
 export interface Opportunity {
@@ -41,6 +49,7 @@ export interface Opportunity {
   meddpicc_score: number | null;
   meddpicc_breakdown: MEDDPICCBreakdown;
   competitive_flags: string[];
+  stage_gate?: StageGateEvaluation;
   created_at: string;
   updated_at: string;
 }

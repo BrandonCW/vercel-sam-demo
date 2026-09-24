@@ -5,12 +5,12 @@ The deterministic System 1 (Jev) rubric evaluation engine and real-time visualiz
 
 **Blocked by:** 01: Foundation, Simulated CRM Persistence & Split Workbench Shell
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Deterministic System 1 (Jev) scoring module with strict Zod output validation (`JevScoringResultSchema`).
-- [ ] 8-dimension weighted composite formula implemented adhering strictly to canonical weights: Identify Pain (20%), Champion (15%), Economic Buyer (15%), Decision Criteria (15%), Decision Process (10%), Metrics (10%), Competition (10%), Paper Process (5%).
-- [ ] Dimension evaluation assigning integer scores (0–10), status (`unaddressed`, `partial`, `verified`), confidence score (0.0–1.0), textual evidence citations, and gap explanations.
-- [ ] Enterprise competitive scanner extracting mentions from notes for target competitors (Netlify, AWS Amplify, Cloudflare Pages, Akamai/Fastly, DIY Kubernetes) with classification of threat levels (`low`, `medium`, `high`).
-- [ ] Stage Gate exit logic evaluating readiness for Stage 2 $\rightarrow$ Stage 3 and Stage 3 $\rightarrow$ Stage 4, producing human-readable `gateBlockers`.
-- [ ] Assessment initiation API endpoint (`POST /api/qualification/assess`) that runs System 1 scoring, updates the Opportunity in Postgres (`meddpicc_score`, `meddpicc_breakdown`, `competitive_flags`), and records a `deal_interactions` telemetry event.
-- [ ] Left column UI components updated to render real-time progress bars, maturity tags, evidence snippets, competitive threat badges, and Stage Gate blocker alert banners upon assessment completion.
+- [x] Deterministic System 1 (Jev) scoring module with strict Zod output validation (`JevScoringResultSchema`).
+- [x] 8-dimension weighted composite formula implemented adhering strictly to canonical weights: Identify Pain (20%), Champion (15%), Economic Buyer (15%), Decision Criteria (15%), Decision Process (10%), Metrics (10%), Competition (10%), Paper Process (5%).
+- [x] Dimension evaluation assigning integer scores (0–10), status (`unaddressed`, `partial`, `verified`), confidence score (0.0–1.0), textual evidence citations, and gap explanations.
+- [x] Enterprise competitive scanner extracting mentions from notes for target competitors (Netlify, AWS Amplify, Cloudflare Pages, Akamai/Fastly, DIY Kubernetes) with classification of threat levels (`low`, `medium`, `high`).
+- [x] Stage Gate exit logic evaluating readiness for Stage 2 $\rightarrow$ Stage 3 and Stage 3 $\rightarrow$ Stage 4, producing human-readable `gateBlockers`.
+- [x] Assessment initiation API endpoint (`POST /api/qualification/assess`) that runs System 1 scoring, updates the Opportunity in Postgres (`meddpicc_score`, `meddpicc_breakdown`, `competitive_flags`), and records a `deal_interactions` telemetry event.
+- [x] Left column UI components updated to render real-time progress bars, maturity tags, evidence snippets, competitive threat badges, and Stage Gate blocker alert banners upon assessment completion.

@@ -67,19 +67,40 @@ export function WorkbenchShell({
     }
   }
 
-  function handleStartAssessment() {
+  async function handleStartAssessment() {
     setIsAssessing(true);
-    showToast('Starting System 1 & System 2 evaluation pipeline...');
-    setTimeout(() => {
+    showToast('Executing System 1 (Jev) deterministic scoring...');
+    try {
+      const res = await fetch('/api/qualification/assess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ opportunityId: opportunity.id }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setOpportunity(data.opportunity);
+        showToast(
+          `System 1 (Jev) complete: Score ${data.opportunity.meddpicc_score}/100`
+        );
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(`Assessment failed: ${errorData.error || 'Server error'}`);
+      }
+    } catch (err) {
+      console.error('Failed to trigger assessment:', err);
+      showToast('Network error triggering assessment');
+    } finally {
       setIsAssessing(false);
-      showToast('Assessment pipeline initialized (Ticket 02 will connect live Jev engine)');
-    }, 1200);
+    }
   }
 
   const runtimeStatus = isAssessing
     ? 'ASSESSING'
     : opportunity.suggested_next_steps
     ? 'COMPLETED'
+    : opportunity.meddpicc_score !== null
+    ? 'ASSESSED'
     : 'READY_TO_ASSESS';
 
   return (

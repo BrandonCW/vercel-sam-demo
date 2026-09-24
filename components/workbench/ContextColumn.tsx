@@ -1,16 +1,19 @@
 'use client';
 
-import React from 'react';
-import { Opportunity, DimensionEvaluation } from '@/lib/types/crm';
+import React, { useState } from 'react';
+import { Opportunity, DimensionEvaluation, StageGateEvaluation } from '@/lib/types/crm';
 import {
   FileText,
   Terminal,
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  HelpCircle,
   Gauge,
   Lock,
+  ChevronDown,
+  ChevronUp,
+  ShieldAlert,
+  Quote,
 } from 'lucide-react';
 
 interface ContextColumnProps {
@@ -29,20 +32,39 @@ const DIMENSION_ORDER = [
 ];
 
 export function ContextColumn({ opportunity }: ContextColumnProps) {
+  const [expandedDimension, setExpandedDimension] = useState<string | null>(null);
   const breakdown = opportunity.meddpicc_breakdown || {};
 
   // Calculate composite score if not stored directly
-  const compositeScore = opportunity.meddpicc_score !== null
-    ? opportunity.meddpicc_score
-    : calculateCompositeScore(breakdown);
+  const compositeScore =
+    opportunity.meddpicc_score !== null
+      ? opportunity.meddpicc_score
+      : calculateCompositeScore(breakdown);
 
-  // Stage Gate 2 status check
+  const stageGate = (breakdown.stageGate || opportunity.stage_gate) as
+    | StageGateEvaluation
+    | undefined;
+
+  // Fallback gate logic if not assessed yet
   const painScore = breakdown.identifyPain?.score ?? 0;
   const champScore = breakdown.champion?.score ?? 0;
   const metricsScore = breakdown.metrics?.score ?? 0;
+  const ebScore = breakdown.economicBuyer?.score ?? 0;
 
   const passesGate2 =
-    compositeScore >= 50 && painScore >= 6 && champScore >= 5 && metricsScore >= 4;
+    stageGate !== undefined
+      ? stageGate.gateReady
+      : compositeScore >= 50 &&
+        painScore >= 6 &&
+        champScore >= 5 &&
+        metricsScore >= 4 &&
+        ebScore >= 4;
+
+  const isAssessed = opportunity.meddpicc_score !== null;
+
+  function toggleDimension(key: string) {
+    setExpandedDimension((prev) => (prev === key ? null : key));
+  }
 
   return (
     <div className="space-y-5">
@@ -78,7 +100,82 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
         </div>
       </div>
 
-      {/* 3. MEDDPICC 8-Dimension Rubric Card */}
+      {/* 3. Stage Gate Blocker Alert Banner (Post-Assessment) */}
+      {isAssessed && stageGate && (
+        <div>
+          {!stageGate.gateReady ? (
+            <div className="bg-amber-950/25 border border-amber-500/40 rounded-xl p-4 animate-in fade-in">
+              <div className="flex items-center gap-2 mb-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
+                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <span>
+                  Stage Gate Blocked: {stageGate.currentStage} &rarr; {stageGate.targetStage}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-300 mb-2.5">
+                The Opportunity does not meet exit criteria to advance to{' '}
+                <strong className="text-amber-300">{stageGate.targetStage}</strong>:
+              </p>
+              <ul className="space-y-1.5 pl-1">
+                {stageGate.gateBlockers.map((blocker, idx) => (
+                  <li key={idx} className="text-xs text-amber-200/90 flex items-start gap-2">
+                    <span className="text-amber-500 font-bold mt-0.5">•</span>
+                    <span>{blocker}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="bg-emerald-950/25 border border-emerald-500/40 rounded-xl p-4 animate-in fade-in">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-wider">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>Stage Gate Passed: Eligible for {stageGate.targetStage}</span>
+              </div>
+              <p className="text-xs text-zinc-300 mt-1.5">
+                All technical validation, pain criteria, and composite MEDDPICC thresholds
+                satisfied.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4. Enterprise Competitive Scanner Threat Badges */}
+      {opportunity.competitive_flags && opportunity.competitive_flags.length > 0 && (
+        <div className="bg-[#121215] border border-[#27272a] rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-red-400" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Detected Competitive Threats
+              </h2>
+            </div>
+            <span className="text-[10px] text-zinc-500 font-mono">System 1 Scanner</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {opportunity.competitive_flags.map((comp) => {
+              const isHighThreat = /netlify|amplify/i.test(comp);
+              return (
+                <span
+                  key={comp}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+                    isHighThreat
+                      ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                      : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                  <span>{comp}</span>
+                  <span className="text-[10px] opacity-80 uppercase tracking-wider font-mono">
+                    ({isHighThreat ? 'High Threat' : 'Threat'})
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 5. MEDDPICC 8-Dimension Rubric Card */}
       <div className="bg-[#121215] border border-[#27272a] rounded-xl p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -87,23 +184,28 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
               MEDDPICC 8-Dimension Rubric
             </h2>
           </div>
-          <span className="text-[11px] text-zinc-500 font-mono">Weighted Sum (0-100)</span>
+          <span className="text-[11px] text-zinc-500 font-mono">
+            {isAssessed ? 'Evaluated (Jev System 1)' : 'Baseline'}
+          </span>
         </div>
 
         {/* Dimension Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
+        <div className="space-y-2.5 mb-4">
           {DIMENSION_ORDER.map((key) => {
             const dim = breakdown[key] as DimensionEvaluation | undefined;
             const score = dim?.score ?? 0;
             const weightPercent = Math.round((dim?.weight ?? 0.1) * 100);
             const status = dim?.status ?? 'unaddressed';
+            const isExpanded = expandedDimension === key;
+            const hasDetails = (dim?.evidence && dim.evidence.length > 0) || (dim?.gaps && dim.gaps.length > 0);
 
             return (
               <div
                 key={key}
-                className="bg-[#18181b] border border-[#27272a] rounded-lg p-2.5 transition-colors hover:border-zinc-700"
+                className="bg-[#18181b] border border-[#27272a] rounded-lg p-3 transition-colors hover:border-zinc-700 cursor-pointer"
+                onClick={() => toggleDimension(key)}
               >
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-semibold text-zinc-200">
                       {dim?.label || key}
@@ -112,11 +214,20 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
                       ({weightPercent}%)
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <StatusIcon status={status} />
+                  <div className="flex items-center gap-2">
+                    <MaturityTag status={status} />
                     <span className="text-xs font-bold font-mono text-zinc-300">
                       {score}/10
                     </span>
+                    {hasDetails && (
+                      <span className="text-zinc-500 hover:text-zinc-300">
+                        {isExpanded ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -134,6 +245,50 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
                     <span>Conf: {Math.round(dim.confidence * 100)}%</span>
                   )}
                 </div>
+
+                {/* Expandable Evidence Snippets & Gaps */}
+                {isExpanded && hasDetails && (
+                  <div className="mt-3 pt-2.5 border-t border-[#27272a] space-y-2 text-xs">
+                    {dim?.evidence && dim.evidence.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-zinc-400 mb-1 flex items-center gap-1">
+                          <Quote className="w-3 h-3 text-[#0070f3]" />
+                          <span>Direct Citations</span>
+                        </div>
+                        <div className="space-y-1">
+                          {dim.evidence.map((quote, qIdx) => (
+                            <p
+                              key={qIdx}
+                              className="text-[11px] text-zinc-300 italic bg-[#09090b] border border-[#27272a] p-2 rounded leading-relaxed font-mono"
+                            >
+                              &ldquo;{quote}&rdquo;
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {dim?.gaps && dim.gaps.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-amber-400 mb-1 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-amber-400" />
+                          <span>Identified Gaps</span>
+                        </div>
+                        <ul className="space-y-1">
+                          {dim.gaps.map((gap, gIdx) => (
+                            <li
+                              key={gIdx}
+                              className="text-[11px] text-amber-300/90 flex items-start gap-1.5 leading-relaxed"
+                            >
+                              <span className="text-amber-500">•</span>
+                              <span>{gap}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -156,7 +311,7 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
           {/* Stage Gate 2 Indicator */}
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
-              Stage Gate 2 Status
+              Stage Gate Status
             </div>
             <span
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
@@ -173,7 +328,7 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
               ) : (
                 <>
                   <Lock className="w-3 h-3" />
-                  <span>Gate Blocked (&lt;50 or gaps)</span>
+                  <span>Gate Blocked</span>
                 </>
               )}
             </span>
@@ -184,26 +339,41 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
   );
 }
 
-function calculateCompositeScore(breakdown: Record<string, DimensionEvaluation | undefined>): number {
+function calculateCompositeScore(breakdown: Record<string, unknown>): number {
   let total = 0;
   for (const key of DIMENSION_ORDER) {
-    const dim = breakdown[key];
-    if (dim) {
-      total += (dim.score || 0) * 10 * (dim.weight || 0);
+    const dim = breakdown[key] as DimensionEvaluation | undefined;
+    if (dim && typeof dim.score === 'number') {
+      total += (dim.score || 0) * 10 * (dim.weight || 0.1);
     }
   }
   return Math.round(total);
 }
 
-function StatusIcon({ status }: { status: string }) {
+function MaturityTag({ status }: { status: string }) {
   switch (status) {
     case 'verified':
-      return <CheckCircle2 className="w-3 h-3 text-emerald-400" />;
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
+          <CheckCircle2 className="w-2.5 h-2.5" />
+          <span>Verified</span>
+        </span>
+      );
     case 'partial':
-      return <AlertTriangle className="w-3 h-3 text-amber-400" />;
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase tracking-wider">
+          <AlertTriangle className="w-2.5 h-2.5" />
+          <span>Partial</span>
+        </span>
+      );
     case 'unaddressed':
     default:
-      return <XCircle className="w-3 h-3 text-zinc-600" />;
+      return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-zinc-800 text-zinc-400 border border-zinc-700 uppercase tracking-wider">
+          <XCircle className="w-2.5 h-2.5" />
+          <span>Unaddressed</span>
+        </span>
+      );
   }
 }
 

@@ -399,6 +399,10 @@ export async function getInteractions(opportunityId: string): Promise<DealIntera
 }
 
 function mapRowToOpportunity(row: any): Opportunity {
+  const breakdown = typeof row.meddpicc_breakdown === 'string'
+    ? JSON.parse(row.meddpicc_breakdown)
+    : (row.meddpicc_breakdown ?? {});
+
   return {
     id: String(row.id),
     name: String(row.name),
@@ -413,10 +417,9 @@ function mapRowToOpportunity(row: any): Opportunity {
     suggested_next_steps: row.suggested_next_steps ? String(row.suggested_next_steps) : null,
     qualification_status: (row.qualification_status ?? 'unqualified') as QualificationStatus,
     meddpicc_score: row.meddpicc_score !== null ? Number(row.meddpicc_score) : null,
-    meddpicc_breakdown: typeof row.meddpicc_breakdown === 'string'
-      ? JSON.parse(row.meddpicc_breakdown)
-      : (row.meddpicc_breakdown ?? {}),
+    meddpicc_breakdown: breakdown,
     competitive_flags: Array.isArray(row.competitive_flags) ? row.competitive_flags : [],
+    stage_gate: breakdown?.stageGate,
     created_at: new Date(row.created_at).toISOString(),
     updated_at: new Date(row.updated_at).toISOString(),
   };

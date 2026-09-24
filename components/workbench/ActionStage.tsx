@@ -35,19 +35,25 @@ export function ActionStage({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#27272a]">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  opportunity.meddpicc_score !== null ? 'bg-[#0070f3]' : 'bg-emerald-400'
+                }`}
+              />
               <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-semibold">
                 Lifecycle State
               </span>
             </div>
             <h2 className="text-lg font-bold text-white tracking-tight">
-              Ready to Assess
+              {opportunity.meddpicc_score !== null
+                ? `System 1 Scored (${opportunity.meddpicc_score}/100)`
+                : 'Ready to Assess'}
             </h2>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30">
-              Interactive Assessment Pipeline
+              {opportunity.meddpicc_score !== null ? 'Baseline Rubric Active' : 'Interactive Assessment Pipeline'}
             </span>
           </div>
         </div>
@@ -96,13 +102,19 @@ export function ActionStage({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-                <span>Start Qualification Assessment</span>
+                <span>
+                  {opportunity.meddpicc_score !== null
+                    ? 'Re-evaluate System 1 Scoring'
+                    : 'Start Qualification Assessment'}
+                </span>
                 <span className="text-xs font-normal text-blue-400 font-mono">
                   ({selectedModel})
                 </span>
               </h3>
               <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
-                Trigger autonomous ingestion of AE Notes &amp; SA Notes. System 1 will compute baseline rubric scores and System 2 will construct interactive discovery questions.
+                {opportunity.meddpicc_score !== null
+                  ? `Baseline evaluation complete (${opportunity.meddpicc_score}/100). Click to re-run deterministic scoring across updated notes.`
+                  : 'Trigger autonomous ingestion of AE Notes & SA Notes. System 1 will compute baseline rubric scores and detect competitor threats.'}
               </p>
             </div>
 
@@ -119,7 +131,11 @@ export function ActionStage({
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-white" />
-                  <span>Start Assessment</span>
+                  <span>
+                    {opportunity.meddpicc_score !== null
+                      ? 'Re-run Assessment'
+                      : 'Start Assessment'}
+                  </span>
                 </>
               )}
             </button>
