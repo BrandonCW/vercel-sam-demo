@@ -110,11 +110,11 @@ export function runPhase1GapAnalysis(
       if (/met with vp of e-commerce/i.test(combinedNotes)) {
         verifiedFact = 'Meeting occurred with VP of E-Commerce and budget figure was referenced.';
         aeAssumption = 'AE assumed VP holds unilateral discretionary sign-off authority without checking CFO or Procurement approval matrices.';
-        riskAnalysis = 'If VP lacks sole sign-off authority, deal will stall at contract review stage.';
+        riskAnalysis = 'If VP lacks sole sign-off authority, Opportunity will stall at contract review stage.';
       } else if (/cto|cfo|ceo/i.test(combinedNotes)) {
         verifiedFact = 'Executive stakeholder mentioned as sponsor in inbound or notes.';
         aeAssumption = 'AE assumed executive endorsement equates to committed budget allocation.';
-        riskAnalysis = 'Budget allocation unconfirmed; risk of deal slipping past planned close date.';
+        riskAnalysis = 'Budget allocation unconfirmed; risk of Opportunity slipping past planned close date.';
       } else {
         verifiedFact = 'No direct engagement with economic buyer documented.';
         aeAssumption = 'AE assumed technical champion has purchasing authority.';
@@ -149,7 +149,7 @@ export function runPhase1GapAnalysis(
       if (flags.length > 0) {
         verifiedFact = `Competitor ${flags.map((f) => f.name).join(', ')} actively positioned with customer.`;
         aeAssumption = 'AE assumed product superiority alone wins against competitor discounting.';
-        riskAnalysis = 'Discounting pressure or bundled credits could derail deal if counter-positioning is delayed.';
+        riskAnalysis = 'Discounting pressure or bundled credits could derail Opportunity if counter-positioning is delayed.';
       }
     } else if (dimKey === 'decisionProcess') {
       if (/launch before|peak freeze|nov 1/i.test(combinedNotes)) {
@@ -373,7 +373,7 @@ export function runPhase3FormGeneration(
     sections.push({
       id: 'section_stage_gate',
       title: 'Stage Gate Blockers',
-      description: 'Address critical exit criteria required before advancing this Opportunity to the next pipeline milestone.',
+      description: 'Address critical Stage Gate criteria required before advancing this Opportunity to the next pipeline milestone.',
       calloutType: 'warning' as const,
       calloutText: stageGate.gateBlockers.length > 0
         ? `Stage Gate Blocked: ${stageGate.gateBlockers[0]}`
@@ -471,7 +471,7 @@ export function runPhase3FormGeneration(
     sections.push({
       id: 'section_competitive',
       title: `Competitive Strategy (${primaryComp?.competitor || 'Market Counter-Positioning'})`,
-      description: 'Tactical positioning to protect deal margin and highlight Vercel enterprise differentiators.',
+      description: 'Tactical positioning to protect Opportunity margin and highlight Vercel enterprise differentiators.',
       calloutType: 'tip' as const,
       calloutText: primaryComp?.tacticalAngle || 'Highlight Vercel native Next.js optimization and global edge reliability.',
       fields: compFields,
@@ -527,11 +527,9 @@ export function runPhase3FormGeneration(
     });
   }
 
-  // Ensure total fields is between 3 and 5
-  let totalFields = sections.reduce((acc, s) => acc + s.fields.length, 0);
-
   // If less than 3 fields, add an additional high-leverage field
-  if (totalFields < 3) {
+  let currentTotal = sections.reduce((acc, s) => acc + s.fields.length, 0);
+  if (currentTotal < 3) {
     const targetSection: JsonRenderSection = sections[0] || {
       id: 'section_general',
       title: 'General Technical Qualification',
@@ -553,11 +551,26 @@ export function runPhase3FormGeneration(
     });
   }
 
+  // Enforce strictly 3 to 5 questions maximum per spec
+  let fieldCount = 0;
+  for (const s of sections) {
+    if (fieldCount >= 5) {
+      s.fields = [];
+    } else if (fieldCount + s.fields.length > 5) {
+      s.fields = s.fields.slice(0, 5 - fieldCount);
+      fieldCount = 5;
+    } else {
+      fieldCount += s.fields.length;
+    }
+  }
+
+  const finalSections = sections.filter((s) => s.fields.length > 0);
+
   const form: JsonRenderForm = {
     opportunityId: oppId,
     title: 'Technical Qualification & Discovery Validation',
     summary: `System 1 scored ${opportunity.name} at ${jevResult.overallScore}/100 with ${jevResult.stageGate.gateBlockers.length} Stage Gate blockers. System 2 identified ${gaps.length} qualification blind spots requiring Solutions Architect discovery.`,
-    sections,
+    sections: finalSections,
   };
 
   // Validate strictly against schema

@@ -156,7 +156,7 @@ export function WorkbenchShell({
 
   const runtimeStatus = isAssessing
     ? 'ANALYZING'
-    : sessionState === 'pending_feedback' || (opportunity.meddpicc_score !== null && !opportunity.suggested_next_steps)
+    : sessionState === 'pending_feedback' && Boolean(dynamicForm)
     ? 'PENDING_FEEDBACK'
     : opportunity.suggested_next_steps || sessionState === 'closed'
     ? 'COMPLETED'
