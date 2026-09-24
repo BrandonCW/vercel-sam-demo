@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOpportunity, updateOpportunity, recordInteraction } from '@/lib/db/crm';
 import { scoreOpportunityWithJev } from '@/lib/agents/jev-scorer';
-import { MEDDPICCBreakdown } from '@/lib/types/crm';
+import { runSystem2Analysis } from '@/lib/agents/system2-runner';
+import { MEDDPICCBreakdown, System2ModelOption } from '@/lib/types/crm';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { opportunityId } = body;
+    const { opportunityId, model = 'claude-3-5-sonnet' } = body;
 
     if (!opportunityId || typeof opportunityId !== 'string') {
       return NextResponse.json(
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Run deterministic System 1 (Jev) scoring
+    // 1. Run deterministic System 1 (Jev) baseline scoring
     const jevResult = scoreOpportunityWithJev({
       opportunityId: opportunity.id,
       name: opportunity.name,
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
           : opportunity.qualification_status,
     });
 
-    // Record telemetry event in deal_interactions
+    // Record System 1 telemetry event in deal_interactions
     await recordInteraction({
       opportunity_id: opportunity.id,
       actor: 'system1_jev',
@@ -59,13 +60,47 @@ export async function POST(request: NextRequest) {
       payload: jevResult as unknown as Record<string, unknown>,
     });
 
+    // 2. Run Phased System 2 Deep Reasoning
+    const system2Result = await runSystem2Analysis(
+      {
+        opportunity: {
+          id: updatedOpportunity.id,
+          name: updatedOpportunity.name,
+          stageName: updatedOpportunity.stage_name,
+          amount: Number(updatedOpportunity.amount),
+          aeNotes: updatedOpportunity.ae_notes,
+          saNotes: updatedOpportunity.sa_notes,
+        },
+        jevResult,
+        model: model as System2ModelOption,
+      },
+      { model: model as System2ModelOption }
+    );
+
+    // 3. Checkpoint active Assessment Session state and generated form in persistence
+    await recordInteraction({
+      opportunity_id: opportunity.id,
+      actor: 'system2_llm',
+      action: 'questions_generated',
+      payload: {
+        form: system2Result.phase3Form,
+        model: system2Result.modelUsed,
+        sessionState: 'pending_feedback',
+        gapsIdentified: system2Result.phase1Gaps.length,
+        competitiveAngles: system2Result.phase2Competitive.length,
+        checkpointTimestamp: new Date().toISOString(),
+      },
+    });
+
     return NextResponse.json({
       success: true,
       opportunity: updatedOpportunity,
       jevResult,
+      form: system2Result.phase3Form,
+      sessionState: 'pending_feedback',
     });
   } catch (error: any) {
-    console.error('Error executing System 1 qualification assessment:', error);
+    console.error('Error executing System 1 and System 2 qualification assessment:', error);
     return NextResponse.json(
       {
         success: false,
@@ -75,3 +110,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

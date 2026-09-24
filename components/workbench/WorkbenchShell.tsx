@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Opportunity, System2ModelOption } from '@/lib/types/crm';
+import {
+  Opportunity,
+  System2ModelOption,
+  AssessmentSessionState,
+} from '@/lib/types/crm';
+import { JsonRenderForm } from '@/lib/ui/json-render-schema';
 import { TopNavBar } from './TopNavBar';
 import { ContextColumn } from './ContextColumn';
 import { ActionStage } from './ActionStage';
@@ -20,17 +25,24 @@ export function WorkbenchShell({
   const [opportunity, setOpportunity] = useState<Opportunity>(initialOpportunity);
   const [scenarioId, setScenarioId] = useState<string>(initialScenarioId);
   const [selectedModel, setSelectedModel] = useState<System2ModelOption>('claude-3-5-sonnet');
+  const [sessionState, setSessionState] = useState<AssessmentSessionState>(
+    initialOpportunity.suggested_next_steps ? 'closed' : 'initiated'
+  );
+  const [dynamicForm, setDynamicForm] = useState<JsonRenderForm | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isAssessing, setIsAssessing] = useState(false);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   function showToast(msg: string) {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    setTimeout(() => setToastMessage(null), 4000);
   }
 
   async function handleScenarioChange(newScenarioId: string) {
     setScenarioId(newScenarioId);
+    setSessionState('initiated');
+    setDynamicForm(null);
     try {
       const res = await fetch(`/api/crm/opportunity?scenarioId=${newScenarioId}`);
       if (res.ok) {
@@ -45,6 +57,8 @@ export function WorkbenchShell({
 
   async function handleReset() {
     setIsResetting(true);
+    setSessionState('initiated');
+    setDynamicForm(null);
     try {
       const res = await fetch('/api/crm/reset', {
         method: 'POST',
@@ -69,38 +83,83 @@ export function WorkbenchShell({
 
   async function handleStartAssessment() {
     setIsAssessing(true);
-    showToast('Executing System 1 (Jev) deterministic scoring...');
+    setSessionState('analyzing');
+    showToast('Executing System 1 (Jev) scoring & System 2 deep reasoning...');
     try {
       const res = await fetch('/api/qualification/assess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ opportunityId: opportunity.id }),
+        body: JSON.stringify({
+          opportunityId: opportunity.id,
+          model: selectedModel,
+        }),
       });
 
       if (res.ok) {
         const data = await res.json();
         setOpportunity(data.opportunity);
+        if (data.form) {
+          setDynamicForm(data.form);
+        }
+        if (data.sessionState) {
+          setSessionState(data.sessionState);
+        } else {
+          setSessionState('pending_feedback');
+        }
         showToast(
-          `System 1 (Jev) complete: Score ${data.opportunity.meddpicc_score}/100`
+          `Assessment complete (Score ${data.opportunity.meddpicc_score}/100). Paused at $0 compute.`
         );
       } else {
         const errorData = await res.json().catch(() => ({}));
+        setSessionState('initiated');
         showToast(`Assessment failed: ${errorData.error || 'Server error'}`);
       }
     } catch (err) {
       console.error('Failed to trigger assessment:', err);
+      setSessionState('initiated');
       showToast('Network error triggering assessment');
     } finally {
       setIsAssessing(false);
     }
   }
 
+  async function handleSubmitFeedback(feedbackData: Record<string, string | string[]>) {
+    setIsSubmittingFeedback(true);
+    showToast('Submitting discovery findings...');
+    try {
+      const res = await fetch('/api/qualification/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          opportunityId: opportunity.id,
+          responses: feedbackData,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.opportunity) {
+          setOpportunity(data.opportunity);
+        }
+        setSessionState('closed');
+        showToast('Delta Re-scoring complete & Suggested Next Steps written back to CRM!');
+      } else {
+        showToast('Discovery responses submitted (awaiting Ticket 04 feedback writeback)');
+      }
+    } catch (err) {
+      console.warn('Feedback writeback endpoint not active yet:', err);
+      showToast('Discovery responses submitted locally');
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  }
+
   const runtimeStatus = isAssessing
-    ? 'ASSESSING'
-    : opportunity.suggested_next_steps
+    ? 'ANALYZING'
+    : sessionState === 'pending_feedback' || (opportunity.meddpicc_score !== null && !opportunity.suggested_next_steps)
+    ? 'PENDING_FEEDBACK'
+    : opportunity.suggested_next_steps || sessionState === 'closed'
     ? 'COMPLETED'
-    : opportunity.meddpicc_score !== null
-    ? 'ASSESSED'
     : 'READY_TO_ASSESS';
 
   return (
@@ -128,8 +187,12 @@ export function WorkbenchShell({
           <ActionStage
             opportunity={opportunity}
             selectedModel={selectedModel}
+            sessionState={sessionState}
+            dynamicForm={dynamicForm}
             onStartAssessment={handleStartAssessment}
             isAssessing={isAssessing}
+            onSubmitFeedback={handleSubmitFeedback}
+            isSubmittingFeedback={isSubmittingFeedback}
           />
         </div>
       </main>

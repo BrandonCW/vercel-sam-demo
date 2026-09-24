@@ -16,6 +16,7 @@ import {
   User,
   DollarSign,
   Cpu,
+  Clock,
 } from 'lucide-react';
 
 interface TopNavBarProps {
@@ -81,10 +82,27 @@ export function TopNavBar({
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">
-            <Cpu className="w-3.5 h-3.5 text-purple-400" />
-            <span>{runtimeStatus}</span>
-          </div>
+          {runtimeStatus.includes('PAUSED') || runtimeStatus === 'PENDING_FEEDBACK' ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span>{runtimeStatus}</span>
+            </div>
+          ) : runtimeStatus === 'COMPLETED' ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+              <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{runtimeStatus}</span>
+            </div>
+          ) : runtimeStatus.includes('ASSESS') || runtimeStatus.includes('ANALYZ') ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+              <span>{runtimeStatus}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">
+              <Cpu className="w-3.5 h-3.5 text-purple-400" />
+              <span>{runtimeStatus}</span>
+            </div>
+          )}
         </div>
 
         {/* Right: Controls (Scenario, Model, Reset, DB status) */}

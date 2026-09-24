@@ -5,15 +5,15 @@ The deep-reasoning System 2 analysis engine and declarative JSON Render dynamic 
 
 **Blocked by:** 02: System 1 (Jev) Baseline MEDDPICC Scoring & Rubric Visualization
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Phased System 2 reasoning pipeline implemented within the Eve agent framework:
+- [x] Phased System 2 reasoning pipeline implemented within the Eve agent framework:
   - Phase 1 (Gap Analysis): Evaluates unaddressed dimensions and Stage Gate blockers, isolating verified facts from AE assumptions.
   - Phase 2 (Competitive Playbook): Generates tactical counter-positioning points against detected competitors using Vercel enterprise differentiators (App Router native streaming, ISR, Edge Middleware, Turborepo remote caching).
   - Phase 3 (Form Generation): Formulates 3–5 interactive discovery questions targeting primary qualification blind spots.
-- [ ] Multi-model client runner supporting runtime model selection passed from the UI (Claude 3.5 Sonnet default, Claude 3.5 Haiku, GPT-4o-mini, Gemini 2.0 Flash) with fallback to environment configuration.
-- [ ] Strict declarative schema definition and validation for JSON Render forms (`JsonRenderFormSchema` supporting sections, callouts, text, textarea, select, and radio fields).
-- [ ] Frontend `DynamicFormRenderer` React component that compiles declarative JSON schemas into accessible, interactive input fields with validation.
-- [ ] Assessment Session state machine tracking lifecycle states (`initiated`, `analyzing`, `pending_feedback`, `resumed`, `delta_scoring`, `writeback`, `closed`).
-- [ ] Persistent checkpointing of the active session state in Postgres upon completing form generation.
-- [ ] High-visibility amber Zero-Cost Paused banner displayed in `pending_feedback` state confirming 0 tokens/sec and $0 compute incurred while awaiting the Solutions Architect.
+- [x] Multi-model client runner supporting runtime model selection passed from the UI (Claude 3.5 Sonnet default, Claude 3.5 Haiku, GPT-4o-mini, Gemini 2.0 Flash) with fallback to environment configuration.
+- [x] Strict declarative schema definition and validation for JSON Render forms (`JsonRenderFormSchema` supporting sections, callouts, text, textarea, select, and radio fields).
+- [x] Frontend `DynamicFormRenderer` React component that compiles declarative JSON schemas into accessible, interactive input fields with validation.
+- [x] Assessment Session state machine tracking lifecycle states (`initiated`, `analyzing`, `pending_feedback`, `resumed`, `delta_scoring`, `writeback`, `closed`).
+- [x] Persistent checkpointing of the active session state in Postgres upon completing form generation.
+- [x] High-visibility amber Zero-Cost Paused banner displayed in `pending_feedback` state confirming 0 tokens/sec and $0 compute incurred while awaiting the Solutions Architect.

@@ -82,28 +82,54 @@ describe('POST /api/qualification/assess - System 1 Assessment Endpoint', () => 
     );
     expect(assessEvent).toBeDefined();
     expect((assessEvent?.payload as any).overallScore).toBe(opportunity.meddpicc_score);
+
+    // Verify System 2 JSON Render Form and sessionState
+    expect(body.sessionState).toBe('pending_feedback');
+    expect(body.form).toBeDefined();
+    expect(body.form.opportunityId).toBe('opp_acme_corp_001');
+    expect(body.form.sections.length).toBeGreaterThanOrEqual(2);
+
+    // Verify System 2 interaction checkpoint
+    const s2Event = interactions.find(
+      (i) => i.actor === 'system2_llm' && i.action === 'questions_generated'
+    );
+    expect(s2Event).toBeDefined();
+    expect((s2Event?.payload as any).sessionState).toBe('pending_feedback');
   });
 
-  it('assesses Globex FinTech and extracts AWS Amplify competitive threat', async () => {
-    const req = makeRequest({ opportunityId: 'opp_globex_fintech_002' });
+  it('assesses Globex FinTech and extracts AWS Amplify competitive threat with custom model', async () => {
+    const req = makeRequest({
+      opportunityId: 'opp_globex_fintech_002',
+      model: 'gpt-4o-mini',
+    });
     const res = await POST(req);
     expect(res.status).toBe(200);
 
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(body.sessionState).toBe('pending_feedback');
     expect(body.opportunity.competitive_flags).toContain('AWS Amplify');
     expect(body.jevResult.competitiveFlags[0].name).toBe('AWS Amplify');
     expect(body.jevResult.competitiveFlags[0].threatLevel).toBe('high');
+    expect(body.form).toBeDefined();
+    expect(body.form.opportunityId).toBe('opp_globex_fintech_002');
+
+    const interactions = await getInteractions('opp_globex_fintech_002');
+    const s2Event = interactions.find((i) => i.action === 'questions_generated');
+    expect((s2Event?.payload as any).model).toBe('gpt-4o-mini');
   });
 
-  it('assesses Soylent Retail with 0 competitor flags', async () => {
+  it('assesses Soylent Retail with 0 competitor flags and returns valid form', async () => {
     const req = makeRequest({ opportunityId: 'opp_soylent_retail_003' });
     const res = await POST(req);
     expect(res.status).toBe(200);
 
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(body.sessionState).toBe('pending_feedback');
     expect(body.opportunity.competitive_flags).toHaveLength(0);
     expect(body.jevResult.competitiveFlags).toHaveLength(0);
+    expect(body.form).toBeDefined();
+    expect(body.form.sections.length).toBeGreaterThanOrEqual(1);
   });
 });

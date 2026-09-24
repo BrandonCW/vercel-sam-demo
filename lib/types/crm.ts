@@ -90,3 +90,13 @@ export const SYSTEM2_MODELS: ModelConfig[] = [
   { id: 'gpt-4o-mini', label: 'GPT-4o-mini', provider: 'OpenAI', badge: 'Compact' },
   { id: 'gemini-2-flash', label: 'Gemini 2.0 Flash', provider: 'Google', badge: 'Low-latency' },
 ];
+
+export type AssessmentSessionState =
+  | 'initiated'
+  | 'analyzing'
+  | 'pending_feedback'
+  | 'resumed'
+  | 'delta_scoring'
+  | 'writeback'
+  | 'closed';
+
