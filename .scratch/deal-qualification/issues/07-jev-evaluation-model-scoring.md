@@ -56,3 +56,10 @@ System 1 now runs on `typesafe-ai/jev` through `evaluate` from `eve/ai`. The `gp
   - `agent/instructions.md` and the `qualification_assessor` instructions;
   - the rubric, which now lists Gate 2 Economic Buyer ≥ 4 (the rule the code already enforced) and a plain arrow in place of LaTeX in the Metrics row.
 - The live Acme check (composite 50–58, Identify Pain ≥ 8, Netlify `high`, Gate 2 blocked on EB) is still open for ticket 10. A fixture test covers the mapping only. No `AI_GATEWAY_API_KEY` is available locally, so no billed call was made.
+
+### Live Acme check (2026-09-25): blocked
+
+- `tests/jev.live.test.ts` makes one real Jev call on the Acme fixture. It is opt-in: it runs only with `JEV_LIVE=1` and `AI_GATEWAY_API_KEY` set, so `pnpm test` never bills.
+- The single attempt was refused by the Gateway with 403 `ZdrUnauthorizedError`, before any provider attempt (`providerAttemptCount: 0`). The error said Zero Data Retention needs an active Pro or Enterprise plan, and the team is on Pro Trial.
+- No scores were returned, and the shape of `providerMetadata.typesafe.confidence` is still unconfirmed.
+- Next step, for the user to decide: either complete the Vercel plan upgrade, or approve dropping `zeroDataRetention` (the ticket requires it). Then run `JEV_LIVE=1 pnpm vitest run tests/jev.live.test.ts`.
