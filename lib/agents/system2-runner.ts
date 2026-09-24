@@ -9,6 +9,7 @@ import { JsonRenderFormSchema } from '@/lib/ui/json-render-schema';
 export interface RunnerOptions {
   model?: System2ModelOption;
   forceDeterministicFallback?: boolean;
+  timeoutMs?: number;
 }
 
 /**
@@ -19,16 +20,243 @@ export function hasProviderKey(model: System2ModelOption): boolean {
     return false;
   }
 
+  const hasGateway = Boolean(process.env.AI_GATEWAY_API_KEY);
+
   switch (model) {
     case 'claude-3-5-sonnet':
     case 'claude-3-5-haiku':
-      return Boolean(process.env.ANTHROPIC_API_KEY || process.env.EVE_API_KEY);
+      return Boolean(process.env.ANTHROPIC_API_KEY || hasGateway || process.env.EVE_API_KEY);
     case 'gpt-4o-mini':
-      return Boolean(process.env.OPENAI_API_KEY || process.env.EVE_API_KEY);
+      return Boolean(process.env.OPENAI_API_KEY || hasGateway || process.env.EVE_API_KEY);
     case 'gemini-2-flash':
-      return Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.EVE_API_KEY);
+      return Boolean(
+        process.env.GEMINI_API_KEY ||
+          process.env.GOOGLE_API_KEY ||
+          process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+          hasGateway ||
+          process.env.EVE_API_KEY
+      );
     default:
       return false;
+  }
+}
+
+function buildSystem2Prompts(input: System2Input) {
+  const { opportunity, jevResult, model } = input;
+
+  const systemPrompt = `You are the Vercel Enterprise System 2 Deal Qualification Reasoning Engine.
+Your task is to perform deep reasoning on an enterprise opportunity across 3 sequential phases:
+1. Phase 1: Gap Synthesis & Risk Analysis: Evaluate unaddressed or partial MEDDPICC dimensions and Stage Gate blockers. Isolate verified facts from AE assumptions.
+2. Phase 2: Competitive Playbook & Battlecard Synthesis: Formulate tactical counter-positioning angles and trap questions for detected competitors (Netlify, AWS Amplify, Cloudflare Pages, Akamai/Fastly, DIY Kubernetes) using Vercel enterprise differentiators.
+3. Phase 3: Dynamic JSON Render Form Generation: Formulate strictly 3 to 5 interactive discovery questions for the Solutions Architect targeting key blind spots. Group fields into logical sections (e.g. Stage Gate Blockers, Competitive Validation, Architecture & Metrics). Supported field types: "text", "textarea", "select", "radio", "checkbox_group".
+
+You MUST return a JSON object with this EXACT structure:
+{
+  "phase1Gaps": [
+    {
+      "dimension": "economicBuyer" | "metrics" | "decisionCriteria" | "decisionProcess" | "paperProcess" | "identifyPain" | "champion" | "competition",
+      "dimensionLabel": string,
+      "score": number,
+      "status": "unaddressed" | "partial",
+      "isStageGateBlocker": boolean,
+      "riskLevel": "critical" | "high" | "medium" | "low",
+      "verifiedFact": string,
+      "aeAssumption": string,
+      "riskAnalysis": string
+    }
+  ],
+  "phase2Competitive": [
+    {
+      "competitor": string,
+      "threatLevel": "low" | "medium" | "high",
+      "competitorClaim": string,
+      "vercelDifferentiator": string,
+      "tacticalAngle": string,
+      "trapQuestion": string
+    }
+  ],
+  "phase3Form": {
+    "opportunityId": "${opportunity.id}",
+    "title": "Technical Qualification & Discovery Validation",
+    "summary": string,
+    "sections": [
+      {
+        "id": string,
+        "title": string,
+        "description": string,
+        "calloutType": "info" | "warning" | "tip",
+        "calloutText": string,
+        "fields": [
+          {
+            "id": string,
+            "name": string,
+            "label": string,
+            "description": string,
+            "type": "text" | "textarea" | "select" | "radio" | "checkbox_group",
+            "required": boolean,
+            "placeholder": string (optional),
+            "dimensionTarget": "metrics" | "economicBuyer" | "decisionCriteria" | "decisionProcess" | "paperProcess" | "identifyPain" | "champion" | "competition",
+            "helpCallout": string (optional),
+            "options": [{ "label": string, "value": string, "description": string (optional) }] (for select/radio/checkbox_group)
+          }
+        ]
+      }
+    ]
+  },
+  "summary": string
+}`;
+
+  const userPrompt = JSON.stringify({
+    opportunity: {
+      id: opportunity.id,
+      name: opportunity.name,
+      stageName: opportunity.stageName,
+      amount: opportunity.amount,
+      aeNotes: opportunity.aeNotes,
+      saNotes: opportunity.saNotes,
+    },
+    system1JevResult: {
+      overallScore: jevResult.overallScore,
+      dimensions: jevResult.dimensions,
+      competitiveFlags: jevResult.competitiveFlags,
+      stageGate: jevResult.stageGate,
+    },
+    requestedModel: model,
+  });
+
+  return { systemPrompt, userPrompt };
+}
+
+/**
+ * Call live LLM provider endpoint directly when API keys are configured.
+ */
+async function callLiveModel(
+  input: System2Input,
+  model: System2ModelOption,
+  timeoutMs: number = 15000
+): Promise<System2AnalysisResult> {
+  const { systemPrompt, userPrompt } = buildSystem2Prompts(input);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    let jsonText = '';
+
+    if (
+      (model === 'claude-3-5-sonnet' || model === 'claude-3-5-haiku') &&
+      process.env.ANTHROPIC_API_KEY
+    ) {
+      const modelId =
+        model === 'claude-3-5-sonnet'
+          ? 'claude-3-5-sonnet-20241022'
+          : 'claude-3-5-haiku-20241022';
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: modelId,
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`);
+      }
+
+      const data = await res.json();
+      const content = data.content?.[0];
+      if (content?.type === 'text') {
+        jsonText = content.text;
+      }
+    } else if (model === 'gpt-4o-mini' && process.env.OPENAI_API_KEY) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`OpenAI API error: ${res.status} ${await res.text()}`);
+      }
+
+      const data = await res.json();
+      jsonText = data.choices?.[0]?.message?.content || '';
+    } else if (
+      model === 'gemini-2-flash' &&
+      (process.env.GEMINI_API_KEY ||
+        process.env.GOOGLE_API_KEY ||
+        process.env.GOOGLE_GENERATIVE_AI_API_KEY)
+    ) {
+      const apiKey =
+        process.env.GEMINI_API_KEY ||
+        process.env.GOOGLE_API_KEY ||
+        process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: userPrompt }] }],
+          generationConfig: { responseMimeType: 'application/json' },
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Gemini API error: ${res.status} ${await res.text()}`);
+      }
+
+      const data = await res.json();
+      jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
+
+    if (!jsonText) {
+      throw new Error(`No JSON output returned from live model ${model}`);
+    }
+
+    // Extract JSON if wrapped in markdown code fence
+    const cleaned = jsonText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    // Enforce opportunityId & validate schema
+    parsed.opportunityId = input.opportunity.id;
+    parsed.modelUsed = model;
+    if (parsed.phase3Form) {
+      parsed.phase3Form.opportunityId = input.opportunity.id;
+      JsonRenderFormSchema.parse(parsed.phase3Form);
+    }
+
+    return {
+      opportunityId: input.opportunity.id,
+      modelUsed: model,
+      phase1Gaps: parsed.phase1Gaps || [],
+      phase2Competitive: parsed.phase2Competitive || [],
+      phase3Form: parsed.phase3Form,
+      summary: parsed.summary || `Live model ${model} completed System 2 deep reasoning.`,
+    };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -53,15 +281,14 @@ export async function runSystem2Analysis(
   const hasKey = !forceFallback && hasProviderKey(model);
 
   if (hasKey) {
-    // If external API key is present in live environment, can delegate to live provider
-    // In current implementation, if live provider call errors or is simulated, falls back gracefully
     try {
-      // In live mode with API keys, external Eve/provider can be called here
-      // For now, execute high-fidelity deterministic pipeline with active model metadata
-      const result = executeSystem2Pipeline(effectiveInput);
-      return result;
+      const liveResult = await callLiveModel(effectiveInput, model, options?.timeoutMs);
+      return liveResult;
     } catch (err) {
-      console.warn(`Live call for model ${model} failed, falling back to deterministic pipeline:`, err);
+      console.warn(
+        `Live call for model ${model} failed, falling back to deterministic pipeline:`,
+        err
+      );
     }
   }
 
