@@ -5,14 +5,14 @@ The feedback ingestion loop, secondary Delta Re-scoring by System 1, standardize
 
 **Blocked by:** 03: System 2 Deep Reasoning, JSON Render Dynamic Form & Zero-Cost Paused Session
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Feedback API endpoint (`POST /api/qualification/feedback`) that ingests form responses and optional manual SA discovery observations.
-- [ ] Structured discovery note formatter that appends timestamped discovery updates directly into the Opportunity's `sa_notes` while leaving raw `ae_notes` strictly untouched.
-- [ ] System 1 Delta Re-scoring trigger re-evaluating the augmented Opportunity notes, updating dimension scores, and computing whether the Deal Stage Gate is cleared.
-- [ ] Qualification Status transition logic updating status to `qualified` (if stage gate passed), `in_review` (if improved but gate blocked), or `disqualified` (if fatal blocker identified).
-- [ ] Standardized Suggested Next Steps synthesis generating a single actionable string formatted as: `[<STATUS>] <Immediate Milestone Action> | Owner: <AE/SA> | Focus: <Core Technical or Business Value> | Watch: <Risk/Competitor>`.
-- [ ] Atomic database Writeback updating ONLY `suggested_next_steps`, `sa_notes`, `qualification_status`, `meddpicc_score`, `meddpicc_breakdown`, and `updated_at` in the Postgres `opportunities` table.
-- [ ] Audit telemetry row recorded in `deal_interactions` capturing feedback payload, delta scores, and writeback text.
-- [ ] Assessment Session marked as `closed`, and Next.js path revalidated.
-- [ ] Right-hand UI stage transitions to `COMPLETED` state, displaying the prominent Suggested Next Steps card, a "Copy to Clipboard" button, writeback confirmation badge, and a "Re-evaluate Deal" action.
+- [x] Feedback API endpoint (`POST /api/qualification/feedback`) that ingests form responses and optional manual SA discovery observations.
+- [x] Structured discovery note formatter that appends timestamped discovery updates directly into the Opportunity's `sa_notes` while leaving raw `ae_notes` strictly untouched.
+- [x] System 1 Delta Re-scoring trigger re-evaluating the augmented Opportunity notes, updating dimension scores, and computing whether the Deal Stage Gate is cleared.
+- [x] Qualification Status transition logic updating status to `qualified` (if stage gate passed), `in_review` (if improved but gate blocked), or `disqualified` (if fatal blocker identified).
+- [x] Standardized Suggested Next Steps synthesis generating a single actionable string formatted as: `[<STATUS>] <Immediate Milestone Action> | Owner: <AE/SA> | Focus: <Core Technical or Business Value> | Watch: <Risk/Competitor>`.
+- [x] Atomic database Writeback updating ONLY `suggested_next_steps`, `sa_notes`, `qualification_status`, `meddpicc_score`, `meddpicc_breakdown`, and `updated_at` in the Postgres `opportunities` table.
+- [x] Audit telemetry row recorded in `deal_interactions` capturing feedback payload, delta scores, and writeback text.
+- [x] Assessment Session marked as `closed`, and Next.js path revalidated.
+- [x] Right-hand UI stage transitions to `COMPLETED` state, displaying the prominent Suggested Next Steps card, a "Copy to Clipboard" button, writeback confirmation badge, and a "Re-evaluate Deal" action.

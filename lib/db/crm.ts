@@ -246,6 +246,65 @@ export async function updateOpportunity(
   return updated;
 }
 
+export interface QualificationWritebackData {
+  sa_notes: string;
+  suggested_next_steps: string;
+  qualification_status: QualificationStatus;
+  meddpicc_score: number;
+  meddpicc_breakdown: MEDDPICCBreakdown;
+}
+
+export async function writebackOpportunityQualification(
+  id: string,
+  writeback: QualificationWritebackData
+): Promise<Opportunity> {
+  const now = new Date().toISOString();
+
+  if (isUsingPostgres()) {
+    try {
+      await ensurePostgresTables();
+      const sql = getSql()!;
+      await sql`
+        UPDATE opportunities SET
+          sa_notes = ${writeback.sa_notes},
+          suggested_next_steps = ${writeback.suggested_next_steps},
+          qualification_status = ${writeback.qualification_status},
+          meddpicc_score = ${writeback.meddpicc_score},
+          meddpicc_breakdown = ${JSON.stringify(writeback.meddpicc_breakdown)}::jsonb,
+          updated_at = ${now}
+        WHERE id = ${id};
+      `;
+
+      const updated = await getOpportunity(id);
+      if (!updated) throw new Error(`Opportunity ${id} not found after writeback`);
+      return updated;
+    } catch (e) {
+      console.warn('Postgres writebackOpportunityQualification failed, falling back to in-memory:', e);
+    }
+  }
+
+  const store = getInMemoryStore();
+  const existing = store.opportunities.get(id);
+  if (!existing) {
+    throw new Error(`Opportunity ${id} not found in store`);
+  }
+
+  // Atomically update ONLY the designated writeback fields; ae_notes and others are strictly untouched
+  const updated: Opportunity = {
+    ...existing,
+    sa_notes: writeback.sa_notes,
+    suggested_next_steps: writeback.suggested_next_steps,
+    qualification_status: writeback.qualification_status,
+    meddpicc_score: writeback.meddpicc_score,
+    meddpicc_breakdown: writeback.meddpicc_breakdown,
+    stage_gate: writeback.meddpicc_breakdown.stageGate,
+    updated_at: now,
+  };
+
+  store.opportunities.set(id, updated);
+  return updated;
+}
+
 export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity> {
   const targetScenarioId = scenarioId && SCENARIO_FIXTURES[scenarioId]
     ? scenarioId

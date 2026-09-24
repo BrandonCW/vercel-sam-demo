@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Opportunity,
   System2ModelOption,
   AssessmentSessionState,
+  StageGateEvaluation,
 } from '@/lib/types/crm';
 import { JsonRenderForm } from '@/lib/ui/json-render-schema';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
@@ -17,6 +18,8 @@ import {
   Database,
   PauseCircle,
   CheckCircle2,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 interface ActionStageProps {
@@ -40,7 +43,17 @@ export function ActionStage({
   onSubmitFeedback,
   isSubmittingFeedback = false,
 }: ActionStageProps) {
+  const [hasCopied, setHasCopied] = useState(false);
+
   const isPendingFeedback = sessionState === 'pending_feedback' && Boolean(dynamicForm);
+  const isCompleted =
+    (sessionState === 'closed' || Boolean(opportunity.suggested_next_steps)) &&
+    !isPendingFeedback &&
+    !isAssessing;
+
+  const stageGate = (opportunity.meddpicc_breakdown?.stageGate || opportunity.stage_gate) as
+    | StageGateEvaluation
+    | undefined;
 
   // Default handler if parent doesn't provide one
   const handleFormSubmit = async (data: Record<string, string | string[]>) => {
@@ -49,10 +62,140 @@ export function ActionStage({
     }
   };
 
+  const handleCopy = async () => {
+    if (!opportunity.suggested_next_steps) return;
+    try {
+      await navigator.clipboard.writeText(opportunity.suggested_next_steps);
+      setHasCopied(true);
+      setTimeout(() => setHasCopied(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
   return (
     <div className="space-y-5">
-      {/* Pending Feedback State (Paused Zero-Cost Session) */}
-      {isPendingFeedback && dynamicForm ? (
+      {/* 1. Completed State (CRM Writeback Finalized) */}
+      {isCompleted ? (
+        <div className="space-y-5 animate-in fade-in duration-300">
+          {/* Header Bar */}
+          <div className="bg-[#121215] border border-[#27272a] rounded-xl p-5 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#27272a]">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
+                    Assessment Session: Completed & Synced
+                  </span>
+                </div>
+                <h2 className="text-lg font-bold text-white tracking-tight">
+                  Qualification Finalized ({opportunity.meddpicc_score}/100)
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>COMPLETED</span>
+                </span>
+                <button
+                  onClick={onStartAssessment}
+                  disabled={isAssessing}
+                  title="Re-evaluate Opportunity"
+                  className="px-2.5 py-1 rounded-lg bg-[#27272a] hover:bg-[#3f3f46] text-zinc-300 text-xs font-medium border border-zinc-700 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className={`w-3 h-3 ${isAssessing ? 'animate-spin text-[#0070f3]' : ''}`} />
+                  <span>Re-evaluate Opportunity</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Prominent CRM Writeback Card */}
+            <div className="mt-5 rounded-xl bg-gradient-to-b from-[#141e30] via-[#101726] to-[#0d121c] border-2 border-blue-600/40 p-6 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-900/40">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">
+                    <Database className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                      <Check className="w-3.5 h-3.5" />
+                      Written back to Salesforce CRM
+                    </span>
+                    <div className="text-[11px] font-mono text-zinc-400">
+                      Target Field: <code className="text-blue-300">suggested_next_steps</code>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <StatusBadge
+                    status={opportunity.qualification_status}
+                    stepsText={opportunity.suggested_next_steps}
+                  />
+                </div>
+              </div>
+
+              {/* Suggested Next Steps Content */}
+              <div>
+                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span>Suggested Next Steps</span>
+                  <span className="text-[11px] font-mono text-zinc-500 lowercase">
+                    immutable crm directive
+                  </span>
+                </div>
+                <div className="p-4 rounded-lg bg-[#090d16] border border-blue-800/40 text-sm font-mono leading-relaxed text-blue-100 selection:bg-blue-600 selection:text-white">
+                  {opportunity.suggested_next_steps}
+                </div>
+              </div>
+
+              {/* Actions & Delta Summary */}
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="text-xs text-zinc-300 flex items-center gap-2">
+                  <span className="text-emerald-400 font-semibold font-mono">
+                    Score: {opportunity.meddpicc_score}/100
+                  </span>
+                  <span className="text-zinc-600">|</span>
+                  <span className="text-zinc-400">
+                    {stageGate?.gateReady
+                      ? `Stage Gate Passed: Eligible for ${stageGate.targetStage}`
+                      : 'Stage Gate Blocked: Additional Discovery Required'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={handleCopy}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 transition-colors shadow-sm cursor-pointer"
+                  >
+                    {hasCopied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-300">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Copy to Clipboard</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={onStartAssessment}
+                    disabled={isAssessing}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0070f3] hover:bg-[#0060df] disabled:opacity-50 text-white text-xs font-semibold transition-colors shadow-md shadow-blue-500/20 cursor-pointer"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${isAssessing ? 'animate-spin' : ''}`} />
+                    <span>Re-evaluate Opportunity</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : isPendingFeedback && dynamicForm ? (
+        /* 2. Pending Feedback State (Paused Zero-Cost Session) */
         <div className="space-y-5 animate-in fade-in duration-300">
           {/* Header Bar */}
           <div className="bg-[#121215] border border-[#27272a] rounded-xl p-5 shadow-sm">
@@ -111,7 +254,7 @@ export function ActionStage({
           />
         </div>
       ) : (
-        /* Baseline / Ready To Assess Stage */
+        /* 3. Baseline / Ready To Assess Stage */
         <div className="bg-[#121215] border border-[#27272a] rounded-xl p-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#27272a]">
             <div>
@@ -238,5 +381,32 @@ export function ActionStage({
         </div>
       )}
     </div>
+  );
+}
+
+function StatusBadge({ status, stepsText }: { status: string; stepsText?: string | null }) {
+  const isDisqualified = status === 'disqualified' || stepsText?.startsWith('[DISQUALIFIED]');
+  const isQualified = status === 'qualified' || stepsText?.startsWith('[QUALIFIED]');
+
+  if (isQualified) {
+    return (
+      <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider font-mono">
+        [QUALIFIED]
+      </span>
+    );
+  }
+
+  if (isDisqualified) {
+    return (
+      <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/40 uppercase tracking-wider font-mono">
+        [DISQUALIFIED]
+      </span>
+    );
+  }
+
+  return (
+    <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wider font-mono">
+      [IN REVIEW]
+    </span>
   );
 }

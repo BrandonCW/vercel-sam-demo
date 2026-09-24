@@ -132,7 +132,7 @@ export function WorkbenchShell({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           opportunityId: opportunity.id,
-          responses: feedbackData,
+          formResponses: feedbackData,
         }),
       });
 
@@ -144,11 +144,12 @@ export function WorkbenchShell({
         setSessionState('closed');
         showToast('Delta Re-scoring complete & Suggested Next Steps written back to CRM!');
       } else {
-        showToast('Discovery responses submitted (awaiting Ticket 04 feedback writeback)');
+        const errorData = await res.json().catch(() => ({}));
+        showToast(`Writeback failed: ${errorData.error || 'Server error'}`);
       }
     } catch (err) {
-      console.warn('Feedback writeback endpoint not active yet:', err);
-      showToast('Discovery responses submitted locally');
+      console.error('Feedback writeback error:', err);
+      showToast('Network error submitting feedback');
     } finally {
       setIsSubmittingFeedback(false);
     }
