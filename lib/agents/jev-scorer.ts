@@ -2,10 +2,12 @@ import {
   JevScoringInput,
   JevScoringResult,
   JevScoringResultSchema,
+  CompetitiveThreatLevelSchema,
   DimensionStatus,
   StageGateEvaluation,
 } from './jev-schema';
-import { gateway, generateText } from 'ai';
+import { evaluate } from 'eve/ai';
+import type { Experimental_EvaluationQuestion as EvaluationQuestion } from 'ai';
 import { assertAiGatewayConfigured } from '@/lib/env';
 
 export interface DimensionConfig {
@@ -171,125 +173,180 @@ export function evaluateStageGate(
   };
 }
 
-const JEV_SYSTEM_PROMPT = `You are Jev, the Vercel Enterprise Deal Qualification & MEDDPICC Evaluation Engine (System 1).
-Your task is to analyze Enterprise Opportunity notes (AE notes and SA discovery notes) and evaluate MEDDPICC qualification and Stage Gate readiness.
-
-You MUST score the 8 canonical MEDDPICC dimensions (each score 0-10, status: 'unaddressed' | 'partial' | 'verified', confidence: 0.0-1.0, evidence: array of text citations, gaps: array of unaddressed items):
-1. identifyPain (weight 0.20): Core operational/business pain, cost of inaction, timeline urgency
-2. champion (weight 0.15): Tested internal advocate with influence and access to economic buyer
-3. economicBuyer (weight 0.15): Discretionary budget sign-off authority confirmed
-4. decisionCriteria (weight 0.15): Technical benchmarks, architecture requirements, compliance
-5. decisionProcess (weight 0.10): Formal milestone timeline, technical evaluation steps
-6. metrics (weight 0.10): Quantifiable ROI, performance metrics, conversion impact
-7. competition (weight 0.10): Threat level and positioning against Netlify, AWS Amplify, Cloudflare, Akamai, DIY Kubernetes
-8. paperProcess (weight 0.05): Legal review, infosec questionnaire, MSA and procurement path
-
-Also detect competitive mentions with threatLevel ('low' | 'medium' | 'high'), evidence, and contextSummary.
-Evaluate Stage Gate blockers for advancing past the current stage.
-
-Return ONLY a valid JSON object matching:
-{
-  "opportunityId": string,
-  "dimensions": {
-    "identifyPain": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "champion": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "economicBuyer": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "decisionCriteria": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "decisionProcess": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "metrics": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "competition": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "paperProcess": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] }
-  },
-  "competitiveFlags": [
-    { "name": string, "threatLevel": "low"|"medium"|"high", "evidence": string, "contextSummary": string }
-  ],
-  "stageGate": {
-    "gateReady": boolean,
-    "currentStage": string,
-    "targetStage": string,
-    "gateBlockers": string[]
-  }
-}`;
+type DimensionKey = keyof JevScoringResult['dimensions'];
 
 /**
- * Score an Opportunity using Jev AI model dispatched through Vercel AI Gateway (via Vercel AI SDK).
- * Throws when AI_GATEWAY_API_KEY is missing or the Gateway call fails; nothing is substituted.
- * TODO(issue 07): replace with the typesafe-ai/jev evaluation model.
+ * Rubric wording, copied verbatim from docs/meddpicc-rubric.md (the single source
+ * of truth). tests/jev.test.ts fails if this text drifts from the document.
+ */
+export const RUBRIC_TEXT = {
+  bands: {
+    unaddressed:
+      'No mention in AE or SA notes, or only speculative assumptions without customer corroboration.',
+    partial:
+      'Qualitative mention or intent expressed, but lacks quantitative metrics, formal signoff, or stakeholder verification.',
+    verified:
+      'Explicitly verified with documented evidence, stakeholder confirmation, or completed technical validation.',
+  },
+  focus: {
+    identifyPain:
+      'Deploy queue bottlenecks, slow build times (30–60m), outage risk during product launches, CDN cache invalidation limits, multi-zone latency issues.',
+    champion:
+      'Technical leaders (Head of Platform, VP Eng, Staff Architect) actively advocating for Next.js/Vercel and selling internally on Vercel\'s behalf.',
+    economicBuyer:
+      'Verified executive sponsor (CTO, VP of E-Commerce, Chief Digital Officer, CFO) with sign-off authority and confirmed budget allocation.',
+    decisionCriteria:
+      'Explicit technical requirements: Next.js App Router/Turborepo native support, Edge Middleware latency, SOC2 Type II, 99.99% SLA, and zero-downtime cutover.',
+    decisionProcess:
+      'Formal POC benchmarks, architecture review board signoff, security review milestones, and scheduled committee dates.',
+    metrics:
+      'Core Web Vitals (LCP < 1.5s, INP < 200ms), developer build-time reduction (e.g. 45m → 5m), infrastructure cost savings, conversion uplift.',
+    competition:
+      'Vendor positioning against Netlify, AWS Amplify, Cloudflare Pages, Fastly/Akamai, or in-house DIY Kubernetes/ECS deployments.',
+    paperProcess:
+      'Vendor onboarding timeline, standard MSA review, custom SLA terms, data processing addendum (DPA), and procurement approvals.',
+  } satisfies Record<DimensionKey, string>,
+  threat: {
+    low: 'Casual mention or legacy tool being replaced with full alignment on Vercel.',
+    medium:
+      'Competing solution is under active evaluation in a bake-off; evaluation criteria not yet locked.',
+    high: 'Competitor is incumbent with multi-year pricing discounts, or executive sponsor prefers incumbent vendor.',
+  },
+} as const;
+
+/** Competitors Jev screens for; question ids are `competitor_<key>`. */
+export const COMPETITOR_TAXONOMY = {
+  netlify: 'Netlify',
+  awsAmplify: 'AWS Amplify',
+  cloudflarePages: 'Cloudflare Pages',
+  akamaiFastly: 'Akamai/Fastly',
+  diyKubernetes: 'DIY Kubernetes/ECS',
+} as const;
+
+const THREAT_CRITERIA = {
+  absent: 'The competitor is not mentioned or considered anywhere in the notes.',
+  low: RUBRIC_TEXT.threat.low,
+  medium: RUBRIC_TEXT.threat.medium,
+  high: RUBRIC_TEXT.threat.high,
+};
+
+/** 11 ordered rungs so Jev's score position maps directly onto the 0-10 scale. */
+function scoreRungs(): string[] {
+  return Array.from({ length: 11 }, (_, n) => {
+    const status = getDimensionStatus(n);
+    return `${n}/10 (${status}): ${RUBRIC_TEXT.bands[status]}`;
+  });
+}
+
+export function buildJevEvaluationRequest(input: JevScoringInput) {
+  const rungs = scoreRungs();
+  const dimensionQuestions = Object.fromEntries(
+    (Object.keys(CANONICAL_DIMENSIONS) as DimensionKey[]).map((key) => [
+      key,
+      {
+        type: 'score' as const,
+        instructions: `Score the MEDDPICC dimension "${CANONICAL_DIMENSIONS[key].label}" from the AE and SA notes. Vercel Enterprise evaluation focus: ${RUBRIC_TEXT.focus[key]}`,
+        criteria: rungs,
+      },
+    ])
+  ) as Record<DimensionKey, { type: 'score'; instructions: string; criteria: string[] }>;
+
+  const competitorQuestions = Object.fromEntries(
+    Object.entries(COMPETITOR_TAXONOMY).map(([key, name]) => [
+      `competitor_${key}`,
+      {
+        type: 'choice' as const,
+        instructions: `Classify the competitive threat from ${name} in this opportunity.`,
+        criteria: THREAT_CRITERIA,
+      },
+    ])
+  ) as Record<string, { type: 'choice'; instructions: string; criteria: typeof THREAT_CRITERIA }>;
+
+  return {
+    state: {
+      stageName: input.stageName,
+      amount: input.amount ?? null,
+      aeNotes: input.aeNotes,
+      saNotes: input.saNotes,
+    },
+    questions: { ...dimensionQuestions, ...competitorQuestions } as Record<string, EvaluationQuestion>,
+    providerOptions: { gateway: { zeroDataRetention: true } },
+  };
+}
+
+/** The subset of an AI SDK evaluation result that System 1 reads. */
+export interface JevEvaluation {
+  answers: Record<string, { type: string; score?: number; choice?: string } | undefined>;
+  providerMetadata?: Record<string, unknown> | undefined;
+}
+
+function confidenceFor(metadata: JevEvaluation['providerMetadata'], key: DimensionKey): number {
+  const raw = (metadata?.typesafe as { confidence?: unknown } | undefined)?.confidence;
+  const value =
+    typeof raw === 'number' ? raw : raw && typeof raw === 'object' ? (raw as Record<string, unknown>)[key] : undefined;
+  if (typeof value !== 'number' || value < 0 || value > 1) {
+    throw new Error(`Jev returned no usable providerMetadata.typesafe.confidence for "${key}"`);
+  }
+  return value;
+}
+
+/** Pure mapping from Jev's typed answers to the System 1 result. Throws on any missing answer. */
+export function interpretJevEvaluation(
+  input: JevScoringInput,
+  evaluation: JevEvaluation
+): JevScoringResult {
+  const dimensions = {} as JevScoringResult['dimensions'];
+  const scores = {} as Record<DimensionKey, number>;
+  for (const [key, config] of Object.entries(CANONICAL_DIMENSIONS) as [DimensionKey, DimensionConfig][]) {
+    const answer = evaluation.answers[key];
+    if (answer?.type !== 'score' || typeof answer.score !== 'number') {
+      throw new Error(`Jev returned no score answer for "${key}"`);
+    }
+    const score = Math.max(0, Math.min(10, Math.round(answer.score)));
+    scores[key] = score;
+    dimensions[key] = {
+      key,
+      label: config.label,
+      weight: config.weight,
+      score,
+      status: getDimensionStatus(score),
+      confidence: confidenceFor(evaluation.providerMetadata, key),
+    };
+  }
+
+  const competitiveFlags: JevScoringResult['competitiveFlags'] = [];
+  for (const [key, name] of Object.entries(COMPETITOR_TAXONOMY)) {
+    const answer = evaluation.answers[`competitor_${key}`];
+    if (answer?.type !== 'choice' || !answer.choice) {
+      throw new Error(`Jev returned no choice answer for "competitor_${key}"`);
+    }
+    if (answer.choice !== 'absent') {
+      competitiveFlags.push({ name, threatLevel: CompetitiveThreatLevelSchema.parse(answer.choice) });
+    }
+  }
+
+  const overallScore = computeCompositeScore(scores);
+  return JevScoringResultSchema.parse({
+    opportunityId: input.opportunityId,
+    overallScore,
+    dimensions,
+    competitiveFlags,
+    stageGate: evaluateStageGate(input.stageName, dimensions, overallScore),
+    evaluatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * System 1: score an Opportunity with TypeSafe AI's `typesafe-ai/jev` evaluation
+ * model through Vercel AI Gateway. Jev answers typed questions; composite and
+ * stage gates are computed in code. Throws on missing config or any Jev error.
  */
 export async function scoreOpportunityWithJevAI(
   input: JevScoringInput,
-  timeoutMs: number = 15000
+  options: { abortSignal?: AbortSignal } = {}
 ): Promise<JevScoringResult> {
   assertAiGatewayConfigured();
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const { text: jsonText } = await generateText({
-      model: gateway('openai/gpt-4o-mini'),
-      system: JEV_SYSTEM_PROMPT,
-      prompt: JSON.stringify({
-        opportunityId: input.opportunityId || input.dealId,
-        name: input.name,
-        accountName: input.accountName,
-        stageName: input.stageName,
-        amount: input.amount,
-        aeNotes: input.aeNotes,
-        saNotes: input.saNotes,
-      }),
-      abortSignal: controller.signal,
-    });
-
-    if (!jsonText) {
-      throw new Error('No JSON output returned from Jev AI on Vercel AI Gateway');
-    }
-
-    const cleaned = jsonText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    const parsed = JSON.parse(cleaned);
-
-    const dims = parsed.dimensions;
-    const overallScore = computeCompositeScore({
-      identifyPain: Number(dims?.identifyPain?.score ?? 0),
-      champion: Number(dims?.champion?.score ?? 0),
-      economicBuyer: Number(dims?.economicBuyer?.score ?? 0),
-      decisionCriteria: Number(dims?.decisionCriteria?.score ?? 0),
-      decisionProcess: Number(dims?.decisionProcess?.score ?? 0),
-      metrics: Number(dims?.metrics?.score ?? 0),
-      competition: Number(dims?.competition?.score ?? 0),
-      paperProcess: Number(dims?.paperProcess?.score ?? 0),
-    });
-
-    // Populate metadata labels & weights on dimensions
-    for (const [key, config] of Object.entries(CANONICAL_DIMENSIONS) as [
-      keyof JevScoringResult['dimensions'],
-      DimensionConfig,
-    ][]) {
-      if (dims[key]) {
-        dims[key].key = key;
-        dims[key].label = config.label;
-        dims[key].weight = config.weight;
-        dims[key].score = Math.max(0, Math.min(10, Math.round(Number(dims[key].score || 0))));
-        dims[key].status = getDimensionStatus(dims[key].score);
-        dims[key].evidence = Array.isArray(dims[key].evidence) ? dims[key].evidence : [];
-        dims[key].gaps = Array.isArray(dims[key].gaps) ? dims[key].gaps : [];
-        dims[key].confidence = Number(dims[key].confidence || 0.8);
-      }
-    }
-
-    const stageGate = evaluateStageGate(input.stageName, dims, overallScore);
-
-    const result: JevScoringResult = {
-      opportunityId: input.opportunityId || input.dealId || '',
-      overallScore,
-      dimensions: dims,
-      competitiveFlags: Array.isArray(parsed.competitiveFlags) ? parsed.competitiveFlags : [],
-      stageGate: parsed.stageGate?.gateBlockers ? parsed.stageGate : stageGate,
-      evaluatedAt: new Date().toISOString(),
-    };
-
-    return JevScoringResultSchema.parse(result);
-  } finally {
-    clearTimeout(timer);
-  }
+  const request = buildJevEvaluationRequest(input);
+  const evaluation = await evaluate({ ...request, abortSignal: options.abortSignal });
+  return interpretJevEvaluation(input, evaluation);
 }

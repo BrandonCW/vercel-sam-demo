@@ -5,7 +5,7 @@ Replace the current "Jev" (actually `openai/gpt-4o-mini` with a "You are Jev" sy
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 ## Research (2026-09-25)
 
@@ -32,8 +32,27 @@ Replace the current "Jev" (actually `openai/gpt-4o-mini` with a "You are Jev" sy
 
 ## Acceptance criteria
 
-- [ ] No `generateText` / LLM call remains in System 1; `JEV_SYSTEM_PROMPT` deleted.
-- [ ] `run_jev_scoring` calls `evaluate` from `eve/ai` with `ctx.abortSignal`.
-- [ ] Pure `computeComposite` / `evaluateStageGate` functions covered by fixture-based unit tests.
+- [x] No `generateText` / LLM call remains in System 1; `JEV_SYSTEM_PROMPT` deleted.
+- [x] `run_jev_scoring` calls `evaluate` from `eve/ai` with `ctx.abortSignal`.
+- [x] Pure `computeComposite` / `evaluateStageGate` functions covered by fixture-based unit tests.
 - [ ] Live test (10) confirms Acme baseline: composite 50–58, Identify Pain ≥ 8, Netlify `high`, Gate 2 blocked on Economic Buyer.
-- [ ] Spec §4 and user story 5 updated (citations → System 2).
+- [x] Spec §4 and user story 5 updated (citations → System 2).
+
+## Answer
+
+System 1 now runs on `typesafe-ai/jev` through `evaluate` from `eve/ai`. The `gpt-4o-mini` prompt, `JEV_SYSTEM_PROMPT` and all default-filling are gone.
+
+- `lib/agents/jev-scorer.ts`:
+  - `buildJevEvaluationRequest(input)` builds `state` `{ stageName, amount, aeNotes, saNotes }`, 8 `score` questions with 11 rungs (0 to 10) and 5 competitor `choice` questions (`absent | low | medium | high`), and sets `providerOptions.gateway.zeroDataRetention: true`.
+  - `interpretJevEvaluation(input, evaluation)` is pure. It rounds and clamps scores, derives status, and reads confidence from `providerMetadata.typesafe.confidence` (a number, or a map keyed by question id). It keeps only non-`absent` competitors, computes the composite and gates in code, and validates with `JevScoringResultSchema`. It throws on any missing answer or confidence.
+  - `scoreOpportunityWithJevAI(input, { abortSignal })` asserts the Gateway key, calls `evaluate` and interprets the result.
+- The rubric wording lives in `RUBRIC_TEXT`, copied verbatim from `docs/meddpicc-rubric.md`. A test fails if the two drift.
+- `jev-schema.ts` drops `evidence`/`gaps` from dimensions and `evidence`/`contextSummary` from competitive flags, because Jev returns no text.
+- Callers updated:
+  - the tool passes `ctx.abortSignal`;
+  - the assess and feedback routes pass `request.signal`.
+- Docs updated:
+  - spec §4 and user story 5;
+  - `agent/instructions.md` and the `qualification_assessor` instructions;
+  - the rubric, which now lists Gate 2 Economic Buyer ≥ 4 (the rule the code already enforced) and a plain arrow in place of LaTeX in the Metrics row.
+- The live Acme check (composite 50–58, Identify Pain ≥ 8, Netlify `high`, Gate 2 blocked on EB) is still open for ticket 10. A fixture test covers the mapping only. No `AI_GATEWAY_API_KEY` is available locally, so no billed call was made.

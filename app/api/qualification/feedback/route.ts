@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       amount: opportunity.amount,
       aeNotes: opportunity.ae_notes,
       saNotes: updatedSaNotes,
-    });
+    }, { abortSignal: request.signal });
 
     const deltaScore = jevResult.overallScore - previousScore;
     const combinedNotes = `${opportunity.ae_notes}\n${updatedSaNotes}`.toLowerCase();

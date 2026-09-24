@@ -23,7 +23,7 @@ The Deal Qualification System is an automated qualification workbench built on N
 2. As a Solutions Architect, I want to trigger an automated qualification assessment with a single click, so that the Opportunity is immediately evaluated against the MEDDPICC rubric without manual calculation.
 3. As a Solutions Architect, I want System 1 to evaluate the deal across all 8 MEDDPICC dimensions (Metrics, Economic Buyer, Decision Criteria, Decision Process, Paper Process, Identify Pain, Champion, Competition) within 1.5 seconds, so that I get immediate qualification feedback.
 4. As a Solutions Architect, I want each MEDDPICC dimension scored from 0 to 10 with an associated status (unaddressed, partial, verified), so that I know exactly how mature our understanding is for each area.
-5. As a Solutions Architect, I want to view direct textual citations from AE Notes and SA Notes supporting each dimension score, so that I can verify the agent's reasoning against customer statements.
+5. As a Solutions Architect, I want to view direct textual citations from AE Notes and SA Notes supporting each dimension score, so that I can verify the agent's reasoning against customer statements. (Citations and gap callouts are produced by System 2; Jev returns no text.)
 6. As a Solutions Architect, I want to see explicit gap callouts for every incomplete dimension, so that I know what evidence is still missing before the deal can advance.
 7. As a Solutions Architect, I want System 1 to automatically detect competitor mentions (such as Netlify, AWS Amplify, Cloudflare Pages, or DIY Kubernetes) and assign a threat level, so that I am alerted to active bake-offs.
 8. As a Solutions Architect, I want System 2 to generate targeted competitive battlecards and counter-positioning tactics based on detected competitors, so that I can expose competitor limitations during customer calls.
@@ -85,7 +85,7 @@ The Eve Agent framework coordinates the deal qualification lifecycle:
 
 ### 4. System 1 (Jev) Deterministic MEDDPICC & Stage Gate Scoring
 
-System 1 provides fast (<1.5s), deterministic rubric scoring and competitor detection:
+System 1 is TypeSafe AI's `typesafe-ai/jev` evaluation model, called through Vercel AI Gateway with `evaluate` from `eve/ai` (`zeroDataRetention` on). It is not an LLM prompt and returns no text. Jev answers one `score` question per MEDDPICC dimension (11 rungs, 0–10, worded from `docs/meddpicc-rubric.md`) and one `choice` question per taxonomy competitor (`absent | low | medium | high`). Per-dimension confidence comes from `providerMetadata.typesafe.confidence`. Status, the weighted composite and the stage gates are computed deterministically in code from those answers. Citations and gap callouts come from System 2.
 - **Weighted 8-Dimension Formula**:
   $$\text{Composite Score} = \sum_{i=1}^{8} \left( \text{Dimension Score}_i \times 10 \times \text{Weight}_i \right)$$
   - Identify Pain: 20%
@@ -101,7 +101,7 @@ System 1 provides fast (<1.5s), deterministic rubric scoring and competitor dete
   - `4 - 7` (`partial`): Qualitative mention present, lacking confirmed stakeholder sign-off or metrics.
   - `8 - 10` (`verified`): Documented evidence or confirmed stakeholder agreement.
 - **Stage Gate Rules**:
-  - **Gate 2 (Discovery $\rightarrow$ Technical Validation)**: Requires Identify Pain $\ge 6$, Champion $\ge 5$, Metrics $\ge 4$, Composite Score $\ge 50$.
+  - **Gate 2 (Discovery $\rightarrow$ Technical Validation)**: Requires Identify Pain $\ge 6$, Champion $\ge 5$, Metrics $\ge 4$, Economic Buyer $\ge 4$, Composite Score $\ge 50$.
   - **Gate 3 (Technical Validation $\rightarrow$ Proposal)**: Requires Decision Criteria $\ge 7$, Economic Buyer $\ge 6$, Decision Process $\ge 5$, Identify Pain $\ge 7$, Champion $\ge 7$, Composite Score $\ge 70$.
 - **Competitive Mention Extraction**: Scans against taxonomy (`Netlify`, `AWS Amplify`, `Cloudflare Pages`, `Akamai/Fastly`, `DIY Kubernetes / AWS ECS`) and assigns threat levels (`low`, `medium`, `high`).
 - **Type-Safe Contract**: Enforced via Zod schema (`JevScoringResultSchema`).

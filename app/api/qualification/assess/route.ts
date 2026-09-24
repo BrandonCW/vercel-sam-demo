@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       amount: opportunity.amount,
       aeNotes: opportunity.ae_notes,
       saNotes: opportunity.sa_notes,
-    });
+    }, { abortSignal: request.signal });
 
     const breakdown: MEDDPICCBreakdown = {
       ...jevResult.dimensions,

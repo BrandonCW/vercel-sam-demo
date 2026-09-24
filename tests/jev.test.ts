@@ -5,7 +5,13 @@ import {
   getDimensionStatus,
   evaluateStageGate,
   scoreOpportunityWithJevAI,
+  buildJevEvaluationRequest,
+  interpretJevEvaluation,
+  COMPETITOR_TAXONOMY,
+  RUBRIC_TEXT,
 } from '@/lib/agents/jev-scorer';
+import fs from 'fs';
+import path from 'path';
 
 describe('System 1 (Jev) - Formulas, Weights and Rubric Scoring', () => {
   it('strictly adheres to canonical 8-dimension weights summing to 1.0 (100%)', () => {
@@ -93,7 +99,7 @@ function dims(scores: Record<string, number>) {
   return Object.fromEntries(
     Object.entries(scores).map(([k, score]) => [
       k,
-      { score, status: getDimensionStatus(score), confidence: 0.8, evidence: [], gaps: [] },
+      { score, status: getDimensionStatus(score), confidence: 0.8 },
     ])
   ) as any;
 }
@@ -125,14 +131,14 @@ describe('System 1 (Jev) - Stage Gate Readiness Logic', () => {
   it('evaluates Gate 3 (Technical Validation -> Proposal) with stricter thresholds', () => {
     // Stage 3 requires DC >= 7, EB >= 6, DP >= 5, Overall >= 70
     const dummyDimensions = {
-      identifyPain: { score: 7, status: 'partial' as const, confidence: 0.8, evidence: [], gaps: [] },
-      champion: { score: 7, status: 'partial' as const, confidence: 0.8, evidence: [], gaps: [] },
-      economicBuyer: { score: 5, status: 'partial' as const, confidence: 0.7, evidence: [], gaps: [] }, // fails (< 6)
-      decisionCriteria: { score: 8, status: 'verified' as const, confidence: 0.9, evidence: [], gaps: [] },
-      decisionProcess: { score: 4, status: 'partial' as const, confidence: 0.7, evidence: [], gaps: [] }, // fails (< 5)
-      metrics: { score: 7, status: 'partial' as const, confidence: 0.8, evidence: [], gaps: [] },
-      competition: { score: 6, status: 'partial' as const, confidence: 0.8, evidence: [], gaps: [] },
-      paperProcess: { score: 4, status: 'partial' as const, confidence: 0.6, evidence: [], gaps: [] },
+      identifyPain: { score: 7, status: 'partial' as const, confidence: 0.8 },
+      champion: { score: 7, status: 'partial' as const, confidence: 0.8 },
+      economicBuyer: { score: 5, status: 'partial' as const, confidence: 0.7 }, // fails (< 6)
+      decisionCriteria: { score: 8, status: 'verified' as const, confidence: 0.9 },
+      decisionProcess: { score: 4, status: 'partial' as const, confidence: 0.7 }, // fails (< 5)
+      metrics: { score: 7, status: 'partial' as const, confidence: 0.8 },
+      competition: { score: 6, status: 'partial' as const, confidence: 0.8 },
+      paperProcess: { score: 4, status: 'partial' as const, confidence: 0.6 },
     };
 
     const evaluation = evaluateStageGate('Stage 3 - Technical Validation', dummyDimensions, 65);
@@ -162,5 +168,122 @@ describe('System 1 (Jev) - fails loudly', () => {
     } finally {
       if (saved !== undefined) process.env.AI_GATEWAY_API_KEY = saved;
     }
+  });
+});
+
+const ACME_INPUT = {
+  opportunityId: 'opp_acme',
+  name: 'Acme',
+  stageName: 'Stage 2 - Discovery',
+  amount: 250000,
+  aeNotes: 'Netlify renewal pending',
+  saNotes: 'Deploy queue 45m',
+};
+
+function scoreAnswer(score: number) {
+  return { type: 'score' as const, score };
+}
+function choiceAnswer(choice: string) {
+  return { type: 'choice' as const, choice };
+}
+
+function acmeEvaluation(confidence: unknown = 0.82) {
+  return {
+    answers: {
+      identifyPain: scoreAnswer(8.3),
+      champion: scoreAnswer(6.6),
+      economicBuyer: scoreAnswer(2.9),
+      decisionCriteria: scoreAnswer(7),
+      decisionProcess: scoreAnswer(4),
+      metrics: scoreAnswer(5.2),
+      competition: scoreAnswer(4),
+      paperProcess: scoreAnswer(1.6),
+      competitor_netlify: choiceAnswer('high'),
+      competitor_awsAmplify: choiceAnswer('absent'),
+      competitor_cloudflarePages: choiceAnswer('low'),
+      competitor_akamaiFastly: choiceAnswer('absent'),
+      competitor_diyKubernetes: choiceAnswer('absent'),
+    },
+    providerMetadata: { typesafe: { confidence } },
+  };
+}
+
+describe('System 1 (Jev) - evaluation request', () => {
+  it('asks one 0-10 score question per MEDDPICC dimension and one threat choice per taxonomy competitor', () => {
+    const req = buildJevEvaluationRequest(ACME_INPUT);
+    expect(req.state).toEqual({
+      stageName: 'Stage 2 - Discovery',
+      amount: 250000,
+      aeNotes: 'Netlify renewal pending',
+      saNotes: 'Deploy queue 45m',
+    });
+    for (const key of Object.keys(CANONICAL_DIMENSIONS)) {
+      const q = req.questions[key];
+      expect(q.type).toBe('score');
+      expect((q as any).criteria).toHaveLength(11);
+    }
+    expect(Object.keys(COMPETITOR_TAXONOMY)).toHaveLength(5);
+    const netlify = req.questions.competitor_netlify as any;
+    expect(netlify.type).toBe('choice');
+    expect(Object.keys(netlify.criteria)).toEqual(['absent', 'low', 'medium', 'high']);
+    expect(req.providerOptions).toEqual({ gateway: { zeroDataRetention: true } });
+  });
+
+  it('keeps rubric wording in questions identical to docs/meddpicc-rubric.md', () => {
+    const rubric = fs.readFileSync(path.resolve(__dirname, '../docs/meddpicc-rubric.md'), 'utf8');
+    const req = buildJevEvaluationRequest(ACME_INPUT);
+    const rungs = (req.questions.economicBuyer as any).criteria as string[];
+    expect(rungs[0]).toContain('No mention in AE or SA notes');
+    expect(rungs[10]).toContain('Explicitly verified with documented evidence');
+    for (const [key, text] of Object.entries(RUBRIC_TEXT.focus)) {
+      expect(rubric).toContain(text);
+      expect((req.questions[key] as any).instructions).toContain(text);
+    }
+    for (const band of Object.values(RUBRIC_TEXT.bands)) expect(rubric).toContain(band);
+  });
+});
+
+describe('System 1 (Jev) - interpreting answers', () => {
+  it('reproduces the Acme baseline: composite 50-58, Identify Pain verified, Netlify high, Gate 2 blocked on Economic Buyer', () => {
+    const r = interpretJevEvaluation(ACME_INPUT, acmeEvaluation());
+    expect(r.dimensions.identifyPain.score).toBe(8);
+    expect(r.dimensions.identifyPain.status).toBe('verified');
+    expect(r.dimensions.economicBuyer.score).toBe(3);
+    expect(r.dimensions.economicBuyer.status).toBe('unaddressed');
+    expect(r.dimensions.champion.label).toBe('Champion');
+    expect(r.dimensions.champion.confidence).toBe(0.82);
+    // 8*20 + 7*15 + 3*15 + 7*15 + 4*10 + 5*10 + 4*10 + 2*5 = 555 -> 55.5 -> 56
+    expect(r.overallScore).toBe(56);
+    expect(r.competitiveFlags).toEqual([
+      { name: 'Netlify', threatLevel: 'high' },
+      { name: 'Cloudflare Pages', threatLevel: 'low' },
+    ]);
+    expect(r.stageGate.gateReady).toBe(false);
+    expect(r.stageGate.gateBlockers).toHaveLength(1);
+    expect(r.stageGate.gateBlockers[0]).toContain('Economic Buyer');
+    expect(r.opportunityId).toBe('opp_acme');
+    expect(r.dimensions.identifyPain).not.toHaveProperty('evidence');
+  });
+
+  it('uses per-question confidence when Jev reports it per question', () => {
+    const r = interpretJevEvaluation(
+      ACME_INPUT,
+      acmeEvaluation({ identifyPain: 0.9, champion: 0.4, economicBuyer: 0.7, decisionCriteria: 0.6,
+        decisionProcess: 0.5, metrics: 0.5, competition: 0.5, paperProcess: 0.3 })
+    );
+    expect(r.dimensions.identifyPain.confidence).toBe(0.9);
+    expect(r.dimensions.champion.confidence).toBe(0.4);
+  });
+
+  it('throws when Jev omits confidence instead of inventing one', () => {
+    const e = acmeEvaluation();
+    (e as any).providerMetadata = {};
+    expect(() => interpretJevEvaluation(ACME_INPUT, e)).toThrow(/confidence/);
+  });
+
+  it('throws when a dimension answer is missing', () => {
+    const e = acmeEvaluation();
+    delete (e.answers as any).metrics;
+    expect(() => interpretJevEvaluation(ACME_INPUT, e)).toThrow(/metrics/);
   });
 });
