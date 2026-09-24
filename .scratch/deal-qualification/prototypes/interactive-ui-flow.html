@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROTOTYPE: Deal Qualification UI Flow & Action Controls</title>
+  <style>
+    :root {
+      --bg: #09090b;
+      --card-bg: #121215;
+      --card-border: #27272a;
+      --accent: #0070f3;
+      --accent-hover: #0060df;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      padding-bottom: 90px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Prototype Notice Banner */
+    .proto-banner {
+      background: #18181b;
+      border-bottom: 1px solid #3f3f46;
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+    .proto-badge {
+      background: #3b82f6;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* App Header / Deal Bar */
+    .deal-header {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 18px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .deal-title {
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .deal-meta {
+      display: flex;
+      gap: 20px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .meta-val {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Status Pills */
+    .pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pill-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .pill-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .pill-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .pill-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    /* Layout Variant A: 2-Column Split Workbench */
+    .grid-workbench {
+      display: grid;
+      grid-template-columns: 440px 1fr;
+      gap: 24px;
+    }
+
+    /* Layout Variant B: Stepper Pipeline */
+    .stepper-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 16px 24px;
+    }
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .step-item.active { color: var(--text); font-weight: 600; }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #27272a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+    .step-item.active .step-num { background: var(--accent); color: #fff; }
+
+    /* Layout Variant C: CRM Drawer Overlay */
+    .crm-mock {
+      background: #1e1e24;
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      padding: 24px;
+      position: relative;
+      min-height: 580px;
+    }
+    .drawer-overlay {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 540px;
+      height: 100%;
+      background: var(--card-bg);
+      border-left: 1px solid var(--accent);
+      box-shadow: -10px 0 30px rgba(0,0,0,0.7);
+      padding: 24px;
+      overflow-y: auto;
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px;
+    }
+
+    /* Common Card Styles */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Notes Box */
+    .notes-box {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 13px;
+      color: #d4d4d8;
+      max-height: 150px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-family: var(--font-mono);
+      margin-bottom: 12px;
+    }
+
+    /* Rubric Scorecard */
+    .rubric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .rubric-item {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 8px 12px;
+    }
+    .rubric-key {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .rubric-bar {
+      height: 6px;
+      background: #27272a;
+      border-radius: 3px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .rubric-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+    .rubric-bar-fill.good { background: var(--success); }
+    .rubric-bar-fill.warn { background: var(--warning); }
+    .rubric-bar-fill.bad { background: var(--danger); }
+
+    /* Composite Score Banner */
+    .score-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin-top: 14px;
+    }
+    .score-val {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    /* Zero Cost / Paused Indicator Banner */
+    .paused-banner {
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04));
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .zero-cost-badge {
+      background: #f59e0b;
+      color: #000;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Dynamic JSON Render Form Styling */
+    .form-container {
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #e4e4e7;
+    }
+    .form-help {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .form-input, .form-textarea {
+      width: 100%;
+      background: #09090b;
+      border: 1px solid #3f3f46;
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .form-input:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .form-radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #d4d4d8;
+      cursor: pointer;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #27272a;
+      color: #fff;
+      border: 1px solid #3f3f46;
+      border-radius: 6px;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn:hover { background: #3f3f46; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-success { background: var(--success); border-color: var(--success); color: #000; }
+    .btn-success:hover { background: #059669; }
+
+    /* Suggested Next Steps Box (Final Writeback) */
+    .writeback-card {
+      background: linear-gradient(180deg, #182234, #121824);
+      border: 1px solid #1e3a8a;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .writeback-content {
+      font-size: 15px;
+      font-weight: 600;
+      color: #93c5fd;
+      background: #0b1120;
+      border: 1px solid #1e3a8a;
+      border-radius: 6px;
+      padding: 14px;
+      margin: 12px 0;
+      font-family: var(--font-mono);
+      line-height: 1.4;
+    }
+
+    /* Bottom Floating Prototype Switcher */
+    .proto-switcher {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      border-radius: 9999px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 1000;
+    }
+    .proto-switcher-btn {
+      background: none;
+      border: none;
+      color: #d4d4d8;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .proto-switcher-btn:hover { background: #27272a; color: #fff; }
+    .proto-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    /* State Walkthrough Simulator Controls */
+    .walkthrough-bar {
+      background: #141418;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 12px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .walkthrough-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+    .walkthrough-steps {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .w-btn {
+      background: #202026;
+      border: 1px solid #33333d;
+      color: #a1a1aa;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .w-btn.active {
+      background: #0070f3;
+      border-color: #0070f3;
+      color: #fff;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Prototype Disclaimer Banner -->
+  <div class="proto-banner">
+    <div>
+      <span class="proto-badge">Prototype</span>
+      <strong style="margin-left: 8px;">Deal Qualification User Interface Flow</strong>
+      <span style="color: #71717a; margin-left: 8px;">| Issue #07 Evaluation (Throwaway Primary Source)</span>
+    </div>
+    <div style="font-size: 12px; color: #a1a1aa;">
+      Use <strong>← / →</strong> or bottom switcher to toggle layout variants. Click scenario steps below to test state transitions.
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Scenario & State Machine Walkthrough Bar -->
+    <div class="walkthrough-bar">
+      <div class="walkthrough-title">Interactive State Simulator</div>
+      <div class="walkthrough-steps">
+        <button class="w-btn active" id="btn-state-ready" onclick="setState('READY_TO_ASSESS')">1. Ready to Assess</button>
+        <button class="w-btn" id="btn-state-assessing" onclick="setState('ASSESSING')">2. Ingesting & Scoring</button>
+        <button class="w-btn" id="btn-state-paused" onclick="setState('PENDING_FEEDBACK')">3. Paused (Zero-Cost)</button>
+        <button class="w-btn" id="btn-state-evaluating" onclick="setState('EVALUATING')">4. SA Rescore Delta</button>
+        <button class="w-btn" id="btn-state-complete" onclick="setState('COMPLETED')">5. CRM Writeback</button>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <select id="scenario-select" onchange="changeScenario(this.value)" style="background: #202026; border: 1px solid #33333d; color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 6px;">
+          <option value="acme_netlify">Scenario 1: Acme Corp (Netlify Threat)</option>
+          <option value="globex_amplify">Scenario 2: Globex (Amplify Threat)</option>
+          <option value="soylent_dtc">Scenario 3: Soylent (DIY K8s)</option>
+        </select>
+        <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="resetDemo()">Reset</button>
+      </div>
+    </div>
+
+    <!-- Opportunity Header -->
+    <div class="deal-header">
+      <div>
+        <div class="deal-title">
+          <span id="deal-name">Acme Corp - Next.js Enterprise Migration</span>
+          <span id="deal-stage-pill" class="pill pill-blue">Stage 2: Discovery</span>
+          <span id="qual-status-pill" class="pill pill-amber">Unqualified</span>
+        </div>
+        <div class="deal-meta" style="margin-top: 8px;">
+          <span>Target ARR: <span class="meta-val" id="deal-arr">$180,000</span></span>
+          <span>Lead AE: <span class="meta-val">Sarah Jenkins</span></span>
+          <span>Lead SA: <span class="meta-val">Alex Rivera</span></span>
+          <span>Competitor: <span class="meta-val" style="color: #f87171;" id="deal-competitor">Netlify (High Threat)</span></span>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">AGENT RUNTIME STATUS</div>
+        <div id="agent-status-badge" class="pill pill-purple">Ready to Run</div>
+      </div>
+    </div>
+
+    <!-- Dynamic Variant Container -->
+    <div id="variant-root">
+      <!-- Injected via JavaScript based on active variant -->
+    </div>
+
+  </div>
+
+  <!-- Bottom Floating Switcher (UI.md Standard) -->
+  <div class="proto-switcher">
+    <button class="proto-switcher-btn" onclick="cycleVariant(-1)" title="Previous variant (Left arrow)">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="proto-label" id="proto-variant-label">Variant A: Split Workbench (Recommended)</div>
+    <button class="proto-switcher-btn" onclick="cycleVariant(1)" title="Next variant (Right arrow)">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+  <script>
+    // --- State Model ---
+    const scenarios = {
+      acme_netlify: {
+        id: "opp-101",
+        name: "Acme Corp - Next.js Enterprise Migration",
+        stage: "Stage 2: Discovery",
+        arr: "$180,000",
+        competitor: "Netlify (High Threat)",
+        aeNotes: "Customer running legacy Next.js 12 on Netlify. Experiencing 45-minute build times and edge SSR timeouts during flash sales. VP Eng Marcus Vance wants to migrate to App Router & Turborepo. Netlify offering 30% renewal discount.",
+        saNotes: "Initial call with Head of Frontend. Need to confirm caching strategy (ISR vs Edge Middleware) and verify if Marcus Vance has unilateral budget authority without CTO signoff.",
+        baselineScores: {
+          identifyPain: 8,
+          champion: 7,
+          economicBuyer: 3,
+          decisionCriteria: 7,
+          decisionProcess: 4,
+          metrics: 5,
+          competition: 4,
+          paperProcess: 2,
+          overall: 52
+        },
+        rescored: {
+          identifyPain: 8,
+          champion: 8,
+          economicBuyer: 8,
+          decisionCriteria: 9,
+          decisionProcess: 7,
+          metrics: 8,
+          competition: 7,
+          paperProcess: 5,
+          overall: 78
+        }
+      },
+      globex_amplify: {
+        id: "opp-102",
+        name: "Globex Industries - Portal Replatform",
+        stage: "Stage 2: Discovery",
+        arr: "$320,000",
+        competitor: "AWS Amplify (Medium Threat)",
+        aeNotes: "Existing AWS customer with $2M EDP commit. Cloud team pushing Amplify to draw down credits. Digital team frustrated with Amplify build breaks.",
+        saNotes: "Met with platform lead. Architecture not yet agreed. No champion confirmed.",
+        baselineScores: {
+          identifyPain: 6,
+          champion: 3,
+          economicBuyer: 2,
+          decisionCriteria: 4,
+          decisionProcess: 3,
+          metrics: 3,
+          competition: 3,
+          paperProcess: 2,
+          overall: 34
+        },
+        rescored: {
+          identifyPain: 7,
+          champion: 5,
+          economicBuyer: 4,
+          decisionCriteria: 6,
+          decisionProcess: 5,
+          metrics: 5,
+          competition: 5,
+          paperProcess: 3,
+          overall: 53
+        }
+      }
+    };
+
+    let activeScenarioKey = "acme_netlify";
+    let currentState = "READY_TO_ASSESS"; // READY_TO_ASSESS, ASSESSING, PENDING_FEEDBACK, EVALUATING, COMPLETED
+    let currentVariant = "A"; // A: Split Workbench, B: Stepper Pipeline, C: CRM Drawer
+    const variants = ["A", "B", "C"];
+
+    // --- State Transitions ---
+    function setState(newState) {
+      currentState = newState;
+      updateSimulatorButtons();
+      renderCurrentVariant();
+    }
+
+    function changeScenario(key) {
+      activeScenarioKey = key;
+      currentState = "READY_TO_ASSESS";
+      updateHeader();
+      updateSimulatorButtons();
+      renderCurrentVariant();
+    }
+
+    function resetDemo() {
+      currentState = "READY_TO_ASSESS";
+      updateSimulatorButtons();
+      renderCurrentVariant();
+    }
+
+    function updateHeader() {
+      const sc = scenarios[activeScenarioKey];
+      document.getElementById("deal-name").textContent = sc.name;
+      document.getElementById("deal-arr").textContent = sc.arr;
+      document.getElementById("deal-competitor").textContent = sc.competitor;
+    }
+
+    function updateSimulatorButtons() {
+      const stateMap = {
+        'READY_TO_ASSESS': 'btn-state-ready',
+        'ASSESSING': 'btn-state-assessing',
+        'PENDING_FEEDBACK': 'btn-state-paused',
+        'EVALUATING': 'btn-state-evaluating',
+        'COMPLETED': 'btn-state-complete'
+      };
+      document.querySelectorAll('.w-btn').forEach(b => b.classList.remove('active'));
+      const activeId = stateMap[currentState];
+      if (activeId) document.getElementById(activeId).classList.add('active');
+
+      // Update pills
+      const statusPill = document.getElementById("qual-status-pill");
+      const agentBadge = document.getElementById("agent-status-badge");
+
+      if (currentState === "READY_TO_ASSESS") {
+        statusPill.className = "pill pill-amber";
+        statusPill.textContent = "Unqualified";
+        agentBadge.className = "pill pill-purple";
+        agentBadge.textContent = "Idle (Ready)";
+      } else if (currentState === "ASSESSING") {
+        statusPill.className = "pill pill-amber";
+        statusPill.textContent = "In Review";
+        agentBadge.className = "pill pill-blue";
+        agentBadge.textContent = "Running (Jev & System 2)...";
+      } else if (currentState === "PENDING_FEEDBACK") {
+        statusPill.className = "pill pill-amber";
+        statusPill.textContent = "Pending SA Feedback";
+        agentBadge.className = "pill pill-amber";
+        agentBadge.textContent = "Paused (0 Tokens / $0.00)";
+      } else if (currentState === "EVALUATING") {
+        statusPill.className = "pill pill-blue";
+        statusPill.textContent = "Re-scoring Delta...";
+        agentBadge.className = "pill pill-blue";
+        agentBadge.textContent = "Running (Jev Delta)...";
+      } else if (currentState === "COMPLETED") {
+        statusPill.className = "pill pill-green";
+        statusPill.textContent = "Stage 3 Qualified";
+        agentBadge.className = "pill pill-green";
+        agentBadge.textContent = "Completed & Synced";
+      }
+    }
+
+    // --- Variant Cycling ---
+    function cycleVariant(direction) {
+      let idx = variants.indexOf(currentVariant) + direction;
+      if (idx < 0) idx = variants.length - 1;
+      if (idx >= variants.length) idx = 0;
+      setVariant(variants[idx]);
+    }
+
+    function setVariant(v) {
+      currentVariant = v;
+      const labels = {
+        'A': 'Variant A: Split Workbench (Recommended)',
+        'B': 'Variant B: Top-Down Stepper Pipeline',
+        'C': 'Variant C: CRM Drawer Overlay'
+      };
+      document.getElementById("proto-variant-label").textContent = labels[v];
+      const url = new URL(window.location);
+      url.searchParams.set("variant", v);
+      window.history.replaceState({}, "", url);
+      renderCurrentVariant();
+    }
+
+    // --- Renderers for Variants ---
+    function renderCurrentVariant() {
+      const root = document.getElementById("variant-root");
+      const sc = scenarios[activeScenarioKey];
+      const scores = (currentState === "COMPLETED" || currentState === "EVALUATING") 
+        ? sc.rescored 
+        : sc.baselineScores;
+
+      if (currentVariant === "A") {
+        root.innerHTML = renderVariantA(sc, scores);
+      } else if (currentVariant === "B") {
+        root.innerHTML = renderVariantB(sc, scores);
+      } else if (currentVariant === "C") {
+        root.innerHTML = renderVariantC(sc, scores);
+      }
+    }
+
+    // Common Rubric HTML Generator
+    function getRubricHtml(scores) {
+      const dimensions = [
+        { name: "Identify Pain (20%)", key: "identifyPain", val: scores.identifyPain },
+        { name: "Champion (15%)", key: "champion", val: scores.champion },
+        { name: "Economic Buyer (15%)", key: "economicBuyer", val: scores.economicBuyer },
+        { name: "Decision Criteria (15%)", key: "decisionCriteria", val: scores.decisionCriteria },
+        { name: "Decision Process (10%)", key: "decisionProcess", val: scores.decisionProcess },
+        { name: "Metrics (10%)", key: "metrics", val: scores.metrics },
+        { name: "Competition (10%)", key: "competition", val: scores.competition },
+        { name: "Paper Process (5%)", key: "paperProcess", val: scores.paperProcess }
+      ];
+
+      const items = dimensions.map(d => {
+        let colorClass = d.val >= 7 ? 'good' : d.val >= 4 ? 'warn' : 'bad';
+        return `
+          <div class="rubric-item">
+            <div class="rubric-key">
+              <span>${d.name}</span>
+              <strong>${d.val}/10</strong>
+            </div>
+            <div class="rubric-bar">
+              <div class="rubric-bar-fill ${colorClass}" style="width: ${d.val * 10}%;"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      return `
+        <div class="rubric-grid">${items}</div>
+        <div class="score-banner">
+          <div>
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Overall MEDDPICC Score</div>
+            <div style="font-size: 12px; color: #71717a;">Stage 3 Threshold: 50 / Stage 4: 70</div>
+          </div>
+          <div class="score-val" style="color: ${scores.overall >= 70 ? 'var(--success)' : scores.overall >= 50 ? 'var(--warning)' : 'var(--danger)'};">
+            ${scores.overall}<span style="font-size: 16px; color: var(--text-muted);">/100</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // Common Stage Action Panel
+    function getActionStageHtml(sc, scores) {
+      if (currentState === "READY_TO_ASSESS") {
+        return `
+          <div class="card" style="text-align: center; padding: 48px 24px;">
+            <div style="width: 56px; height: 56px; border-radius: 28px; background: rgba(0,112,243,0.15); color: #0070f3; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+              <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </div>
+            <h3 style="font-size: 18px; margin-bottom: 8px;">Run Technical & Commercial Qualification</h3>
+            <p style="color: var(--text-muted); font-size: 13px; max-width: 480px; margin: 0 auto 24px;">
+              Trigger Jev System 1 fast MEDDPICC rubric scoring and System 2 competitive battlecard analysis across the Opportunity notes.
+            </p>
+            <button class="btn btn-primary" style="font-size: 14px; padding: 10px 24px;" onclick="setState('ASSESSING')">
+              Start Assessment
+            </button>
+          </div>
+        `;
+      }
+
+      if (currentState === "ASSESSING") {
+        return `
+          <div class="card" style="text-align: center; padding: 48px 24px;">
+            <div style="display: inline-block; width: 40px; height: 40px; border: 3px solid #27272a; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+            <h3 style="font-size: 18px; margin-bottom: 8px;">Analyzing Opportunity Context...</h3>
+            <p style="color: var(--text-muted); font-size: 13px; max-width: 440px; margin: 0 auto;">
+              System 1: Calculating 8-dimension MEDDPICC rubric (Jev)...<br>
+              System 2: Identifying qualification gaps & formulating questions...
+            </p>
+            <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+            <div style="margin-top: 24px;">
+              <button class="btn" onclick="setState('PENDING_FEEDBACK')">Advance to Form Ready</button>
+            </div>
+          </div>
+        `;
+      }
+
+      if (currentState === "PENDING_FEEDBACK") {
+        return `
+          <div class="paused-banner">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span class="zero-cost-badge">Agent Paused: Zero Cost</span>
+                <strong style="font-size: 13px; color: #fbbf24;">Awaiting Solutions Architect Input</strong>
+              </div>
+              <div style="font-size: 12px; color: #d4d4d8;">
+                In-memory Eve session preserved. Compute paused at 0 tokens/sec. Answer the dynamic qualification questions below to resume.
+              </div>
+            </div>
+            <div style="font-size: 11px; font-family: var(--font-mono); color: #a1a1aa; text-align: right;">
+              Tokens: 1,842<br>Estimated Cost: $0.0036
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">
+              <span>Dynamic Qualification Form (Vercel JSON Render)</span>
+              <span class="pill pill-blue">3 Gaps Identified</span>
+            </div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+              System 2 detected gaps in <strong>Economic Buyer</strong>, <strong>Paper Process</strong>, and <strong>Competitive Counter-Positioning</strong>.
+            </div>
+
+            <div class="form-container">
+              <div class="form-group">
+                <label class="form-label">1. Economic Buyer Verification (Gap in EB score: 3/10)</label>
+                <div class="form-help">Does Marcus Vance (VP Eng) hold unilateral budget signoff, or is CTO approval required?</div>
+                <div class="form-radio-group">
+                  <label class="radio-option">
+                    <input type="radio" name="eb_auth" value="unilateral" checked>
+                    Marcus Vance has verified signoff authority up to $250k.
+                  </label>
+                  <label class="radio-option">
+                    <input type="radio" name="eb_auth" value="cto_required">
+                    CTO (Evelyn Reed) must co-sign any spend exceeding $100k.
+                  </label>
+                  <label class="radio-option">
+                    <input type="radio" name="eb_auth" value="unknown">
+                    Unverified / Still in discovery.
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">2. Competitive Counter-Positioning: Netlify Caching & ISR</label>
+                <div class="form-help">Customer is evaluating Netlify's 30% discount. Have you presented Vercel's ISR & Edge Middleware benchmark?</div>
+                <textarea class="form-textarea" rows="2" placeholder="e.g. Shared Vercel ISR demo with Marcus Vance. Showed 85% cache hit ratio and sub-50ms TTFB vs Netlify timeouts.">Shared Vercel ISR benchmark with Marcus Vance. Confirmed 90% cache hit ratio solves their flash sale timeout pain. Marcus committed to Vercel if technical validation passes.</textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">3. Target Technical Validation Milestone</label>
+                <input type="text" class="form-input" value="Complete 2-week POC on Next.js 15 App Router migration by Oct 15th.">
+              </div>
+
+              <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: var(--text-muted);">Responses will be appended to SA Notes and trigger Jev delta re-scoring.</span>
+                <button class="btn btn-success" onclick="setState('EVALUATING')">
+                  Submit Feedback & Re-score
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (currentState === "EVALUATING") {
+        return `
+          <div class="card" style="text-align: center; padding: 48px 24px;">
+            <div style="display: inline-block; width: 40px; height: 40px; border: 3px solid #27272a; border-top-color: var(--success); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+            <h3 style="font-size: 18px; margin-bottom: 8px;">Ingesting Feedback & Calculating Score Delta...</h3>
+            <p style="color: var(--text-muted); font-size: 13px; max-width: 440px; margin: 0 auto;">
+              Updating SA notes $\rightarrow$ Jev System 1 re-scoring $\rightarrow$ Synthesizing final Suggested Next Steps $\rightarrow$ Writing to CRM...
+            </p>
+            <div style="margin-top: 24px;">
+              <button class="btn btn-primary" onclick="setState('COMPLETED')">Complete Writeback</button>
+            </div>
+          </div>
+        `;
+      }
+
+      if (currentState === "COMPLETED") {
+        return `
+          <div class="writeback-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="pill pill-green" style="font-size: 11px;">CRM WRITEBACK COMPLETE</span>
+                <span style="font-size: 12px; color: #93c5fd;">Opportunity Updated in Postgres/Neon</span>
+              </div>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: #93c5fd;">Field: suggested_next_steps</span>
+            </div>
+
+            <div class="writeback-content">
+              Stage 3 Qualified: Schedule 45-min architecture review with VP Eng Marcus Vance by Oct 15 to validate ISR cache invalidation rules; counter Netlify discount with enterprise SLA & Turborepo build speed benchmarks.
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="font-size: 12px; color: #93c5fd;">
+                Stage Gate 2 $\rightarrow$ 3 Passed: Score improved from <strong>52/100</strong> to <strong style="color: #34d399;">78/100</strong>.
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn" style="font-size: 12px; padding: 6px 12px;" onclick="alert('Copied suggested next steps to clipboard!')">Copy to Clipboard</button>
+                <button class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;" onclick="setState('READY_TO_ASSESS')">Re-evaluate Deal</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-title">
+              <span>Updated SA Notes (Appended)</span>
+              <span style="font-size: 11px; color: var(--text-muted);">Timestamp: Just now</span>
+            </div>
+            <div class="notes-box" style="max-height: 120px;">${sc.saNotes}
+[SA Qualification Update]: Verified Marcus Vance holds budget authority up to $250k. Shared Vercel ISR benchmark resolving flash-sale timeout concern vs Netlify. POC milestone set for Oct 15.</div>
+          </div>
+        `;
+      }
+    }
+
+    // --- Variant A: Two-Column Split Workbench ---
+    function renderVariantA(sc, scores) {
+      return `
+        <div class="grid-workbench">
+          <!-- Left Column: Context & Real-Time Rubric -->
+          <div>
+            <div class="card">
+              <div class="card-title">
+                <span>Account Executive Notes</span>
+                <span class="pill pill-blue">Raw CRM Source</span>
+              </div>
+              <div class="notes-box">${sc.aeNotes}</div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>Solutions Architect Notes</span>
+                <span class="pill pill-blue">Field Input</span>
+              </div>
+              <div class="notes-box">${sc.saNotes}</div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>MEDDPICC Qualification Rubric</span>
+                <span class="pill pill-purple">Jev System 1</span>
+              </div>
+              ${getRubricHtml(scores)}
+            </div>
+          </div>
+
+          <!-- Right Column: Interactive Stage & Controls -->
+          <div>
+            ${getActionStageHtml(sc, scores)}
+          </div>
+        </div>
+      `;
+    }
+
+    // --- Variant B: Top-Down Stepper Pipeline ---
+    function renderVariantB(sc, scores) {
+      const stepIdx = {
+        'READY_TO_ASSESS': 1,
+        'ASSESSING': 2,
+        'PENDING_FEEDBACK': 3,
+        'EVALUATING': 4,
+        'COMPLETED': 5
+      }[currentState] || 1;
+
+      return `
+        <div class="stepper-header">
+          <div class="step-item ${stepIdx >= 1 ? 'active' : ''}">
+            <div class="step-num">1</div>
+            <span>CRM Ingestion</span>
+          </div>
+          <span style="color: #3f3f46;">&rarr;</span>
+          <div class="step-item ${stepIdx >= 2 ? 'active' : ''}">
+            <div class="step-num">2</div>
+            <span>Jev System 1 Scoring</span>
+          </div>
+          <span style="color: #3f3f46;">&rarr;</span>
+          <div class="step-item ${stepIdx >= 3 ? 'active' : ''}">
+            <div class="step-num">3</div>
+            <span>SA Dynamic Form (Paused)</span>
+          </div>
+          <span style="color: #3f3f46;">&rarr;</span>
+          <div class="step-item ${stepIdx >= 4 ? 'active' : ''}">
+            <div class="step-num">4</div>
+            <span>Delta Rescore</span>
+          </div>
+          <span style="color: #3f3f46;">&rarr;</span>
+          <div class="step-item ${stepIdx >= 5 ? 'active' : ''}">
+            <div class="step-num">5</div>
+            <span>CRM Writeback</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 380px; gap: 24px;">
+          <div>
+            ${getActionStageHtml(sc, scores)}
+          </div>
+          <div>
+            <div class="card">
+              <div class="card-title">Score Breakdown</div>
+              ${getRubricHtml(scores)}
+            </div>
+            <div class="card">
+              <div class="card-title">Consolidated Notes</div>
+              <div class="notes-box" style="max-height: 180px;">${sc.aeNotes}\n\n-- SA Notes --\n${sc.saNotes}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- Variant C: CRM Drawer Overlay ---
+    function renderVariantC(sc, scores) {
+      return `
+        <div class="crm-mock">
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #3f3f46; padding-bottom: 14px; margin-bottom: 20px;">
+            <div>
+              <span style="font-size: 11px; color: #a1a1aa; text-transform: uppercase;">Simulated Salesforce Opportunity</span>
+              <h2 style="font-size: 18px; font-weight: 700;">${sc.name}</h2>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <span style="font-size: 13px; color: #a1a1aa;">Stage: <strong style="color: #fff;">${sc.stage}</strong></span>
+              <button class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;" onclick="alert('Drawer already open on the right')">Eve Agent Panel</button>
+            </div>
+          </div>
+
+          <div style="max-width: 60%; font-size: 13px; color: #a1a1aa;">
+            <p><strong>Opportunity Owner:</strong> Sarah Jenkins</p>
+            <p style="margin-top: 8px;"><strong>Forecast Category:</strong> Pipeline ($180,000)</p>
+            <p style="margin-top: 8px;"><strong>AE Description:</strong> ${sc.aeNotes}</p>
+            <p style="margin-top: 16px;"><strong>Current Next Steps:</strong> ${sc.stage === "Stage 2: Discovery" ? "Follow up with technical team" : "Conduct PoC"}</p>
+          </div>
+
+          <!-- Slide-out Drawer Panel -->
+          <div class="drawer-overlay">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #27272a; padding-bottom: 12px;">
+              <div>
+                <strong style="font-size: 14px;">Eve Deal Qualification Copilot</strong>
+                <div style="font-size: 11px; color: var(--text-muted);">Automated MEDDPICC Assistant</div>
+              </div>
+              <span class="pill pill-blue">Active</span>
+            </div>
+            ${getActionStageHtml(sc, scores)}
+            <div style="margin-top: 20px;">
+              <div class="card-title">MEDDPICC Live Gauge</div>
+              ${getRubricHtml(scores)}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Keyboard navigation for variants
+    window.addEventListener("keydown", (e) => {
+      if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") return;
+      if (e.key === "ArrowLeft") cycleVariant(-1);
+      if (e.key === "ArrowRight") cycleVariant(1);
+    });
+
+    // Initialize from URL param
+    const initParams = new URLSearchParams(window.location.search);
+    if (initParams.has("variant")) {
+      const v = initParams.get("variant").toUpperCase();
+      if (variants.includes(v)) currentVariant = v;
+    }
+    setVariant(currentVariant);
+    updateHeader();
+  </script>
+</body>
+</html>
