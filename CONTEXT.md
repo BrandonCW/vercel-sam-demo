@@ -51,3 +51,15 @@ _Avoid_: Reasoning engine, slow LLM, deep model
 **JSON Render**:
 The schema-driven dynamic UI rendering mechanism in Next.js that converts structured JSON component specifications into native interactive React form components.
 _Avoid_: Dynamic form generator, declarative UI, JSON schema form
+
+**Writeback**:
+The atomic persistence operation that updates the Opportunity record in the simulated CRM with the agent's finalized Suggested Next Steps and qualification metrics.
+_Avoid_: Sync back, database push, CRM export
+
+**Delta Re-scoring**:
+The rapid secondary evaluation executed by System 1 after an SA submits responses to dynamic qualification questions, measuring rubric score improvements and stage gate advancement.
+_Avoid_: Re-evaluation, secondary grading, score update
+
+**Assessment Session**:
+The stateful, discrete evaluation lifecycle bounded between an initial assessment trigger and final CRM write-back, which pauses at zero compute cost while awaiting SA feedback.
+_Avoid_: Evaluation run, qualification job, agent thread
