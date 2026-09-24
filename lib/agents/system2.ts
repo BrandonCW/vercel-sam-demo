@@ -49,6 +49,8 @@ export interface System2AnalysisResult {
   phase2Competitive: CompetitiveCounterPoint[];
   phase3Form: JsonRenderForm;
   summary: string;
+  executionMode: 'live_model' | 'deterministic_fallback';
+  fallbackReason?: string;
 }
 
 const DIMENSION_TARGET_KEYS: DimensionTarget[] = [
@@ -601,5 +603,7 @@ export function executeSystem2Pipeline(input: System2Input): System2AnalysisResu
     phase2Competitive,
     phase3Form,
     summary,
+    executionMode: 'deterministic_fallback',
+    fallbackReason: 'High-fidelity deterministic pipeline (offline / fallback mode)',
   };
 }

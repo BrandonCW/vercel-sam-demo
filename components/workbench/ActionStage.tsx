@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Copy,
   Check,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ActionStageProps {
@@ -27,6 +28,8 @@ interface ActionStageProps {
   selectedModel: System2ModelOption;
   sessionState: AssessmentSessionState;
   dynamicForm: JsonRenderForm | null;
+  executionMode?: 'live_model' | 'deterministic_fallback' | null;
+  fallbackReason?: string | null;
   onStartAssessment?: () => void;
   isAssessing?: boolean;
   onSubmitFeedback?: (
@@ -41,6 +44,8 @@ export function ActionStage({
   selectedModel,
   sessionState,
   dynamicForm,
+  executionMode,
+  fallbackReason,
   onStartAssessment,
   isAssessing = false,
   onSubmitFeedback,
@@ -253,6 +258,44 @@ export function ActionStage({
                 </button>
               </div>
             </div>
+
+            {/* Execution Pathway Indicator (Clear distinction between Live Model vs Deterministic Fallback) */}
+            {executionMode === 'deterministic_fallback' ? (
+              <div className="mt-4 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 flex-shrink-0 mt-0.5">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div className="text-xs space-y-0.5">
+                  <div className="font-bold text-amber-300 flex items-center gap-2">
+                    <span>Deterministic Scenario Fallback Pathway</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      OFFLINE / FALLBACK
+                    </span>
+                  </div>
+                  <p className="text-zinc-300 text-[11px] leading-relaxed">
+                    {fallbackReason ||
+                      `No live API key detected for ${selectedModel}. System 2 executed the high-fidelity deterministic scenario pipeline.`}
+                  </p>
+                </div>
+              </div>
+            ) : executionMode === 'live_model' ? (
+              <div className="mt-4 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-3">
+                <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 flex-shrink-0 mt-0.5">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="text-xs space-y-0.5">
+                  <div className="font-bold text-emerald-300 flex items-center gap-2">
+                    <span>Live AI Model Execution Active</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      LIVE MODEL
+                    </span>
+                  </div>
+                  <p className="text-zinc-300 text-[11px] leading-relaxed">
+                    Live inference performed by <strong>{selectedModel}</strong>. Dynamic discovery questions and battlecards were synthesized in real time.
+                  </p>
+                </div>
+              </div>
+            ) : null}
 
             {/* Prominent Amber Zero-Cost Paused Banner */}
             <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-amber-950/20 border-2 border-amber-500/40 shadow-lg shadow-amber-950/30 flex items-start gap-3.5">

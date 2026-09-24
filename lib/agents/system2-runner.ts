@@ -254,6 +254,7 @@ async function callLiveModel(
       phase2Competitive: parsed.phase2Competitive || [],
       phase3Form: parsed.phase3Form,
       summary: parsed.summary || `Live model ${model} completed System 2 deep reasoning.`,
+      executionMode: 'live_model',
     };
   } finally {
     clearTimeout(timer);
@@ -284,16 +285,23 @@ export async function runSystem2Analysis(
     try {
       const liveResult = await callLiveModel(effectiveInput, model, options?.timeoutMs);
       return liveResult;
-    } catch (err) {
+    } catch (err: any) {
       console.warn(
         `Live call for model ${model} failed, falling back to deterministic pipeline:`,
         err
       );
+      const fallbackResult = executeSystem2Pipeline(effectiveInput);
+      fallbackResult.executionMode = 'deterministic_fallback';
+      fallbackResult.fallbackReason = `Live ${model} provider call failed (${err?.message || 'error'}); fell back to deterministic pipeline`;
+      JsonRenderFormSchema.parse(fallbackResult.phase3Form);
+      return fallbackResult;
     }
   }
 
   // High-fidelity, deterministic scenario-aware fallback execution
   const result = executeSystem2Pipeline(effectiveInput);
+  result.executionMode = 'deterministic_fallback';
+  result.fallbackReason = `No credentials found for ${model} in environment; fell back to deterministic pipeline`;
 
   // Validate the resulting form strictly
   JsonRenderFormSchema.parse(result.phase3Form);
