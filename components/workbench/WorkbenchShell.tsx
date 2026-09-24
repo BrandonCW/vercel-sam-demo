@@ -76,6 +76,12 @@ export function WorkbenchShell({
     }, 1200);
   }
 
+  const runtimeStatus = isAssessing
+    ? 'ASSESSING'
+    : opportunity.suggested_next_steps
+    ? 'COMPLETED'
+    : 'READY_TO_ASSESS';
+
   return (
     <div className="min-h-screen flex flex-col bg-[#09090b] text-[#f4f4f5]">
       {/* Top Navigation Bar */}
@@ -88,7 +94,7 @@ export function WorkbenchShell({
         onReset={handleReset}
         isResetting={isResetting}
         isPostgres={isPostgres}
-        runtimeStatus={opportunity.qualification_status.toUpperCase()}
+        runtimeStatus={runtimeStatus}
       />
 
       {/* Main Split Workbench Container */}

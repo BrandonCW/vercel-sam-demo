@@ -70,6 +70,8 @@ export function TopNavBar({
           <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-xs text-zinc-400">
             <User className="w-3.5 h-3.5 text-zinc-500" />
             <span>AE: <strong className="text-zinc-200">{opportunity.ae_name}</strong></span>
+            <span className="text-zinc-600">|</span>
+            <span>SA: <strong className="text-zinc-200">{opportunity.sa_name || 'Unassigned'}</strong></span>
           </div>
 
           {primaryCompetitor && (

@@ -102,7 +102,7 @@ export function ActionStage({
                 </span>
               </h3>
               <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
-                Trigger autonomous ingestion of AE Notes &amp; SA discovery logs. System 1 will compute baseline rubric scores and System 2 will construct interactive discovery questions.
+                Trigger autonomous ingestion of AE Notes &amp; SA Notes. System 1 will compute baseline rubric scores and System 2 will construct interactive discovery questions.
               </p>
             </div>
 
@@ -114,7 +114,7 @@ export function ActionStage({
               {isAssessing ? (
                 <>
                   <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Evaluating Deal...</span>
+                  <span>Evaluating Opportunity...</span>
                 </>
               ) : (
                 <>

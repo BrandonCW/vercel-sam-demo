@@ -74,12 +74,5 @@ export async function verifySessionToken(
 }
 
 export function shouldBypassAuth(): boolean {
-  if (process.env.NODE_ENV === 'development') {
-    return true;
-  }
-  const appPassword = getAppPassword();
-  if (!appPassword || appPassword.trim() === '') {
-    return true;
-  }
-  return false;
+  return process.env.NODE_ENV === 'development';
 }

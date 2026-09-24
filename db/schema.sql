@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS opportunities (
     amount NUMERIC(12, 2) DEFAULT 0.00,                 -- Annual Contract Value (ACV)
     close_date DATE NOT NULL,                           -- Projected close date
     ae_name TEXT NOT NULL,                              -- Assigned Account Executive
+    sa_name TEXT NOT NULL DEFAULT 'Unassigned',         -- Assigned Solutions Architect
     ae_notes TEXT NOT NULL,                             -- AE qualitative field notes
     sa_notes TEXT DEFAULT '',                           -- SA technical discovery notes
     suggested_next_steps TEXT DEFAULT NULL,             -- Designated writeback field from Eve Agent

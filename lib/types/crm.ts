@@ -33,6 +33,7 @@ export interface Opportunity {
   amount: number;
   close_date: string;
   ae_name: string;
+  sa_name: string;
   ae_notes: string;
   sa_notes: string;
   suggested_next_steps: string | null;

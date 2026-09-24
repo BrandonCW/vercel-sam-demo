@@ -75,7 +75,7 @@ describe('Authentication Gate & Web Crypto Session Verification', () => {
 
     (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
     delete process.env.APP_PASSWORD;
-    expect(shouldBypassAuth()).toBe(true);
+    expect(shouldBypassAuth()).toBe(false);
 
     (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
     process.env.APP_PASSWORD = 'super-secret-password';

@@ -98,6 +98,7 @@ export const SCENARIO_FIXTURES: Record<string, DealScenario> = {
       amount: 180000.0,
       close_date: '2026-12-15',
       ae_name: 'Sarah Jenkins',
+      sa_name: 'David Kross',
       ae_notes:
         'Met with VP of E-Commerce. Netlify contract expires in 90 days. Budget allocated ($180k ACV). Customer is frustrated with build times and lack of ISR support on Next.js 14. Competitor Netlify is offering a 30% discount to renew. Technical decision rests with Head of Platform.',
       sa_notes:
@@ -124,6 +125,7 @@ export const SCENARIO_FIXTURES: Record<string, DealScenario> = {
       amount: 240000.0,
       close_date: '2026-11-30',
       ae_name: 'Marcus Vance',
+      sa_name: 'Sarah Miller',
       ae_notes:
         "Lead came inbound from CTO's tweet. AWS account team is pushing Amplify heavily with credits. Need SOC2 Type II compliance, VPC peering or secure backend integration, and SSO.",
       sa_notes:
@@ -150,6 +152,7 @@ export const SCENARIO_FIXTURES: Record<string, DealScenario> = {
       amount: 90000.0,
       close_date: '2026-10-31',
       ae_name: 'Elena Rostova',
+      sa_name: 'Liam Chen',
       ae_notes:
         'Need to launch before Q4 peak freeze (Nov 1). CEO and CMO sponsor. $90k ACV. Decision maker is Head of Engineering.',
       sa_notes:

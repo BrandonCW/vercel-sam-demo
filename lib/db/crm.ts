@@ -78,6 +78,7 @@ async function ensurePostgresTables() {
         amount NUMERIC(12, 2) DEFAULT 0.00,
         close_date DATE NOT NULL,
         ae_name TEXT NOT NULL,
+        sa_name TEXT NOT NULL DEFAULT 'Unassigned',
         ae_notes TEXT NOT NULL,
         sa_notes TEXT DEFAULT '',
         suggested_next_steps TEXT DEFAULT NULL,
@@ -124,11 +125,11 @@ async function ensurePostgresTables() {
         await sql`
           INSERT INTO opportunities (
             id, name, account_name, stage_name, amount, close_date,
-            ae_name, ae_notes, sa_notes, suggested_next_steps,
+            ae_name, sa_name, ae_notes, sa_notes, suggested_next_steps,
             qualification_status, meddpicc_score, meddpicc_breakdown, competitive_flags
           ) VALUES (
             ${d.id}, ${d.name}, ${d.account_name}, ${d.stage_name}, ${d.amount}, ${d.close_date},
-            ${d.ae_name}, ${d.ae_notes}, ${d.sa_notes}, ${d.suggested_next_steps},
+            ${d.ae_name}, ${d.sa_name}, ${d.ae_notes}, ${d.sa_notes}, ${d.suggested_next_steps},
             ${d.qualification_status}, ${d.meddpicc_score}, ${JSON.stringify(d.meddpicc_breakdown)}::jsonb,
             ${d.competitive_flags}
           ) ON CONFLICT (id) DO NOTHING;
@@ -212,6 +213,7 @@ export async function updateOpportunity(
           amount = ${merged.amount},
           close_date = ${merged.close_date},
           ae_name = ${merged.ae_name},
+          sa_name = ${merged.sa_name},
           ae_notes = ${merged.ae_notes},
           sa_notes = ${merged.sa_notes},
           suggested_next_steps = ${merged.suggested_next_steps},
@@ -261,12 +263,12 @@ export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity
       await sql`
         INSERT INTO opportunities (
           id, name, account_name, stage_name, amount, close_date,
-          ae_name, ae_notes, sa_notes, suggested_next_steps,
+          ae_name, sa_name, ae_notes, sa_notes, suggested_next_steps,
           qualification_status, meddpicc_score, meddpicc_breakdown, competitive_flags,
           created_at, updated_at
         ) VALUES (
           ${d.id}, ${d.name}, ${d.account_name}, ${d.stage_name}, ${d.amount}, ${d.close_date},
-          ${d.ae_name}, ${d.ae_notes}, ${d.sa_notes}, ${null},
+          ${d.ae_name}, ${d.sa_name}, ${d.ae_notes}, ${d.sa_notes}, ${null},
           'unqualified', ${null}, ${JSON.stringify(d.meddpicc_breakdown)}::jsonb, ${d.competitive_flags},
           ${now}, ${now}
         )
@@ -277,6 +279,7 @@ export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity
           amount = EXCLUDED.amount,
           close_date = EXCLUDED.close_date,
           ae_name = EXCLUDED.ae_name,
+          sa_name = EXCLUDED.sa_name,
           ae_notes = EXCLUDED.ae_notes,
           sa_notes = EXCLUDED.sa_notes,
           suggested_next_steps = NULL,
@@ -404,6 +407,7 @@ function mapRowToOpportunity(row: any): Opportunity {
     amount: Number(row.amount),
     close_date: typeof row.close_date === 'string' ? row.close_date : new Date(row.close_date).toISOString().slice(0, 10),
     ae_name: String(row.ae_name),
+    sa_name: String(row.sa_name ?? 'Unassigned'),
     ae_notes: String(row.ae_notes),
     sa_notes: String(row.sa_notes ?? ''),
     suggested_next_steps: row.suggested_next_steps ? String(row.suggested_next_steps) : null,
