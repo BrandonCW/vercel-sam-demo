@@ -23,6 +23,7 @@ A complete MVP build specification (`.scratch/deal-qualification/spec.md`) for t
 - [Eve Agent Architecture & Sub-agent Decomposition](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/issues/02-eve-agent-structure.md): Structured Eve with DealQualificationAgent orchestrator, phased System 2 analysis tool (gap analysis, competitive playbook, form generation), CRM tools, and QualificationAssessor/PlaybookGenerator sub-agents.
 - [Jev System 1 Fast MEDDPICC & Competitive Scoring](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/issues/03-system1-jev-meddpicc-scoring.md): Defined Jev System 1 rubric evaluation with 8-dimension weighted formula, competitive extraction, stage gate readiness thresholds, and Zod schema.
 - [Authentication Gate & Vercel Deployment Pipeline](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/issues/06-auth-and-vercel-deployment.md): Defined stateless HMAC-SHA256 session cookie middleware with dev bypass, and two-tier Vercel deployment pipeline (`mvp` for preview, `main` for production).
+- [System 2 Deep Analysis, Competitive Playbook & Dynamic JSON Render UI](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/issues/04-system2-deep-analysis-and-json-render.md): Defined 3-phase System 2 reasoning (gap analysis, competitive battlecard synthesis, form generation) and declarative Vercel JSON Render component schema for Next.js.
 
 ## Not yet specified
 

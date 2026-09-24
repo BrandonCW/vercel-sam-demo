@@ -43,3 +43,11 @@ _Avoid_: Heuristic model, classifier, fast LLM
 **Stage Gate**:
 The formal criteria threshold required before an Opportunity can advance from its current Deal Stage to the next milestone in the sales process.
 _Avoid_: Stage exit criteria, deal milestone gate
+
+**System 2**:
+The deep-reasoning LLM analysis layer that synthesizes qualification gaps, constructs targeted competitive playbooks, and formulates interactive questions for the Solutions Architect.
+_Avoid_: Reasoning engine, slow LLM, deep model
+
+**JSON Render**:
+The schema-driven dynamic UI rendering mechanism in Next.js that converts structured JSON component specifications into native interactive React form components.
+_Avoid_: Dynamic form generator, declarative UI, JSON schema form
