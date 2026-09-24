@@ -5,16 +5,22 @@ import { requireOpportunity } from "@/lib/db/crm";
 import { loadLatestJevResult, recordSystem2Analysis } from "@/lib/db/assessments";
 import { resolveAgentModel, System2ModelSchema } from "@/lib/models";
 import { assertAiGatewayConfigured } from "@/lib/env";
-import { System2AnalysisResultSchema, System2ModelOutputSchema } from "@/lib/agents/system2";
+import { System2ModelOutputSchema, toSystem2AnalysisResult } from "@/lib/agents/system2";
 
 const SYSTEM_PROMPT = `You are the Vercel Enterprise System 2 Deal Qualification Reasoning Engine.
 System 1 (the Jev evaluation model) has already scored the opportunity; it returns scores only, no text.
 Reason over the opportunity notes and the System 1 result in three phases:
-1. Gap Synthesis: for unaddressed or partial MEDDPICC dimensions and Stage Gate blockers, separate verified facts from AE assumptions.
-2. Competitive Playbook: for detected competitors (Netlify, AWS Amplify, Cloudflare Pages, Akamai/Fastly, DIY Kubernetes / AWS ECS), give counter-positioning using Vercel enterprise differentiators and a trap question.
-3. Form Generation: 3 to 5 discovery questions for the Solutions Architect, grouped into sections (e.g. Stage Gate Blockers, Competitive Validation, Architecture & Metrics). Field types: text, textarea, select, radio, checkbox_group.
+1. Gap Synthesis (phase1Gaps): one entry per unaddressed or partial MEDDPICC dimension and per Stage Gate blocker. Separate verified facts from AE assumptions.
+2. Competitive Playbook (phase2Competitive): one entry per competitor in System 1's competitiveFlags (Netlify, AWS Amplify, Cloudflare Pages, Akamai/Fastly, DIY Kubernetes / AWS ECS), with counter-positioning from Vercel enterprise differentiators and one trap question.
+3. Discovery Form (phase3Form): 3 to 5 questions in total for the Solutions Architect, grouped into 1 to 3 sections (e.g. Stage Gate Blockers, Competitive Validation, Architecture & Metrics). Stage Gate blockers come first.
 
-Also return, for every one of the 8 dimensions, dimensionFindings: "citations" are exact sentences copied verbatim from the AE or SA notes that support the score (empty if none), and "gaps" are short callouts of what is missing.
+Form rules (the form is rendered as-is):
+- Every property in the schema is required. Use null for a description, placeholder, helpCallout, calloutType or calloutText that does not apply; never omit a key.
+- text and textarea fields have options: [].
+- select, radio and checkbox_group fields have 2 to 5 options. Every option has both a label and a unique snake_case value. Do not repeat an option.
+- Field and section ids are unique snake_case; a field's name equals its id.
+
+dimensionFindings: for every one of the 8 dimensions, "citations" are exact sentences copied verbatim from the AE or SA notes that support the score ([] if none), and "gaps" are short callouts of what is missing ([] if none).
 Set fatalBlocker only for a confirmed, unresolvable constraint that rules out Vercel; otherwise null.
 valueFocus, primaryRisk and nextMilestone are short plain phrases without the "|" character.`;
 
@@ -56,17 +62,16 @@ export default defineTool({
       model: gateway(model),
       system: SYSTEM_PROMPT,
       prompt,
-      output: Output.object({ schema: System2ModelOutputSchema }),
+      output: Output.object({
+        schema: System2ModelOutputSchema,
+        name: "system2_analysis",
+        description: "System 2 gap synthesis, competitive playbook, SA discovery form and per-dimension citations.",
+      }),
       abortSignal,
     });
     if (!output) throw new Error(`System 2 model ${model} returned no structured output`);
 
-    const system2Result = System2AnalysisResultSchema.parse({
-      ...output,
-      phase3Form: { ...output.phase3Form, opportunityId: opportunity.id },
-      opportunityId: opportunity.id,
-      modelUsed: model,
-    });
+    const system2Result = toSystem2AnalysisResult(output, { opportunityId: opportunity.id, model });
     await recordSystem2Analysis(opportunity, jevResult, system2Result);
     return { system2Result };
   },

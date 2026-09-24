@@ -7,7 +7,7 @@ import {
   requireFreshInteractions,
   snapshotInteractions,
 } from '@/lib/db/assessments';
-import { assertAiGatewayConfigured } from '@/lib/env';
+import { assertAiGatewayConfigured, getEveAgentOrigin } from '@/lib/env';
 import { runAgentTurn } from '@/lib/eve-session';
 import { SaFeedbackPayloadSchema, formatSaDiscoveryNotes } from '@/lib/agents/feedback-schema';
 
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
 
     // Fail fast on missing config and on feedback with no System 2 analysis to answer.
     assertAiGatewayConfigured();
+    const origin = getEveAgentOrigin();
     await loadLatestSystem2Result(opportunity.id);
     const previousScore = opportunity.meddpicc_score ?? 0;
 
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
     // 2. Delta re-scoring (qualification_assessor) and the code-decided writeback (crm_update_next_steps) run in eve.
     const before = await snapshotInteractions(opportunity.id);
     await runAgentTurn({
-      origin: request.nextUrl.origin,
+      origin,
       cookie: request.headers.get('cookie'),
       signal: request.signal,
       message:

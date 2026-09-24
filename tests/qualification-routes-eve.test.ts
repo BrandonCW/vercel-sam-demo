@@ -25,6 +25,7 @@ function post(path: string, body: unknown): NextRequest {
 
 describe('/api/qualification/* reach the agents through eve', { timeout: 30_000 }, () => {
   beforeEach(async () => {
+    process.env.EVE_AGENT_ORIGIN = 'https://deal-qual.example.com';
     runAgentTurn.mockReset();
     await resetCrmDatabase('scenario_acme_netlify');
   });
@@ -42,7 +43,8 @@ describe('/api/qualification/* reach the agents through eve', { timeout: 30_000 
     expect(res.status).toBe(200);
     expect(runAgentTurn).toHaveBeenCalledTimes(1);
     const turn = runAgentTurn.mock.calls[0][0];
-    expect(turn).toMatchObject({ origin: 'http://localhost:3000', cookie: 'deal_qual_session=tok' });
+    // The configured origin, never the request's Host header (http://localhost:3000 here).
+    expect(turn).toMatchObject({ origin: 'https://deal-qual.example.com', cookie: 'deal_qual_session=tok' });
     expect(turn.message).toContain(ACME);
     expect(turn.message).toContain('openai/gpt-5.5');
     expect(data).toMatchObject({

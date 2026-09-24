@@ -31,6 +31,19 @@ const AuthSchema = z.object({
   AUTH_SECRET: nonEmpty('AUTH_SECRET', 'Required outside local development (openssl rand -base64 32).'),
 });
 
+const EveAgentSchema = z.object({
+  EVE_AGENT_ORIGIN: nonEmpty(
+    'EVE_AGENT_ORIGIN',
+    'Set it to the origin serving /eve/v1/* (e.g. http://localhost:3000 locally, the production URL on Vercel).'
+  )
+    .url('EVE_AGENT_ORIGIN must be an absolute URL.')
+    .refine((raw) => {
+      if (!URL.canParse(raw)) return false;
+      const url = new URL(raw);
+      return /^https?:$/.test(url.protocol) && (url.pathname === '/' || url.pathname === '') && !url.search && !url.hash;
+    }, 'EVE_AGENT_ORIGIN must be a bare http(s) origin with no path, query or hash.'),
+});
+
 function parse<T extends z.ZodTypeAny>(schema: T): z.infer<T> {
   const result = schema.safeParse(process.env);
   if (!result.success) {
@@ -60,4 +73,12 @@ export function getPostgresUrl(): string {
 export function getAuthEnv(): { appPassword: string; authSecret: string } {
   const env = parse(AuthSchema);
   return { appPassword: env.APP_PASSWORD, authSecret: env.AUTH_SECRET };
+}
+
+/**
+ * Fixed origin the server-side eve client calls. Configured, never taken from
+ * the request's Host header, so the forwarded session cookie cannot be sent off-site.
+ */
+export function getEveAgentOrigin(): string {
+  return new URL(parse(EveAgentSchema).EVE_AGENT_ORIGIN).origin;
 }

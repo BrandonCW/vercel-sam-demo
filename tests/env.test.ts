@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getAiGatewayApiKey, getPostgresUrl, getAuthEnv } from '@/lib/env';
+import { getAiGatewayApiKey, getPostgresUrl, getAuthEnv, getEveAgentOrigin } from '@/lib/env';
 
-const KEYS = ['AI_GATEWAY_API_KEY', 'POSTGRES_URL', 'APP_PASSWORD', 'AUTH_SECRET', 'NODE_ENV'] as const;
+const KEYS = ['AI_GATEWAY_API_KEY', 'POSTGRES_URL', 'APP_PASSWORD', 'AUTH_SECRET', 'NODE_ENV', 'EVE_AGENT_ORIGIN'] as const;
 
 describe('Required environment configuration (lib/env)', () => {
   const saved: Record<string, string | undefined> = {};
@@ -15,6 +15,23 @@ describe('Required environment configuration (lib/env)', () => {
       if (saved[k] === undefined) delete (process.env as any)[k];
       else (process.env as any)[k] = saved[k];
     }
+  });
+
+  it('throws a descriptive error when EVE_AGENT_ORIGIN is unset', () => {
+    delete process.env.EVE_AGENT_ORIGIN;
+    expect(() => getEveAgentOrigin()).toThrow(/EVE_AGENT_ORIGIN/);
+  });
+
+  it('rejects an EVE_AGENT_ORIGIN that is not a bare http(s) origin', () => {
+    for (const bad of ['agent.example.com', 'ftp://agent.example.com', 'https://agent.example.com/eve/v1']) {
+      process.env.EVE_AGENT_ORIGIN = bad;
+      expect(() => getEveAgentOrigin()).toThrow(/EVE_AGENT_ORIGIN/);
+    }
+  });
+
+  it('returns the configured eve origin', () => {
+    process.env.EVE_AGENT_ORIGIN = 'https://deal-qual.example.com/';
+    expect(getEveAgentOrigin()).toBe('https://deal-qual.example.com');
   });
 
   it('throws a descriptive error when AI_GATEWAY_API_KEY is unset', () => {

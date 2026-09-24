@@ -6,7 +6,7 @@ import {
   requireFreshInteractions,
   snapshotInteractions,
 } from '@/lib/db/assessments';
-import { assertAiGatewayConfigured } from '@/lib/env';
+import { assertAiGatewayConfigured, getEveAgentOrigin } from '@/lib/env';
 import { resolveAgentModel, System2ModelSchema } from '@/lib/models';
 import { runAgentTurn } from '@/lib/eve-session';
 
@@ -38,11 +38,12 @@ export async function POST(request: NextRequest) {
       );
     }
     assertAiGatewayConfigured();
+    const origin = getEveAgentOrigin();
 
     // System 1 (qualification_assessor) and System 2 (playbook_generator) run inside the eve agent.
     const before = await snapshotInteractions(opportunity.id);
     await runAgentTurn({
-      origin: request.nextUrl.origin,
+      origin,
       cookie: request.headers.get('cookie'),
       signal: request.signal,
       message:

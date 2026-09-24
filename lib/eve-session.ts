@@ -30,7 +30,7 @@ const TURN_OUTCOME_JSON_SCHEMA = {
 };
 
 export interface AgentTurn {
-  /** Origin that serves `/eve/v1/*` (the incoming request's origin). */
+  /** Configured origin that serves `/eve/v1/*` (see getEveAgentOrigin). */
   origin: string;
   /** Incoming `cookie` header, forwarded for channel auth. */
   cookie: string | null;
