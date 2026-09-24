@@ -15,12 +15,17 @@ interface WorkbenchShellProps {
   initialOpportunity: Opportunity;
   initialScenarioId: string;
   isPostgres: boolean;
+  aiStatus?: {
+    hasAiGateway: boolean;
+    hasDirectKeys: boolean;
+  };
 }
 
 export function WorkbenchShell({
   initialOpportunity,
   initialScenarioId,
   isPostgres,
+  aiStatus,
 }: WorkbenchShellProps) {
   const [opportunity, setOpportunity] = useState<Opportunity>(initialOpportunity);
   const [scenarioId, setScenarioId] = useState<string>(initialScenarioId);
@@ -194,6 +199,7 @@ export function WorkbenchShell({
         isResetting={isResetting}
         isPostgres={isPostgres}
         runtimeStatus={runtimeStatus}
+        aiStatus={aiStatus}
       />
 
       {/* Main Split Workbench Container */}

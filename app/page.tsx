@@ -18,11 +18,24 @@ export default async function HomePage() {
     };
   }
 
+  const hasAiGateway = Boolean(process.env.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_TOKEN);
+  const hasDirectKeys = Boolean(
+    process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY
+  );
+
   return (
     <WorkbenchShell
       initialOpportunity={opportunity}
       initialScenarioId={DEFAULT_SCENARIO_ID}
       isPostgres={isPostgres}
+      aiStatus={{
+        hasAiGateway,
+        hasDirectKeys,
+      }}
     />
   );
 }

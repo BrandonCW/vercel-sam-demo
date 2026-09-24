@@ -29,6 +29,10 @@ interface TopNavBarProps {
   isResetting: boolean;
   isPostgres: boolean;
   runtimeStatus: string;
+  aiStatus?: {
+    hasAiGateway: boolean;
+    hasDirectKeys: boolean;
+  };
 }
 
 export function TopNavBar({
@@ -41,9 +45,13 @@ export function TopNavBar({
   isResetting,
   isPostgres,
   runtimeStatus,
+  aiStatus,
 }: TopNavBarProps) {
   // Competitor threat calculation
   const primaryCompetitor = opportunity.competitive_flags[0];
+
+  const hasGateway = aiStatus?.hasAiGateway ?? false;
+  const hasDirect = aiStatus?.hasDirectKeys ?? false;
 
   return (
     <header className="bg-[#121215] border-b border-[#27272a] sticky top-0 z-50 px-4 py-3 shadow-md">
@@ -164,6 +172,41 @@ export function TopNavBar({
           >
             <Database className="w-3 h-3" />
             <span>{isPostgres ? 'Neon PG' : 'In-Memory'}</span>
+          </div>
+
+          {/* AI Connection Pill */}
+          <div
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-mono ${
+              hasGateway
+                ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
+                : hasDirect
+                ? 'bg-blue-950/40 border-blue-800/60 text-blue-300'
+                : 'bg-amber-950/30 border-amber-800/50 text-amber-300'
+            }`}
+            title={
+              hasGateway
+                ? 'Vercel AI Gateway Connected (AI_GATEWAY_API_KEY detected)'
+                : hasDirect
+                ? 'Direct Provider API Key Detected'
+                : 'No AI API Key Detected in Environment (Running in Deterministic Fallback Mode)'
+            }
+          >
+            {hasGateway ? (
+              <>
+                <Sparkles className="w-3 h-3 text-emerald-400" />
+                <span>AI Gateway: Active</span>
+              </>
+            ) : hasDirect ? (
+              <>
+                <Cpu className="w-3 h-3 text-blue-400" />
+                <span>Direct AI: Active</span>
+              </>
+            ) : (
+              <>
+                <ShieldAlert className="w-3 h-3 text-amber-400" />
+                <span>AI: Offline Fallback</span>
+              </>
+            )}
           </div>
         </div>
       </div>
