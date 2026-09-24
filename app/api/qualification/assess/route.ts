@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     // Run deterministic System 1 (Jev) scoring
     const jevResult = scoreOpportunityWithJev({
-      dealId: opportunity.id,
+      opportunityId: opportunity.id,
       name: opportunity.name,
       accountName: opportunity.account_name,
       stageName: opportunity.stage_name,

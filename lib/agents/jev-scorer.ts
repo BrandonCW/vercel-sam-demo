@@ -65,7 +65,8 @@ function findMatchingSentences(sentences: string[], regex: RegExp): string[] {
  * Enterprise Competitive Scanner
  * Detects mentions of: Netlify, AWS Amplify, Cloudflare Pages, Akamai/Fastly, DIY Kubernetes / AWS ECS.
  */
-export function scanCompetitiveMentions(combinedNotes: string): CompetitiveMention[] {
+export function scanCompetitiveMentions(notesA: string, notesB: string = ''): CompetitiveMention[] {
+  const combinedNotes = notesB ? `${notesA} ${notesB}` : notesA;
   const mentions: CompetitiveMention[] = [];
   const sentences = extractSentences(combinedNotes);
 
@@ -228,7 +229,7 @@ export function evaluateStageGate(
     // Overall Score >= 50
     if (overallScore < 50) {
       blockers.push(
-        `Overall MEDDPICC score is ${overallScore}/100 (minimum 50/100 required for Gate 2 exit)`
+        `Overall MEDDPICC score is ${overallScore}/100 (minimum 50/100 required for Gate 2)`
       );
     }
 
@@ -624,7 +625,7 @@ export function scoreOpportunityWithJev(input: JevScoringInput): JevScoringResul
   const stageGate = evaluateStageGate(input.stageName, dimensions, overallScore);
 
   const rawResult: JevScoringResult = {
-    dealId: input.dealId,
+    opportunityId: input.opportunityId || input.dealId || '',
     overallScore,
     dimensions,
     competitiveFlags,

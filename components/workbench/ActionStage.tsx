@@ -104,7 +104,7 @@ export function ActionStage({
               <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
                 <span>
                   {opportunity.meddpicc_score !== null
-                    ? 'Re-evaluate System 1 Scoring'
+                    ? 'Run Delta Re-scoring'
                     : 'Start Qualification Assessment'}
                 </span>
                 <span className="text-xs font-normal text-blue-400 font-mono">

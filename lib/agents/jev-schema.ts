@@ -35,7 +35,7 @@ export const StageGateEvaluationSchema = z.object({
 export type StageGateEvaluation = z.infer<typeof StageGateEvaluationSchema>;
 
 export const JevScoringResultSchema = z.object({
-  dealId: z.string(),
+  opportunityId: z.string(),
   overallScore: z.number().int().min(0).max(100),
   dimensions: z.object({
     metrics: DimensionResultSchema,
@@ -54,7 +54,8 @@ export const JevScoringResultSchema = z.object({
 export type JevScoringResult = z.infer<typeof JevScoringResultSchema>;
 
 export interface JevScoringInput {
-  dealId: string;
+  opportunityId: string;
+  dealId?: string;
   name?: string;
   accountName?: string;
   stageName: string;

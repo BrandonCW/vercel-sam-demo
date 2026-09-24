@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Opportunity, DimensionEvaluation, StageGateEvaluation } from '@/lib/types/crm';
+import { computeCompositeScore, scanCompetitiveMentions } from '@/lib/agents/jev-scorer';
 import {
   FileText,
   Terminal,
@@ -39,7 +40,16 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
   const compositeScore =
     opportunity.meddpicc_score !== null
       ? opportunity.meddpicc_score
-      : calculateCompositeScore(breakdown);
+      : computeCompositeScore({
+          metrics: breakdown.metrics?.score ?? 0,
+          economicBuyer: breakdown.economicBuyer?.score ?? 0,
+          decisionCriteria: breakdown.decisionCriteria?.score ?? 0,
+          decisionProcess: breakdown.decisionProcess?.score ?? 0,
+          paperProcess: breakdown.paperProcess?.score ?? 0,
+          identifyPain: breakdown.identifyPain?.score ?? 0,
+          champion: breakdown.champion?.score ?? 0,
+          competition: breakdown.competition?.score ?? 0,
+        });
 
   const stageGate = (breakdown.stageGate || opportunity.stage_gate) as
     | StageGateEvaluation
@@ -112,7 +122,7 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
                 </span>
               </div>
               <p className="text-xs text-zinc-300 mb-2.5">
-                The Opportunity does not meet exit criteria to advance to{' '}
+                The Opportunity does not meet Stage Gate criteria to advance to{' '}
                 <strong className="text-amber-300">{stageGate.targetStage}</strong>:
               </p>
               <ul className="space-y-1.5 pl-1">
@@ -152,21 +162,23 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
             <span className="text-[10px] text-zinc-500 font-mono">System 1 Scanner</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {opportunity.competitive_flags.map((comp) => {
-              const isHighThreat = /netlify|amplify/i.test(comp);
+            {scanCompetitiveMentions(opportunity.ae_notes, opportunity.sa_notes).map((comp) => {
+              const badgeStyle =
+                comp.threatLevel === 'high'
+                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                  : comp.threatLevel === 'medium'
+                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                  : 'bg-blue-500/15 text-blue-400 border-blue-500/30';
               return (
                 <span
-                  key={comp}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
-                    isHighThreat
-                      ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                      : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                  }`}
+                  key={comp.name}
+                  title={comp.contextSummary}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${badgeStyle}`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                  <span>{comp}</span>
+                  <span>{comp.name}</span>
                   <span className="text-[10px] opacity-80 uppercase tracking-wider font-mono">
-                    ({isHighThreat ? 'High Threat' : 'Threat'})
+                    ({comp.threatLevel} threat)
                   </span>
                 </span>
               );
@@ -323,7 +335,7 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
               {passesGate2 ? (
                 <>
                   <CheckCircle2 className="w-3 h-3" />
-                  <span>Eligible for Stage 3</span>
+                  <span>Eligible for {stageGate?.targetStage || 'Stage 3'}</span>
                 </>
               ) : (
                 <>
@@ -337,17 +349,6 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
       </div>
     </div>
   );
-}
-
-function calculateCompositeScore(breakdown: Record<string, unknown>): number {
-  let total = 0;
-  for (const key of DIMENSION_ORDER) {
-    const dim = breakdown[key] as DimensionEvaluation | undefined;
-    if (dim && typeof dim.score === 'number') {
-      total += (dim.score || 0) * 10 * (dim.weight || 0.1);
-    }
-  }
-  return Math.round(total);
 }
 
 function MaturityTag({ status }: { status: string }) {
