@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOpportunity, updateOpportunity, recordInteraction } from '@/lib/db/crm';
-import { scoreOpportunityWithJev } from '@/lib/agents/jev-scorer';
+import { scoreOpportunityWithJevAI } from '@/lib/agents/jev-scorer';
 import { runSystem2Analysis } from '@/lib/agents/system2-runner';
 import { MEDDPICCBreakdown, System2ModelOption } from '@/lib/types/crm';
 
@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Run deterministic System 1 (Jev) baseline scoring
-    const jevResult = scoreOpportunityWithJev({
+    // 1. Run System 1 (Jev) scoring model through Vercel AI Gateway (or fallback)
+    const jevResult = await scoreOpportunityWithJevAI({
       opportunityId: opportunity.id,
       name: opportunity.name,
       accountName: opportunity.account_name,

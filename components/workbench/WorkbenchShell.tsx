@@ -17,7 +17,6 @@ interface WorkbenchShellProps {
   isPostgres: boolean;
   aiStatus?: {
     hasAiGateway: boolean;
-    hasDirectKeys: boolean;
   };
 }
 

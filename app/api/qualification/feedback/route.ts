@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getOpportunity, writebackOpportunityQualification, recordInteraction } from '@/lib/db/crm';
-import { scoreOpportunityWithJev } from '@/lib/agents/jev-scorer';
+import { scoreOpportunityWithJevAI } from '@/lib/agents/jev-scorer';
 import { SaFeedbackPayloadSchema, formatSaDiscoveryNotes } from '@/lib/agents/feedback-schema';
 import { synthesizeSuggestedNextSteps } from '@/lib/agents/next-steps-synthesizer';
 import { MEDDPICCBreakdown, QualificationStatus } from '@/lib/types/crm';
@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
     const originalAeNotes = opportunity.ae_notes;
     const updatedSaNotes = formatSaDiscoveryNotes(formResponses, notesDelta, opportunity.sa_notes);
 
-    // 2. System 1 Delta Re-scoring trigger
+    // 2. System 1 Delta Re-scoring trigger via AI Gateway
     const previousScore = opportunity.meddpicc_score ?? 0;
-    const jevResult = scoreOpportunityWithJev({
+    const jevResult = await scoreOpportunityWithJevAI({
       opportunityId: opportunity.id,
       name: opportunity.name,
       accountName: opportunity.account_name,
