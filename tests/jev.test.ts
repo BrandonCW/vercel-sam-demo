@@ -3,12 +3,9 @@ import {
   CANONICAL_DIMENSIONS,
   computeCompositeScore,
   getDimensionStatus,
-  scanCompetitiveMentions,
   evaluateStageGate,
-  scoreOpportunityWithJev,
+  scoreOpportunityWithJevAI,
 } from '@/lib/agents/jev-scorer';
-import { JevScoringResultSchema } from '@/lib/agents/jev-schema';
-import { SCENARIO_FIXTURES } from '@/lib/db/fixtures';
 
 describe('System 1 (Jev) - Formulas, Weights and Rubric Scoring', () => {
   it('strictly adheres to canonical 8-dimension weights summing to 1.0 (100%)', () => {
@@ -92,105 +89,37 @@ describe('System 1 (Jev) - Formulas, Weights and Rubric Scoring', () => {
   });
 });
 
-describe('System 1 (Jev) - Competitive Scanner', () => {
-  it('detects Netlify with High Threat for Acme Corp scenario', () => {
-    const acme = SCENARIO_FIXTURES.scenario_acme_netlify.default_data;
-    const notes = `${acme.ae_notes}\n${acme.sa_notes}`;
-    const mentions = scanCompetitiveMentions(notes);
+function dims(scores: Record<string, number>) {
+  return Object.fromEntries(
+    Object.entries(scores).map(([k, score]) => [
+      k,
+      { score, status: getDimensionStatus(score), confidence: 0.8, evidence: [], gaps: [] },
+    ])
+  ) as any;
+}
 
-    expect(mentions).toHaveLength(1);
-    expect(mentions[0].name).toBe('Netlify');
-    expect(mentions[0].threatLevel).toBe('high');
-    expect(mentions[0].evidence).toContain('Netlify');
-    expect(mentions[0].contextSummary).toContain('discount');
-  });
-
-  it('detects AWS Amplify with High Threat for Globex FinTech scenario', () => {
-    const globex = SCENARIO_FIXTURES.scenario_globex_amplify.default_data;
-    const notes = `${globex.ae_notes}\n${globex.sa_notes}`;
-    const mentions = scanCompetitiveMentions(notes);
-
-    expect(mentions).toHaveLength(1);
-    expect(mentions[0].name).toBe('AWS Amplify');
-    expect(mentions[0].threatLevel).toBe('high');
-    expect(mentions[0].evidence).toContain('Amplify');
-    expect(mentions[0].contextSummary).toContain('credits');
-  });
-
-  it('detects no competitive threats for Soylent Retail scenario', () => {
-    const soylent = SCENARIO_FIXTURES.scenario_soylent_headless.default_data;
-    const notes = `${soylent.ae_notes}\n${soylent.sa_notes}`;
-    const mentions = scanCompetitiveMentions(notes);
-
-    expect(mentions).toHaveLength(0);
-  });
-
-  it('detects Cloudflare Pages, Akamai/Fastly, and DIY Kubernetes', () => {
-    const sampleNotes =
-      'Evaluating Cloudflare Pages for zero-egress caching. Also incumbent Fastly contract expiring. Platform team resisting migration and defending bespoke DIY Kubernetes cluster.';
-    const mentions = scanCompetitiveMentions(sampleNotes);
-
-    const names = mentions.map((m) => m.name);
-    expect(names).toContain('Cloudflare Pages');
-    expect(names).toContain('Akamai/Fastly');
-    expect(names).toContain('DIY Kubernetes / AWS ECS');
-
-    const k8s = mentions.find((m) => m.name === 'DIY Kubernetes / AWS ECS');
-    expect(k8s?.threatLevel).toBe('high');
-  });
-});
+const ACME_BASELINE = {
+  identifyPain: 8, champion: 7, economicBuyer: 3, decisionCriteria: 7,
+  decisionProcess: 4, metrics: 5, competition: 4, paperProcess: 2,
+};
 
 describe('System 1 (Jev) - Stage Gate Readiness Logic', () => {
-  it('blocks Stage 2 -> Stage 3 on Acme Corp baseline specifically due to Economic Buyer gap', () => {
-    const acme = SCENARIO_FIXTURES.scenario_acme_netlify.default_data;
-    const result = scoreOpportunityWithJev({
-      dealId: acme.id,
-      stageName: acme.stage_name,
-      aeNotes: acme.ae_notes,
-      saNotes: acme.sa_notes,
-    });
+  it('blocks Stage 2 -> Stage 3 specifically due to an Economic Buyer gap', () => {
+    const overall = computeCompositeScore(ACME_BASELINE);
+    const result = evaluateStageGate('Stage 2 - Discovery', dims(ACME_BASELINE), overall);
 
-    // Validates against Zod schema
-    expect(JevScoringResultSchema.safeParse(result).success).toBe(true);
-
-    // Identify Pain >= 8
-    expect(result.dimensions.identifyPain.score).toBeGreaterThanOrEqual(8);
-    expect(result.dimensions.identifyPain.status).toBe('verified');
-
-    // Champion >= 7
-    expect(result.dimensions.champion.score).toBeGreaterThanOrEqual(7);
-
-    // Overall Score in expected range (50-58)
-    expect(result.overallScore).toBeGreaterThanOrEqual(50);
-    expect(result.overallScore).toBeLessThanOrEqual(58);
-
-    // Economic Buyer is unaddressed (score 3 < 4)
-    expect(result.dimensions.economicBuyer.score).toBe(3);
-    expect(result.dimensions.economicBuyer.status).toBe('unaddressed');
-
-    // Gate 2 evaluation must be blocked
-    expect(result.stageGate.gateReady).toBe(false);
-    expect(result.stageGate.targetStage).toBe('Stage 3 - Technical Validation');
-    expect(
-      result.stageGate.gateBlockers.some((b) => b.includes('Economic Buyer'))
-    ).toBe(true);
+    expect(result.gateReady).toBe(false);
+    expect(result.targetStage).toBe('Stage 3 - Technical Validation');
+    expect(result.gateBlockers).toHaveLength(1);
+    expect(result.gateBlockers[0]).toContain('Economic Buyer');
   });
 
   it('passes Stage Gate 2 when Economic Buyer is verified and pain/champion criteria met', () => {
-    const acme = SCENARIO_FIXTURES.scenario_acme_netlify.default_data;
-    const updatedSaNotes = `${acme.sa_notes}\n[SA Qualification Update]: Verified Marcus Vance holds unilateral signoff authority up to $250k. Budget confirmed and allocated.`;
+    const scores = { ...ACME_BASELINE, economicBuyer: 8 };
+    const result = evaluateStageGate('Stage 2 - Discovery', dims(scores), computeCompositeScore(scores));
 
-    const result = scoreOpportunityWithJev({
-      dealId: acme.id,
-      stageName: 'Stage 2 - Discovery',
-      aeNotes: acme.ae_notes,
-      saNotes: updatedSaNotes,
-    });
-
-    expect(result.dimensions.economicBuyer.score).toBeGreaterThanOrEqual(8);
-    expect(result.dimensions.economicBuyer.status).toBe('verified');
-    expect(result.stageGate.gateReady).toBe(true);
-    expect(result.stageGate.gateBlockers).toHaveLength(0);
+    expect(result.gateReady).toBe(true);
+    expect(result.gateBlockers).toHaveLength(0);
   });
 
   it('evaluates Gate 3 (Technical Validation -> Proposal) with stricter thresholds', () => {
@@ -213,5 +142,25 @@ describe('System 1 (Jev) - Stage Gate Readiness Logic', () => {
     expect(evaluation.gateBlockers.some((b) => b.includes('Economic Buyer'))).toBe(true);
     expect(evaluation.gateBlockers.some((b) => b.includes('Decision Process'))).toBe(true);
     expect(evaluation.gateBlockers.some((b) => b.includes('Overall MEDDPICC score'))).toBe(true);
+  });
+});
+
+describe('System 1 (Jev) - fails loudly', () => {
+  it('throws instead of returning a regex-derived score when AI_GATEWAY_API_KEY is unset', async () => {
+    const saved = process.env.AI_GATEWAY_API_KEY;
+    delete process.env.AI_GATEWAY_API_KEY;
+    try {
+      await expect(
+        scoreOpportunityWithJevAI({
+          opportunityId: 'opp_x',
+          name: 'X',
+          stageName: 'Stage 2 - Discovery',
+          aeNotes: 'notes',
+          saNotes: '',
+        })
+      ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
+    } finally {
+      if (saved !== undefined) process.env.AI_GATEWAY_API_KEY = saved;
+    }
   });
 });

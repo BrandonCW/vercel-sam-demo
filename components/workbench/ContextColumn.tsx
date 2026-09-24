@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Opportunity, DimensionEvaluation, StageGateEvaluation } from '@/lib/types/crm';
-import { computeCompositeScore, scanCompetitiveMentions } from '@/lib/agents/jev-scorer';
+import { computeCompositeScore } from '@/lib/agents/jev-scorer';
 import {
   FileText,
   Terminal,
@@ -55,20 +55,8 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
     | StageGateEvaluation
     | undefined;
 
-  // Fallback gate logic if not assessed yet
-  const painScore = breakdown.identifyPain?.score ?? 0;
-  const champScore = breakdown.champion?.score ?? 0;
-  const metricsScore = breakdown.metrics?.score ?? 0;
-  const ebScore = breakdown.economicBuyer?.score ?? 0;
-
-  const passesGate2 =
-    stageGate !== undefined
-      ? stageGate.gateReady
-      : compositeScore >= 50 &&
-        painScore >= 6 &&
-        champScore >= 5 &&
-        metricsScore >= 4 &&
-        ebScore >= 4;
+  // Gate status comes only from a persisted System 1 evaluation; unassessed deals have not passed.
+  const passesGate2 = stageGate?.gateReady ?? false;
 
   const isAssessed = opportunity.meddpicc_score !== null;
 
@@ -159,30 +147,18 @@ export function ContextColumn({ opportunity }: ContextColumnProps) {
                 Detected Competitive Threats
               </h2>
             </div>
-            <span className="text-[10px] text-zinc-500 font-mono">System 1 Scanner</span>
+            <span className="text-[10px] text-zinc-500 font-mono">CRM Competitive Flags</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {scanCompetitiveMentions(opportunity.ae_notes, opportunity.sa_notes).map((comp) => {
-              const badgeStyle =
-                comp.threatLevel === 'high'
-                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                  : comp.threatLevel === 'medium'
-                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                  : 'bg-blue-500/15 text-blue-400 border-blue-500/30';
-              return (
-                <span
-                  key={comp.name}
-                  title={comp.contextSummary}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${badgeStyle}`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                  <span>{comp.name}</span>
-                  <span className="text-[10px] opacity-80 uppercase tracking-wider font-mono">
-                    ({comp.threatLevel} threat)
-                  </span>
-                </span>
-              );
-            })}
+            {opportunity.competitive_flags.map((name) => (
+              <span
+                key={name}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border bg-red-500/15 text-red-400 border-red-500/30"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                <span>{name}</span>
+              </span>
+            ))}
           </div>
         </div>
       )}

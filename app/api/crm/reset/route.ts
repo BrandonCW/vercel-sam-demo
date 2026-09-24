@@ -26,7 +26,10 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to reset scenario', details: String(error) },
+      {
+        success: false,
+        error: `Failed to reset scenario: ${error instanceof Error ? error.message : String(error)}`,
+      },
       { status: 500 }
     );
   }

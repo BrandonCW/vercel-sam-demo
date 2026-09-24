@@ -1,35 +1,13 @@
 import { System2ModelOption } from '@/lib/types/crm';
-import {
-  System2Input,
-  System2AnalysisResult,
-  executeSystem2Pipeline,
-} from './system2';
+import { System2Input, System2AnalysisResult } from './system2';
+import { assertAiGatewayConfigured } from '@/lib/env';
 import { JsonRenderFormSchema } from '@/lib/ui/json-render-schema';
 import { gateway, generateText } from 'ai';
 
 export interface RunnerOptions {
   model?: System2ModelOption;
-  forceDeterministicFallback?: boolean;
   timeoutMs?: number;
 }
-
-/**
- * Check if the environment has Vercel AI Gateway credentials configured.
- * All models are routed exclusively through Vercel AI Gateway.
- */
-export function hasProviderKey(_model?: System2ModelOption): boolean {
-  if (process.env.NODE_ENV === 'test') {
-    return false;
-  }
-
-  return Boolean(
-    process.env.AI_GATEWAY_API_KEY ||
-      process.env.AI_GATEWAY_TOKEN ||
-      process.env.VERCEL_OIDC_TOKEN
-  );
-}
-
-export const hasAiGatewayCredentials = hasProviderKey;
 
 function buildSystem2Prompts(input: System2Input) {
   const { opportunity, jevResult, model } = input;
@@ -118,7 +96,7 @@ You MUST return a JSON object with this EXACT structure:
 }
 
 /**
- * Call live LLM provider endpoint directly when API keys are configured.
+ * Call the System 2 model through Vercel AI Gateway.
  */
 async function callLiveModel(
   input: System2Input,
@@ -154,22 +132,22 @@ async function callLiveModel(
     const cleaned = jsonText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
     const parsed = JSON.parse(cleaned);
 
-    // Enforce opportunityId & validate schema
-    parsed.opportunityId = input.opportunity.id;
-    parsed.modelUsed = model;
-    if (parsed.phase3Form) {
-      parsed.phase3Form.opportunityId = input.opportunity.id;
-      JsonRenderFormSchema.parse(parsed.phase3Form);
+    // Enforce opportunityId and validate the generated form; a missing or invalid form throws.
+    if (!parsed.phase3Form || typeof parsed.phase3Form !== 'object') {
+      throw new Error(`System 2 model ${model} returned no phase3Form`);
     }
+    const phase3Form = JsonRenderFormSchema.parse({
+      ...parsed.phase3Form,
+      opportunityId: input.opportunity.id,
+    });
 
     return {
       opportunityId: input.opportunity.id,
       modelUsed: model,
       phase1Gaps: parsed.phase1Gaps || [],
       phase2Competitive: parsed.phase2Competitive || [],
-      phase3Form: parsed.phase3Form,
+      phase3Form,
       summary: parsed.summary || `Live model ${model} completed System 2 deep reasoning.`,
-      executionMode: 'live_model',
     };
   } finally {
     clearTimeout(timer);
@@ -178,48 +156,14 @@ async function callLiveModel(
 
 /**
  * System 2 Multi-Model Runner
- * Dispatches to external LLM provider if API keys are configured;
- * otherwise provides deterministic, high-fidelity scenario-aware fallback generations
- * to guarantee offline local dev, tests, and CI work reliably with 0 network dependencies.
+ * Dispatches to the selected model through Vercel AI Gateway. Missing
+ * AI_GATEWAY_API_KEY, Gateway errors, and invalid model output all throw.
  */
 export async function runSystem2Analysis(
   input: System2Input,
   options?: RunnerOptions
 ): Promise<System2AnalysisResult> {
+  assertAiGatewayConfigured();
   const model: System2ModelOption = options?.model || input.model || 'claude-3-5-sonnet';
-  const forceFallback = options?.forceDeterministicFallback ?? false;
-
-  const effectiveInput: System2Input = {
-    ...input,
-    model,
-  };
-
-  const hasKey = !forceFallback && hasProviderKey(model);
-
-  if (hasKey) {
-    try {
-      const liveResult = await callLiveModel(effectiveInput, model, options?.timeoutMs);
-      return liveResult;
-    } catch (err: any) {
-      console.warn(
-        `Live call for model ${model} failed, falling back to deterministic pipeline:`,
-        err
-      );
-      const fallbackResult = executeSystem2Pipeline(effectiveInput);
-      fallbackResult.executionMode = 'deterministic_fallback';
-      fallbackResult.fallbackReason = `Vercel AI Gateway call failed (${err?.message || 'error'}); fell back to deterministic pipeline`;
-      JsonRenderFormSchema.parse(fallbackResult.phase3Form);
-      return fallbackResult;
-    }
-  }
-
-  // High-fidelity, deterministic scenario-aware fallback execution
-  const result = executeSystem2Pipeline(effectiveInput);
-  result.executionMode = 'deterministic_fallback';
-  result.fallbackReason = `No Vercel AI Gateway credentials found in environment (set AI_GATEWAY_API_KEY in Vercel project settings); fell back to deterministic pipeline`;
-
-  // Validate the resulting form strictly
-  JsonRenderFormSchema.parse(result.phase3Form);
-
-  return result;
+  return callLiveModel({ ...input, model }, model, options?.timeoutMs);
 }

@@ -10,8 +10,6 @@ import { SCENARIO_FIXTURES } from '@/lib/db/fixtures';
 import {
   RotateCcw,
   Sparkles,
-  Database,
-  ShieldAlert,
   Flame,
   User,
   DollarSign,
@@ -27,11 +25,7 @@ interface TopNavBarProps {
   onModelChange: (model: System2ModelOption) => void;
   onReset: () => Promise<void>;
   isResetting: boolean;
-  isPostgres: boolean;
   runtimeStatus: string;
-  aiStatus?: {
-    hasAiGateway: boolean;
-  };
 }
 
 export function TopNavBar({
@@ -42,14 +36,11 @@ export function TopNavBar({
   onModelChange,
   onReset,
   isResetting,
-  isPostgres,
   runtimeStatus,
-  aiStatus,
 }: TopNavBarProps) {
   // Competitor threat calculation
   const primaryCompetitor = opportunity.competitive_flags[0];
 
-  const hasGateway = aiStatus?.hasAiGateway ?? false;
 
   return (
     <header className="bg-[#121215] border-b border-[#27272a] sticky top-0 z-50 px-4 py-3 shadow-md">
@@ -159,44 +150,6 @@ export function TopNavBar({
             <span>{isResetting ? 'Resetting...' : 'Reset Demo'}</span>
           </button>
 
-          {/* Database Connection Pill */}
-          <div
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-mono ${
-              isPostgres
-                ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400'
-            }`}
-            title={isPostgres ? 'Connected to Neon/Postgres' : 'Using In-Memory Store fallback'}
-          >
-            <Database className="w-3 h-3" />
-            <span>{isPostgres ? 'Neon PG' : 'In-Memory'}</span>
-          </div>
-
-          {/* AI Connection Pill */}
-          <div
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-mono ${
-              hasGateway
-                ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
-                : 'bg-amber-950/30 border-amber-800/50 text-amber-300'
-            }`}
-            title={
-              hasGateway
-                ? 'Vercel AI Gateway Connected (AI_GATEWAY_API_KEY detected)'
-                : 'No AI Gateway Credentials Detected (Running in Deterministic Fallback Mode)'
-            }
-          >
-            {hasGateway ? (
-              <>
-                <Sparkles className="w-3 h-3 text-emerald-400" />
-                <span>AI Gateway: Active</span>
-              </>
-            ) : (
-              <>
-                <ShieldAlert className="w-3 h-3 text-amber-400" />
-                <span>AI Gateway: Fallback</span>
-              </>
-            )}
-          </div>
         </div>
       </div>
     </header>

@@ -14,17 +14,11 @@ import { ActionStage } from './ActionStage';
 interface WorkbenchShellProps {
   initialOpportunity: Opportunity;
   initialScenarioId: string;
-  isPostgres: boolean;
-  aiStatus?: {
-    hasAiGateway: boolean;
-  };
 }
 
 export function WorkbenchShell({
   initialOpportunity,
   initialScenarioId,
-  isPostgres,
-  aiStatus,
 }: WorkbenchShellProps) {
   const [opportunity, setOpportunity] = useState<Opportunity>(initialOpportunity);
   const [scenarioId, setScenarioId] = useState<string>(initialScenarioId);
@@ -33,8 +27,6 @@ export function WorkbenchShell({
     initialOpportunity.suggested_next_steps ? 'closed' : 'initiated'
   );
   const [dynamicForm, setDynamicForm] = useState<JsonRenderForm | null>(null);
-  const [executionMode, setExecutionMode] = useState<'live_model' | 'deterministic_fallback' | null>(null);
-  const [fallbackReason, setFallbackReason] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isAssessing, setIsAssessing] = useState(false);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
@@ -107,23 +99,13 @@ export function WorkbenchShell({
         if (data.form) {
           setDynamicForm(data.form);
         }
-        if (data.executionMode) {
-          setExecutionMode(data.executionMode);
-        }
-        if (data.fallbackReason) {
-          setFallbackReason(data.fallbackReason);
-        }
         if (data.sessionState) {
           setSessionState(data.sessionState);
         } else {
           setSessionState('pending_feedback');
         }
-        const modeLabel =
-          data.executionMode === 'live_model'
-            ? `Live ${selectedModel}`
-            : 'Deterministic Fallback';
         showToast(
-          `Assessment complete (${modeLabel}, Score ${data.opportunity.meddpicc_score}/100). Paused at $0 compute.`
+          `Assessment complete (${data.modelUsed ?? selectedModel}, Score ${data.opportunity.meddpicc_score}/100). Paused at $0 compute.`
         );
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -196,9 +178,7 @@ export function WorkbenchShell({
         onModelChange={setSelectedModel}
         onReset={handleReset}
         isResetting={isResetting}
-        isPostgres={isPostgres}
         runtimeStatus={runtimeStatus}
-        aiStatus={aiStatus}
       />
 
       {/* Main Split Workbench Container */}
@@ -213,8 +193,6 @@ export function WorkbenchShell({
             selectedModel={selectedModel}
             sessionState={sessionState}
             dynamicForm={dynamicForm}
-            executionMode={executionMode}
-            fallbackReason={fallbackReason}
             onStartAssessment={handleStartAssessment}
             isAssessing={isAssessing}
             onSubmitFeedback={handleSubmitFeedback}

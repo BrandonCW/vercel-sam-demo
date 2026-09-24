@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Run System 1 (Jev) scoring model through Vercel AI Gateway (or fallback)
+    // 1. Run System 1 (Jev) scoring model through Vercel AI Gateway
     const jevResult = await scoreOpportunityWithJevAI({
       opportunityId: opportunity.id,
       name: opportunity.name,
@@ -86,8 +86,6 @@ export async function POST(request: NextRequest) {
       payload: {
         form: system2Result.phase3Form,
         model: system2Result.modelUsed,
-        executionMode: system2Result.executionMode,
-        fallbackReason: system2Result.fallbackReason,
         sessionState: 'pending_feedback',
         gapsIdentified: system2Result.phase1Gaps.length,
         competitiveAngles: system2Result.phase2Competitive.length,
@@ -101,8 +99,6 @@ export async function POST(request: NextRequest) {
       jevResult,
       form: system2Result.phase3Form,
       modelUsed: system2Result.modelUsed,
-      executionMode: system2Result.executionMode,
-      fallbackReason: system2Result.fallbackReason,
       sessionState: 'pending_feedback',
     });
   } catch (error: any) {

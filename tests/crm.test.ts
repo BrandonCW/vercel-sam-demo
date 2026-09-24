@@ -10,7 +10,30 @@ import {
 } from '@/lib/db/crm';
 import { SCENARIO_FIXTURES } from '@/lib/db/fixtures';
 
-describe('Simulated CRM Persistence & Seeding', () => {
+describe('CRM fails loudly without Postgres', () => {
+  it('throws a descriptive error instead of using an in-memory store when POSTGRES_URL is unset', async () => {
+    const saved = process.env.POSTGRES_URL;
+    delete process.env.POSTGRES_URL;
+    try {
+      await expect(getOpportunity('opp_acme_corp_001')).rejects.toThrow(/POSTGRES_URL/);
+      await expect(resetCrmDatabase('scenario_acme_netlify')).rejects.toThrow(/POSTGRES_URL/);
+    } finally {
+      process.env.POSTGRES_URL = saved;
+    }
+  });
+
+  it('propagates query failures instead of silently switching stores', async () => {
+    const saved = process.env.POSTGRES_URL;
+    process.env.POSTGRES_URL = 'postgresql://nobody:wrong@127.0.0.1:1/none';
+    try {
+      await expect(getOpportunity('opp_acme_corp_001')).rejects.toThrow();
+    } finally {
+      process.env.POSTGRES_URL = saved;
+    }
+  });
+});
+
+describe('Simulated CRM Persistence & Seeding (live Postgres test branch)', () => {
   beforeEach(async () => {
     // Reset to clean fixture baseline
     await resetCrmDatabase('scenario_acme_netlify');

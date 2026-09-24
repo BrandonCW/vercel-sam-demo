@@ -1,37 +1,20 @@
-import { getOpportunityByScenario, isUsingPostgres } from '@/lib/db/crm';
-import { DEFAULT_SCENARIO_ID, SCENARIO_FIXTURES } from '@/lib/db/fixtures';
+import { getOpportunityByScenario } from '@/lib/db/crm';
+import { DEFAULT_SCENARIO_ID } from '@/lib/db/fixtures';
+import { assertAiGatewayConfigured } from '@/lib/env';
 import { WorkbenchShell } from '@/components/workbench/WorkbenchShell';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const isPostgres = isUsingPostgres();
-  let opportunity = await getOpportunityByScenario(DEFAULT_SCENARIO_ID);
+  // Fail loudly at render time if the AI Gateway is not configured.
+  assertAiGatewayConfigured();
 
+  const opportunity = await getOpportunityByScenario(DEFAULT_SCENARIO_ID);
   if (!opportunity) {
-    const fallbackFixture = SCENARIO_FIXTURES[DEFAULT_SCENARIO_ID];
-    const now = new Date().toISOString();
-    opportunity = {
-      ...fallbackFixture.default_data,
-      created_at: now,
-      updated_at: now,
-    };
+    throw new Error(
+      `Default scenario '${DEFAULT_SCENARIO_ID}' is not seeded in Postgres. Reset the demo or load the scenario seed data.`
+    );
   }
 
-  const hasAiGateway = Boolean(
-    process.env.AI_GATEWAY_API_KEY ||
-      process.env.AI_GATEWAY_TOKEN ||
-      process.env.VERCEL_OIDC_TOKEN
-  );
-
-  return (
-    <WorkbenchShell
-      initialOpportunity={opportunity}
-      initialScenarioId={DEFAULT_SCENARIO_ID}
-      isPostgres={isPostgres}
-      aiStatus={{
-        hasAiGateway,
-      }}
-    />
-  );
+  return <WorkbenchShell initialOpportunity={opportunity} initialScenarioId={DEFAULT_SCENARIO_ID} />;
 }

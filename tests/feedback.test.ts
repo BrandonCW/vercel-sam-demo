@@ -4,7 +4,6 @@ import { POST } from '@/app/api/qualification/feedback/route';
 import { getOpportunity, resetCrmDatabase, getInteractions } from '@/lib/db/crm';
 import { formatSaDiscoveryNotes } from '@/lib/agents/feedback-schema';
 import { synthesizeSuggestedNextSteps } from '@/lib/agents/next-steps-synthesizer';
-import { scoreOpportunityWithJev } from '@/lib/agents/jev-scorer';
 
 function makeFeedbackRequest(body: unknown): NextRequest {
   return new NextRequest('http://localhost:3000/api/qualification/feedback', {
@@ -57,62 +56,6 @@ describe('Feedback Ingestion & Delta Re-scoring (Ticket 04)', () => {
       expect(formatted).toContain('[SA Discovery Update -');
       expect(formatted).toContain('• pain_quant: Deploy queues causing 45-minute engineer blocking');
       expect(formatted.startsWith('[SA Discovery Update -')).toBe(true);
-    });
-  });
-
-  describe('Delta Re-scoring with Jev (System 1)', () => {
-    it('passes Stage 2 gate when Economic Buyer and Metrics answers are submitted for Acme Corp', async () => {
-      const opp = await getOpportunity('opp_acme_corp_001');
-      expect(opp).not.toBeNull();
-
-      // Baseline scoring without SA feedback: EB is score 3, Stage Gate 2 is blocked
-      const baselineResult = scoreOpportunityWithJev({
-        opportunityId: opp!.id,
-        name: opp!.name,
-        accountName: opp!.account_name,
-        stageName: opp!.stage_name,
-        amount: opp!.amount,
-        aeNotes: opp!.ae_notes,
-        saNotes: opp!.sa_notes,
-      });
-
-      expect(baselineResult.dimensions.economicBuyer.score).toBe(3);
-      expect(baselineResult.stageGate.gateReady).toBe(false);
-      expect(baselineResult.stageGate.gateBlockers.some((b) => b.includes('Economic Buyer'))).toBe(true);
-
-      // Now append discovery answers resolving Economic Buyer authority and quantitative Metrics
-      const updatedSaNotes = formatSaDiscoveryNotes(
-        {
-          economic_buyer:
-            'Met with VP of E-Commerce Marcus Vance. Verified signoff authority up to $250k confirmed; unilateral approval without board review.',
-          metrics_targets:
-            'Core Web Vitals target: LCP < 1.5s on mobile, 45-minute build times reduced to sub-5 minutes with Turborepo.',
-        },
-        'Architecture POC scheduled with Head of Platform.',
-        opp!.sa_notes
-      );
-
-      const deltaResult = scoreOpportunityWithJev({
-        opportunityId: opp!.id,
-        name: opp!.name,
-        accountName: opp!.account_name,
-        stageName: opp!.stage_name,
-        amount: opp!.amount,
-        aeNotes: opp!.ae_notes,
-        saNotes: updatedSaNotes,
-      });
-
-      // Economic Buyer should upgrade to verified (score 8)
-      expect(deltaResult.dimensions.economicBuyer.score).toBe(8);
-      expect(deltaResult.dimensions.economicBuyer.status).toBe('verified');
-
-      // Metrics should upgrade to verified/partial with CWV targets (score 6)
-      expect(deltaResult.dimensions.metrics.score).toBeGreaterThanOrEqual(6);
-
-      // Gate 2 exit criteria now satisfied!
-      expect(deltaResult.stageGate.gateReady).toBe(true);
-      expect(deltaResult.stageGate.gateBlockers).toHaveLength(0);
-      expect(deltaResult.overallScore).toBeGreaterThanOrEqual(50);
     });
   });
 
@@ -230,86 +173,29 @@ describe('Feedback Ingestion & Delta Re-scoring (Ticket 04)', () => {
       expect(data.error).toContain('not found');
     });
 
-    it('ingests feedback, executes Delta Re-scoring, transitions status to qualified, and writes back Suggested Next Steps', async () => {
-      const initialOpp = await getOpportunity('opp_acme_corp_001');
-      const originalAeNotes = initialOpp!.ae_notes;
+    it('returns a descriptive 500 and leaves the CRM untouched when AI_GATEWAY_API_KEY is unset', async () => {
+      const saved = process.env.AI_GATEWAY_API_KEY;
+      delete process.env.AI_GATEWAY_API_KEY;
+      try {
+        const before = await getOpportunity('opp_acme_corp_001');
+        const res = await POST(
+          makeFeedbackRequest({
+            opportunityId: 'opp_acme_corp_001',
+            formResponses: { eb_authority: 'Verified sign-off authority.' },
+          })
+        );
+        expect(res.status).toBe(500);
+        const data = await res.json();
+        expect(data.success).toBe(false);
+        expect(data.error).toMatch(/AI_GATEWAY_API_KEY/);
 
-      const req = makeFeedbackRequest({
-        opportunityId: 'opp_acme_corp_001',
-        formResponses: {
-          eb_authority:
-            'Marcus Vance has verified signoff authority up to $250k. Unilateral budget approval confirmed.',
-          competitive_isr:
-            'Presented Vercel ISR and Edge Middleware benchmarks; solved flash sale timeout bottleneck.',
-          target_metrics: 'Target Core Web Vitals LCP < 1.5s and 50% build time reduction.',
-        },
-        notesDelta: 'Customer excited to move to Next.js 15 App Router.',
-      });
-
-      const res = await POST(req);
-      expect(res.status).toBe(200);
-
-      const body = await res.json();
-      expect(body.success).toBe(true);
-      expect(body.sessionState).toBe('closed');
-      expect(body.opportunity).toBeDefined();
-
-      const { opportunity, jevResult, deltaScore, suggestedNextSteps } = body;
-
-      // Check status & score progression
-      expect(opportunity.qualification_status).toBe('qualified');
-      expect(opportunity.meddpicc_score).toBeGreaterThanOrEqual(60);
-      expect(deltaScore).toBeGreaterThan(0);
-      expect(jevResult.stageGate.gateReady).toBe(true);
-
-      // Verify suggested next steps
-      expect(suggestedNextSteps).toContain('[QUALIFIED]');
-      expect(suggestedNextSteps).toContain('| Owner: SA (Lead) + AE');
-      expect(suggestedNextSteps).toContain('| Focus: Demonstrate Turborepo Remote Caching & ISR Cache Invalidation');
-      expect(suggestedNextSteps).toContain('| Watch: Netlify 30% discount renewal offer.');
-
-      // Invariant: ae_notes must remain unchanged
-      expect(opportunity.ae_notes).toBe(originalAeNotes);
-
-      // Verify SA notes contains the formatted delta
-      expect(opportunity.sa_notes).toContain('[SA Discovery Update -');
-      expect(opportunity.sa_notes).toContain('Marcus Vance has verified signoff authority');
-      expect(opportunity.sa_notes).toContain('Customer excited to move to Next.js 15 App Router.');
-
-      // Check CRM database persistence
-      const saved = await getOpportunity('opp_acme_corp_001');
-      expect(saved?.qualification_status).toBe('qualified');
-      expect(saved?.meddpicc_score).toBe(opportunity.meddpicc_score);
-      expect(saved?.suggested_next_steps).toBe(suggestedNextSteps);
-      expect(saved?.ae_notes).toBe(originalAeNotes);
-
-      // Check audit telemetry in deal_interactions
-      const interactions = await getInteractions('opp_acme_corp_001');
-      const writebackInteraction = interactions.find(
-        (i) => i.actor === 'system1_jev' && i.action === 'writeback'
-      );
-      expect(writebackInteraction).toBeDefined();
-      expect((writebackInteraction?.payload as any).sessionState).toBe('closed');
-      expect((writebackInteraction?.payload as any).qualificationStatus).toBe('qualified');
-      expect((writebackInteraction?.payload as any).suggestedNextSteps).toBe(suggestedNextSteps);
-    });
-
-    it('transitions status to disqualified when fatal architectural blocker is submitted', async () => {
-      const req = makeFeedbackRequest({
-        opportunityId: 'opp_globex_fintech_002',
-        formResponses: {
-          hosting_mandate: 'fatal blocker: customer confirmed strict on-premise container mandate; cannot adopt cloud edge CDN.',
-        },
-      });
-
-      const res = await POST(req);
-      expect(res.status).toBe(200);
-
-      const body = await res.json();
-      expect(body.success).toBe(true);
-      expect(body.opportunity.qualification_status).toBe('disqualified');
-      expect(body.suggestedNextSteps).toContain('[DISQUALIFIED]');
-      expect(body.suggestedNextSteps).toContain('Archive opportunity');
+        const after = await getOpportunity('opp_acme_corp_001');
+        expect(after?.sa_notes).toBe(before?.sa_notes);
+        expect(after?.qualification_status).toBe('unqualified');
+        expect(after?.suggested_next_steps).toBeNull();
+      } finally {
+        if (saved !== undefined) process.env.AI_GATEWAY_API_KEY = saved;
+      }
     });
   });
 });

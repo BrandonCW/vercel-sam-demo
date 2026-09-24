@@ -1,13 +1,8 @@
+import { getAuthEnv } from './env';
+
 export const COOKIE_NAME = 'deal_qual_session';
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days in seconds
 
-function getAuthSecret(): string {
-  return process.env.AUTH_SECRET || process.env.APP_PASSWORD || 'default-dev-secret-key-change-in-prod';
-}
-
-function getAppPassword(): string | undefined {
-  return process.env.APP_PASSWORD;
-}
 
 async function hmacSha256(message: string, secret: string): Promise<string> {
   const enc = new TextEncoder();
@@ -29,7 +24,7 @@ export async function createSessionToken(
   secret?: string,
   timestamp: number = Date.now()
 ): Promise<string> {
-  const secretKey = secret || getAuthSecret();
+  const secretKey = secret || getAuthEnv().authSecret;
   const message = `${timestamp}:${password}`;
   const sig = await hmacSha256(message, secretKey);
   return `${timestamp}.${sig}`;
@@ -55,12 +50,9 @@ export async function verifySessionToken(
     return false;
   }
 
-  const expectedPassword = password || getAppPassword();
-  if (!expectedPassword) {
-    return false;
-  }
+  const expectedPassword = password || getAuthEnv().appPassword;
 
-  const secretKey = secret || getAuthSecret();
+  const secretKey = secret || getAuthEnv().authSecret;
   const expectedSig = await hmacSha256(`${timestamp}:${expectedPassword}`, secretKey);
 
   // Constant-time comparison

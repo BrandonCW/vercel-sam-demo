@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import crmReadDealTool from '@/agent/tools/crm_read_deal';
 import runJevScoringTool from '@/agent/tools/run_jev_scoring';
 import runSystem2AnalysisTool from '@/agent/tools/run_system2_analysis';
@@ -20,71 +20,57 @@ describe('Eve Deal Qualification Agent Tools', () => {
       {} as any
     );
 
-    expect(result.opportunity).toBeDefined();
-    expect(result.opportunity.id).toBe('opp_acme_corp_001');
-    expect(result.opportunity.name).toBe('Acme Corp - Next.js Migration');
+    expect((result as any).opportunity).toBeDefined();
+    expect((result as any).opportunity.id).toBe('opp_acme_corp_001');
+    expect((result as any).opportunity.name).toBe('Acme Corp - Next.js Migration');
   });
 
-  it('run_jev_scoring tool executes System 1 deterministic scoring', async () => {
-    const opp = await getOpportunity('opp_acme_corp_001');
-    expect(opp).toBeDefined();
+  describe('without AI_GATEWAY_API_KEY', () => {
+    let saved: string | undefined;
+    beforeEach(() => {
+      saved = process.env.AI_GATEWAY_API_KEY;
+      delete process.env.AI_GATEWAY_API_KEY;
+    });
+    afterEach(() => {
+      if (saved !== undefined) process.env.AI_GATEWAY_API_KEY = saved;
+    });
 
-    const result = await runJevScoringTool.execute(
-      {
-        opportunityId: opp!.id,
-        dealName: opp!.name,
-        stageName: opp!.stage_name,
-        aeNotes: opp!.ae_notes,
-        saNotes: opp!.sa_notes,
-      },
-      {} as any
-    );
+    it('run_jev_scoring fails the tool action instead of returning a fallback score', async () => {
+      await expect(
+        Promise.resolve(
+          runJevScoringTool.execute(
+            {
+              opportunityId: 'opp_acme_corp_001',
+              dealName: 'Acme',
+              stageName: 'Stage 2 - Discovery',
+              aeNotes: 'notes',
+            },
+            {} as any
+          )
+        )
+      ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
+    });
 
-    expect(result.jevResult).toBeDefined();
-    expect(result.jevResult.overallScore).toBeGreaterThanOrEqual(40);
-    expect(result.jevResult.dimensions.identifyPain.status).toBe('verified');
-    expect(result.jevResult.competitiveFlags.some((f: any) => f.name === 'Netlify')).toBe(true);
-  });
-
-  it('run_system2_analysis tool executes deep reasoning pipeline', async () => {
-    const opp = await getOpportunity('opp_acme_corp_001');
-    const jevRes = await runJevScoringTool.execute(
-      {
-        opportunityId: opp!.id,
-        dealName: opp!.name,
-        stageName: opp!.stage_name,
-        aeNotes: opp!.ae_notes,
-        saNotes: opp!.sa_notes,
-      },
-      {} as any
-    );
-
-    const s2Res = await runSystem2AnalysisTool.execute(
-      {
-        opportunity: {
-          id: opp!.id,
-          name: opp!.name,
-          stageName: opp!.stage_name,
-          amount: opp!.amount,
-          aeNotes: opp!.ae_notes,
-          saNotes: opp!.sa_notes,
-        },
-        jevResult: jevRes.jevResult,
-        model: 'claude-3-5-sonnet',
-      },
-      {} as any
-    );
-
-    expect(s2Res.system2Result).toBeDefined();
-    expect(s2Res.system2Result.phase1Gaps.length).toBeGreaterThan(0);
-    expect(s2Res.system2Result.phase2Competitive.length).toBeGreaterThan(0);
-    expect(s2Res.system2Result.phase3Form.sections.length).toBeGreaterThanOrEqual(1);
-    const totalFields = s2Res.system2Result.phase3Form.sections.reduce(
-      (acc: number, s: any) => acc + s.fields.length,
-      0
-    );
-    expect(totalFields).toBeGreaterThanOrEqual(3);
-    expect(totalFields).toBeLessThanOrEqual(5);
+    it('run_system2_analysis fails the tool action instead of returning canned output', async () => {
+      await expect(
+        Promise.resolve(
+          runSystem2AnalysisTool.execute(
+            {
+              opportunity: {
+                id: 'opp_acme_corp_001',
+                name: 'Acme',
+                stageName: 'Stage 2 - Discovery',
+                amount: 1,
+                aeNotes: 'notes',
+                saNotes: '',
+              },
+              jevResult: {},
+            },
+            {} as any
+          )
+        )
+      ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
+    });
   });
 
   it('crm_update_next_steps tool performs atomic CRM writeback', async () => {
@@ -108,10 +94,10 @@ describe('Eve Deal Qualification Agent Tools', () => {
       {} as any
     );
 
-    expect(writebackResult.success).toBe(true);
-    expect(writebackResult.opportunity.qualification_status).toBe('qualified');
-    expect(writebackResult.opportunity.meddpicc_score).toBe(78);
-    expect(writebackResult.opportunity.suggested_next_steps).toContain('[QUALIFIED]');
+    expect((writebackResult as any).success).toBe(true);
+    expect((writebackResult as any).opportunity.qualification_status).toBe('qualified');
+    expect((writebackResult as any).opportunity.meddpicc_score).toBe(78);
+    expect((writebackResult as any).opportunity.suggested_next_steps).toContain('[QUALIFIED]');
 
     // Verify in database
     const refreshed = await getOpportunity('opp_acme_corp_001');
@@ -126,9 +112,9 @@ describe('Eve Deal Qualification Agent Tools', () => {
       {} as any
     );
 
-    expect(result.success).toBe(true);
-    expect(result.opportunity.id).toBe('opp_acme_corp_001');
-    expect(result.opportunity.qualification_status).toBe('unqualified');
-    expect(result.opportunity.suggested_next_steps).toBeNull();
+    expect((result as any).success).toBe(true);
+    expect((result as any).opportunity.id).toBe('opp_acme_corp_001');
+    expect((result as any).opportunity.qualification_status).toBe('unqualified');
+    expect((result as any).opportunity.suggested_next_steps).toBeNull();
   });
 });

@@ -37,7 +37,7 @@ A deterministic, pre-canned enterprise customer profile used to seed the simulat
 _Avoid_: Mock deal, fixture, test case
 
 **System 1**:
-The fast, deterministic rubric evaluation layer (powered by Jev) that extracts structured MEDDPICC dimensions, detects competitors, and computes stage gate thresholds without deep reasoning overhead.
+The fast rubric evaluation layer (powered by Jev via Vercel AI Gateway) that extracts structured MEDDPICC dimensions, detects competitors, and computes stage gate thresholds without deep reasoning overhead.
 _Avoid_: Heuristic model, classifier, fast LLM
 
 **Stage Gate**:

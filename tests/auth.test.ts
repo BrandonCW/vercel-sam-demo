@@ -81,4 +81,27 @@ describe('Authentication Gate & Web Crypto Session Verification', () => {
     process.env.APP_PASSWORD = 'super-secret-password';
     expect(shouldBypassAuth()).toBe(false);
   });
+
+  it('throws instead of signing with a default secret when AUTH_SECRET and APP_PASSWORD are unset', async () => {
+    delete process.env.AUTH_SECRET;
+    delete process.env.APP_PASSWORD;
+    await expect(createSessionToken('pw')).rejects.toThrow(/AUTH_SECRET|APP_PASSWORD/);
+  });
+
+  it('login route fails loudly instead of issuing a bypass session when APP_PASSWORD is unset', async () => {
+    delete process.env.APP_PASSWORD;
+    delete process.env.AUTH_SECRET;
+    const { POST } = await import('@/app/api/auth/login/route');
+    const res = await POST(
+      new Request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: 'anything' }),
+      })
+    );
+    expect(res.status).toBe(500);
+    expect(res.headers.get('set-cookie')).toBeNull();
+    const data = await res.json();
+    expect(String(data.error)).toMatch(/APP_PASSWORD|AUTH_SECRET/);
+  });
 });
