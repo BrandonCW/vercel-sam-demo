@@ -3,7 +3,7 @@ import { gateway, streamText, Output } from "ai";
 import { z } from "zod";
 import { requireOpportunity } from "@/lib/db/crm";
 import { loadLatestJevResult, recordSystem2Analysis } from "@/lib/db/assessments";
-import { resolveAgentModel, System2ModelSchema } from "@/lib/models";
+import { resolveSystem2Model, System2ModelSchema } from "@/lib/models";
 import { assertAiGatewayConfigured } from "@/lib/env";
 import { assessmentScopeOf } from "@/lib/assessment-session";
 import {
@@ -74,7 +74,7 @@ export default defineTool({
       requireOpportunity(opportunityId),
       loadLatestJevResult(opportunityId, scope.sessionId),
     ]);
-    const model = requested ?? resolveAgentModel();
+    const model = requested ?? resolveSystem2Model();
     const timeout = AbortSignal.timeout(TIMEOUT_MS);
     const abortSignal = ctx.abortSignal ? AbortSignal.any([ctx.abortSignal, timeout]) : timeout;
 

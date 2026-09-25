@@ -1,6 +1,6 @@
 # Deal Qualification System
 
-A Next.js workbench plus an eve agent (`agent/`) that qualifies enterprise deals against MEDDPICC. System 1 is `typesafe-ai/jev` and System 2 is a Gateway language model, both called through Vercel AI Gateway. The root agent calls both directly as its own tools (no subagents). The default model for the root agent and System 2 is `anthropic/claude-haiku-4.5`; the workbench can still select Claude Sonnet 5 for System 2. The CRM is simulated in Postgres (Neon). Every failure is loud: there are no fallbacks. Configuration is described in `.env.example`.
+A Next.js workbench plus an eve agent (`agent/`) that qualifies enterprise deals against MEDDPICC. System 1 is `typesafe-ai/jev` and System 2 is a Gateway language model, both called through Vercel AI Gateway. The root agent calls both directly as its own tools (no subagents). The root agent runs on `anthropic/claude-haiku-4.5` (`AGENT_MODEL_ID`). System 2 defaults to `anthropic/claude-sonnet-5` (`SYSTEM2_MODEL_ID`), because through the Gateway Haiku 4.5 returns only the first property of the System 2 object and fails schema validation (issue 18). Haiku stays selectable in the workbench. The CRM is simulated in Postgres (Neon). Every failure is loud: there are no fallbacks. Configuration is described in `.env.example`.
 
 ## Database
 

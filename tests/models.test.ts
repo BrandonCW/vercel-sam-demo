@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { SYSTEM2_MODELS, DEFAULT_SYSTEM2_MODEL, resolveAgentModel, resolveJevModel } from '@/lib/models';
+import {
+  SYSTEM2_MODELS,
+  DEFAULT_AGENT_MODEL,
+  DEFAULT_SYSTEM2_MODEL,
+  resolveAgentModel,
+  resolveSystem2Model,
+  resolveJevModel,
+} from '@/lib/models';
 
 const RETIRED = /claude-3[-.]5|gpt-4o-mini|gemini-2(\.0)?-flash|Claude 3\.5|GPT-4o-mini|Gemini 2\.0/;
 
@@ -13,8 +20,7 @@ function walk(dir: string): string[] {
 }
 
 describe('System 2 model configuration', () => {
-  it('offers current Vercel AI Gateway model IDs, defaulting to Claude Haiku 4.5 with Sonnet 5 still selectable', () => {
-    expect(DEFAULT_SYSTEM2_MODEL).toBe('anthropic/claude-haiku-4.5');
+  it('offers current Vercel AI Gateway model IDs, Haiku 4.5 first and Sonnet 5 selectable', () => {
     expect(SYSTEM2_MODELS.map((m) => m.id)).toEqual([
       'anthropic/claude-haiku-4.5',
       'anthropic/claude-sonnet-5',
@@ -23,13 +29,24 @@ describe('System 2 model configuration', () => {
     ]);
   });
 
-  it('uses the default when SYSTEM2_MODEL_ID is unset and honours a supported override', () => {
+  it('runs the root agent on Claude Haiku 4.5 unless AGENT_MODEL_ID overrides it', () => {
+    expect(DEFAULT_AGENT_MODEL).toBe('anthropic/claude-haiku-4.5');
     expect(resolveAgentModel({})).toBe('anthropic/claude-haiku-4.5');
-    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('openai/gpt-5.5');
+    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('anthropic/claude-haiku-4.5');
+    expect(resolveAgentModel({ AGENT_MODEL_ID: 'anthropic/claude-sonnet-5' })).toBe('anthropic/claude-sonnet-5');
   });
 
-  it('rejects a retired or unknown SYSTEM2_MODEL_ID instead of silently using it', () => {
-    expect(() => resolveAgentModel({ SYSTEM2_MODEL_ID: 'claude-3-5-sonnet' })).toThrow(/SYSTEM2_MODEL_ID/);
+  // Haiku 4.5 cannot produce the System 2 object through the Gateway (it stops after the first
+  // property; issue 18), so System 2 keeps Sonnet 5 as its default.
+  it('defaults System 2 to Claude Sonnet 5 unless SYSTEM2_MODEL_ID overrides it', () => {
+    expect(DEFAULT_SYSTEM2_MODEL).toBe('anthropic/claude-sonnet-5');
+    expect(resolveSystem2Model({})).toBe('anthropic/claude-sonnet-5');
+    expect(resolveSystem2Model({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('openai/gpt-5.5');
+  });
+
+  it('rejects a retired or unknown model override instead of silently using it', () => {
+    expect(() => resolveSystem2Model({ SYSTEM2_MODEL_ID: 'claude-3-5-sonnet' })).toThrow(/SYSTEM2_MODEL_ID/);
+    expect(() => resolveAgentModel({ AGENT_MODEL_ID: 'claude-3-5-sonnet' })).toThrow(/AGENT_MODEL_ID/);
   });
 
   it('leaves no retired model IDs in agent/, lib/, .env.example or the spec', () => {
