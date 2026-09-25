@@ -1,6 +1,5 @@
 import {
   appendSaFeedbackOnce,
-  getInteractions,
   getSessionInteractions,
   recordInteraction,
   updateOpportunity,
@@ -186,55 +185,6 @@ export async function writebackQualification(
   return { opportunity: updated, suggestedNextSteps, deltaScore };
 }
 
-type InteractionAction = DealInteraction['action'];
-type SessionSnapshot = Partial<Record<InteractionAction, string>>;
-
-/** Latest interaction id per action within one Assessment Session. */
-export async function snapshotSessionInteractions(opportunityId: string, sessionId: string): Promise<SessionSnapshot> {
-  const snapshot: SessionSnapshot = {};
-  for (const interaction of await getSessionInteractions(opportunityId, sessionId)) {
-    snapshot[interaction.action] ??= interaction.id;
-  }
-  return snapshot;
-}
-
-/**
- * Throws unless each expected action has a newer interaction in this session
- * than in `before`, naming the tool that should have run.
- */
-export async function requireFreshSessionInteractions(
-  opportunityId: string,
-  sessionId: string,
-  before: SessionSnapshot,
-  expected: Partial<Record<InteractionAction, string>>
-): Promise<void> {
-  const after = await snapshotSessionInteractions(opportunityId, sessionId);
-  const missing = (Object.entries(expected) as [InteractionAction, string][])
-    .filter(([action]) => !after[action] || after[action] === before[action])
-    .map(([, tool]) => tool);
-  if (missing.length > 0) {
-    throw new Error(
-      `The eve agent finished without running ${missing.join(', ')} for ${opportunityId} ` +
-        `in Assessment Session ${sessionId}; no fresh result was persisted.`
-    );
-  }
-}
-
-/** The session's `sa_feedback` row for this exact submission, or a loud error if the agent recorded something else. */
-export async function requireRecordedSaFeedback(
-  opportunityId: string,
-  sessionId: string,
-  feedbackKey: string
-): Promise<void> {
-  const rows = await sessionPayloads(opportunityId, sessionId, 'sa_feedback');
-  if (!rows.some((p) => p.feedbackKey === feedbackKey)) {
-    throw new Error(
-      `The eve agent did not record the submitted SA feedback for ${opportunityId} in Assessment Session ${sessionId} ` +
-        `(record_sa_feedback missing or called with different answers).`
-    );
-  }
-}
-
 const SessionWritebackSchema = z.object({
   previousScore: z.number(),
   newScore: z.number(),
@@ -251,25 +201,3 @@ export async function loadSessionWriteback(
   if (!payload) throw new Error(`Assessment Session ${sessionId} has no writeback for ${opportunityId}.`);
   return SessionWritebackSchema.parse(payload);
 }
-
-/**
- * The open Assessment Session awaiting SA feedback for an opportunity: the
- * session of the latest discovery form, provided it has not been written back.
- */
-export async function findOpenAssessmentSession(opportunityId: string): Promise<string> {
-  const latestForm = (await getInteractions(opportunityId)).find((i) => i.action === 'questions_generated');
-  const sessionId = latestForm?.payload?.assessmentSessionId;
-  if (typeof sessionId !== 'string' || !sessionId) {
-    throw new OpenSessionError(`No Assessment Session is awaiting feedback for ${opportunityId}. Run an assessment first.`);
-  }
-  const closed = (await sessionPayloads(opportunityId, sessionId, 'writeback')).length > 0;
-  if (closed) {
-    throw new OpenSessionError(
-      `Assessment Session ${sessionId} for ${opportunityId} is already closed. Run a new assessment first.`
-    );
-  }
-  return sessionId;
-}
-
-/** No open Assessment Session: the caller must assess first (HTTP 409). */
-export class OpenSessionError extends Error {}

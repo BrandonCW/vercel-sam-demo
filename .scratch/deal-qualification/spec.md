@@ -176,7 +176,7 @@ Tests must verify external system behavior and observable state transitions rath
 The architecture defines two primary seams, keeping the total number of seams to the absolute minimum:
 
 1. **Primary Seam: API Route & Workflow Integration Seam (Highest Seam)**
-   - **Target**: Next.js API Route Handlers (`/api/qualification/assess`, `/api/qualification/feedback`, `/api/crm/reset`).
+   - **Target**: the eve agent's Assessment Session (the two turns the workbench sends through `useEveAgent`, exercised by `pnpm eval` and the eve tools) and the `/api/crm/reset` data route. _(Amended by issue 16: the `/api/qualification/*` routes were retired; the UI calls eve directly.)_
    - **Mechanism**: Execute HTTP requests against route handlers connected to a test Postgres database (or local Neon test branch).
    - **Isolation Boundary**: LLM model endpoints (Jev and System 2) are mocked at the network/client transport level using deterministic canned response fixtures matching the Zod schemas (`JevScoringResultSchema` and `JsonRenderFormSchema`).
    - **Behaviors Verified**:

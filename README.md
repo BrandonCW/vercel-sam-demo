@@ -35,7 +35,7 @@ Runtime resets read the scenarios from `deal_scenarios`, and they fail loudly if
 
 ## Tests
 
-**Tier 1, `pnpm test` (vitest).** Unit tests of pure logic may use fixtures, but only from `tests/fixtures/`. `tests/fixture-boundary.test.ts` fails if `lib/`, `agent/`, `app/`, `components/` or `evals/` imports them. Database tests run live against the Neon `test` branch. Billed live tests are opt-in with `JEV_LIVE=1`, and `EVE_LIVE_SESSION=1` as well for the two-turn route test. That test also needs `pnpm dev` running with the `.env.test.local` values.
+**Tier 1, `pnpm test` (vitest).** Unit tests of pure logic may use fixtures, but only from `tests/fixtures/`. `tests/fixture-boundary.test.ts` fails if `lib/`, `agent/`, `app/`, `components/` or `evals/` imports them. Database tests run live against the Neon `test` branch. Billed live tests are opt-in with `JEV_LIVE=1`. The two-turn Assessment Session is covered live by `pnpm eval` (acme) and by driving the workbench. A run holds a live-run lease on the test database, so `pnpm test` and `pnpm eval` cannot reset each other's data mid-run.
 
 **Tier 2, `pnpm eval` (`eve eval`, no mocks).** The suite is billed. It runs against the real AI Gateway and the Neon `test` branch, loading `.env.test.local` itself.
 
@@ -59,8 +59,21 @@ Artifacts are written to `.eve/evals/<timestamp>/`.
 
 `pnpm eval:preview` (`eve eval --url $PREVIEW_URL`) targets a deployment. Its setup still requires `POSTGRES_URL` to be the marked `test` branch. It therefore works only for a deployment that uses that branch, not for previews on the shared `main` branch, where setup refuses to wipe data.
 
+## How the UI reaches the agent
+
+The workbench (`components/workbench/WorkbenchShell.tsx`) talks to the eve agent directly with `useEveAgent` from `eve/react`, on the same origin `withEve` mounts (`/eve/v1/*`). There is no server-side bridge.
+
+- **Auth.** The browser sends the app's `deal_qual_session` cookie, which `agent/channels/eve.ts` accepts. The middleware also guards `/eve/v1` with it.
+- **Turns.** Each Assessment Session is one durable eve session:
+  - turn 1 sends `assessTurnMessage` with the selected System 2 model;
+  - turn 2 sends `feedbackTurnMessage` with the SA answers and their `feedbackKey`.
+  - Both request the structured `{ outcome, error }` result.
+- **What the UI renders.** `lib/assessment-results.ts` projects the stream into the view: the typed root tool results (`score_deal`, `analyze_deal`, `record_sa_feedback`, `crm_update_next_steps`) and the outcome. Failures show verbatim.
+- **Reloads.** The session ID is saved per Opportunity in `localStorage` and resumed with `resume: true`, so a reload reattaches to a paused or running session. A session saved before the Opportunity was reset is dropped.
+- **Data routes.** `/api/crm/reset` and `/api/crm/opportunity` stay as plain Next.js data routes. They call no model: they are the deterministic demo reset and a CRM read. The agent keeps its own `reset_crm_data` tool.
+
 ## Deployment protection
 
-Vercel Authentication protects every `*.vercel.app` deployment URL. That includes the URL a deployment's `/api/qualification/*` routes call for their own `/eve/v1`.
+The browser has already passed Vercel Authentication when it loads the page, so its same-origin `/eve/v1` requests carry the Vercel Authentication (SSO) cookie. No server calls its own deployment URL, so no Protection Bypass for Automation secret is needed.
 
-The routes send `x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET`, and on Vercel they fail loudly when that variable is absent. To provide it, create a **Protection Bypass for Automation** secret under Project Settings → Deployment Protection, then redeploy. Vercel then exposes the variable automatically.
+Scripts that call a protected deployment from outside a browser, such as `pnpm eval:preview`, still need their own way past Deployment Protection and the eve channel auth.
