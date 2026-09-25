@@ -56,10 +56,13 @@ const toPause = [
   progress({ stage: 'jev_saved', round: 'baseline', jevResult: jev({ overallScore: 56 }), opportunity: opportunity({ meddpicc_score: 56 }) }),
   progress({ stage: 'system2_saved', system2Result: system2(), opportunity: opportunity({ meddpicc_score: 56 }) }),
   question(),
+  // Live eve 0.64 order: the turn completes as it parks on the question, then the session waits.
+  turnCompleted(),
+  ev('session.waiting', {}),
 ];
+// Live eve 0.64 order after respond(): no input.resolved or turn.started for a workflow question.
 const toClosed = [
   responded(answer),
-  resolved(),
   progress({ stage: 'feedback_recorded', feedback: { recorded: true, feedbackKey: 'k1' } }),
   progress({ stage: 'jev_scored', round: 'rescore', jevResult: jev({ overallScore: 89 }) }),
   progress({ stage: 'jev_saved', round: 'rescore', jevResult: jev({ overallScore: 89 }), opportunity: opportunity({ meddpicc_score: 89 }) }),
@@ -70,6 +73,7 @@ const toClosed = [
   }),
   outcome({ outcome: 'completed', error: null }),
   turnCompleted(),
+  ev('session.waiting', {}),
 ];
 
 describe('assessmentReducer (workbench view from the run_assessment stream)', () => {
@@ -134,6 +138,11 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
       turnCompleted(),
     ]);
     expect(view.phase).toBe('closed');
+  });
+
+  it('a reload after the SA answered replays to submitting, not back to an open form', () => {
+    const replayed = run([...toPause, progress({ stage: 'feedback_recorded', feedback: { recorded: true, feedbackKey: 'k1' } })]);
+    expect(replayed).toMatchObject({ phase: 'submitting_feedback', pendingInput: null });
   });
 
   it('rebuilds a paused session from a replayed stream (resume after reload)', () => {

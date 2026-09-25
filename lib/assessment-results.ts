@@ -131,7 +131,8 @@ function applyProgress(view: AssessmentView, output: unknown): AssessmentView {
       if (view.sentFeedbackKey !== null && p.feedback.feedbackKey !== view.sentFeedbackKey) {
         return fail(view, 'run_assessment recorded different SA answers than the workbench submitted (feedbackKey mismatch).');
       }
-      return { ...view, feedback: p.feedback, phase: 'submitting_feedback' };
+      // eve 0.64 sends no input.resolved for a workflow question: the recorded answers settle it.
+      return { ...view, feedback: p.feedback, phase: 'submitting_feedback', pendingInput: null };
   }
 }
 
@@ -142,6 +143,7 @@ function applyResult(view: AssessmentView, output: unknown): AssessmentView {
   return {
     ...view,
     runningTool: null,
+    pendingInput: null,
     writeback: { suggestedNextSteps: writeback.suggestedNextSteps, deltaScore: writeback.deltaScore },
     opportunity,
   };
@@ -221,6 +223,8 @@ function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentVi
     }
     case 'turn.completed':
       if (view.phase === 'failed') return view;
+      // The turn completes as run_assessment parks on its question; the run itself is still open.
+      if (view.phase === 'awaiting_feedback' && view.pendingInput) return view;
       if (view.writeback) return { ...view, phase: 'closed', runningTool: null };
       return fail(view, `The Assessment Session ended without a CRM writeback (${TOOL} did not complete).`);
     case 'turn.failed':
