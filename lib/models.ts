@@ -20,8 +20,12 @@ export interface ModelConfig {
   badge: string;
 }
 
-/** Root agent (orchestration only: it calls the tools in order and returns the turn outcome). */
-export const DEFAULT_AGENT_MODEL: System2ModelOption = 'anthropic/claude-haiku-4.5';
+/**
+ * Root agent (orchestration: it calls the tools in order and returns the structured turn outcome).
+ * Not Haiku 4.5: through the Gateway it ended every turn with prose instead of the outcome
+ * (OUTPUT_SCHEMA_NOT_FULFILLED, 6/6 live sessions; issue 18).
+ */
+export const DEFAULT_AGENT_MODEL: System2ModelOption = 'anthropic/claude-sonnet-5';
 
 /**
  * System 2 when a turn names none: a fast model with schema-constrained output. Not Haiku 4.5:

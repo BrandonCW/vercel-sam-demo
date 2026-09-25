@@ -30,11 +30,13 @@ describe('System 2 model configuration', () => {
     expect(SYSTEM2_MODELS.find((m) => m.id === DEFAULT_SYSTEM2_MODEL)?.badge).toBe('Default');
   });
 
-  it('runs the root agent on Claude Haiku 4.5 unless AGENT_MODEL_ID overrides it', () => {
-    expect(DEFAULT_AGENT_MODEL).toBe('anthropic/claude-haiku-4.5');
-    expect(resolveAgentModel({})).toBe('anthropic/claude-haiku-4.5');
-    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('anthropic/claude-haiku-4.5');
-    expect(resolveAgentModel({ AGENT_MODEL_ID: 'anthropic/claude-sonnet-5' })).toBe('anthropic/claude-sonnet-5');
+  // Through the Gateway, Haiku 4.5 did not return the structured turn outcome (it ended the turn
+  // with prose) in 6/6 live sessions (issue 18), so the root stays on Sonnet 5.
+  it('runs the root agent on Claude Sonnet 5 unless AGENT_MODEL_ID overrides it', () => {
+    expect(DEFAULT_AGENT_MODEL).toBe('anthropic/claude-sonnet-5');
+    expect(resolveAgentModel({})).toBe('anthropic/claude-sonnet-5');
+    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('anthropic/claude-sonnet-5');
+    expect(resolveAgentModel({ AGENT_MODEL_ID: 'anthropic/claude-haiku-4.5' })).toBe('anthropic/claude-haiku-4.5');
   });
 
   // Haiku 4.5 stops after the first property of the System 2 object through the Gateway (issue 18),
