@@ -80,11 +80,24 @@ describe('WorkbenchShell on useEveAgent', () => {
       opportunity: scored,
     });
     renderShell();
+    expect(screen.getByRole('status').textContent).toMatch(/System 2 analysis running/);
     expect(screen.getByText('56')).toBeTruthy();
     expect(screen.getByText('Who signs?')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Submit Discovery Findings/ })).toBeNull();
     fireEvent.click(screen.getByText('Economic Buyer'));
     expect(screen.getByText(/VP of E-Commerce mentioned budget/)).toBeTruthy();
+  });
+
+  it('shows no System 2 running indicator before Jev scores arrive or once the assessment settles', () => {
+    hook.state.status = 'streaming';
+    hook.state.data = view({ phase: 'assessing', turn: 'assess', runningTool: 'run_jev_scoring' });
+    const { unmount } = renderShell();
+    expect(screen.queryByText(/System 2 analysis running/)).toBeNull();
+    unmount();
+    hook.state.status = 'ready';
+    hook.state.data = view({ phase: 'failed', turn: 'assess', jevResult: jev(), error: 'System 2 model failed' });
+    renderShell();
+    expect(screen.queryByText(/System 2 analysis running/)).toBeNull();
   });
 
   it('renders the paused session: discovery form, score and evidence from the stream results', () => {

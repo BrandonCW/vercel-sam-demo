@@ -232,6 +232,7 @@ function AssessmentWorkbench({
             sessionState={stage.sessionState}
             dynamicForm={stage.form}
             draftForm={view.system2Draft?.form ?? null}
+            isSystem2Running={view.phase === 'assessing' && Boolean(view.jevResult) && !view.system2Result}
             onStartAssessment={handleStartAssessment}
             isAssessing={stage.isAssessing || turnInFlight}
             onSubmitFeedback={handleSubmitFeedback}

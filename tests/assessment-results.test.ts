@@ -188,14 +188,21 @@ describe('assessmentReducer (workbench view from the eve stream)', () => {
       expect(view.system2Result?.phase3Form.sections[0].fields[0].id).toBe('eb');
     });
 
-    it('fails on a preliminary snapshot it cannot read instead of rendering it', () => {
+    it('skips a System 2 draft it cannot read (display-only) and keeps the last good one', () => {
+      const good = run([...readDeal, partial('run_system2_analysis', { draft: { dimensionFindings: {}, form: system2().phase3Form } })]);
+      const view = run([partial('run_system2_analysis', { draft: { dimensionFindings: {}, form: { sections: [{}] } } })], good);
+      expect(view.phase).toBe('assessing');
+      expect(view.system2Draft?.form?.sections[0].fields[0].id).toBe('eb');
+    });
+
+    it('fails on a Jev snapshot it cannot read instead of rendering it', () => {
       const view = run([...readDeal, partial('run_jev_scoring', { jevResult: { nope: true } })]);
       expect(view.phase).toBe('failed');
       expect(view.error).toMatch(/Unreadable run_jev_scoring snapshot/);
     });
   });
 
-  it('ignores events it does not project (text, reasoning, subagent progress)', () => {
+  it('ignores events it does not project (text, reasoning, other runtime events)', () => {
     const paused = run(assessTurn);
     expect(run([ev('message.appended', { messageDelta: 'hi' }), ev('subagent.called', {})], paused)).toEqual(paused);
   });

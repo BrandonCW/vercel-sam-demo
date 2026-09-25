@@ -152,6 +152,9 @@ function applyToolPartial(view: AssessmentView, tool: string, output: unknown): 
   if (!Object.hasOwn(PARTIAL_PROJECTORS, tool)) return view;
   const { schema, apply } = PARTIAL_PROJECTORS[tool as keyof typeof PARTIAL_PROJECTORS] as ReturnType<typeof projector<unknown>>;
   const parsed = schema.safeParse(output);
+  // A System 2 draft is display-only and superseded by the validated result, so an unreadable
+  // one is skipped (the last good draft stays). A Jev snapshot is the scores themselves: fail.
+  if (!parsed.success && tool === 'run_system2_analysis') return view;
   if (!parsed.success) {
     return fail(view, `Unreadable ${tool} snapshot: ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
   }

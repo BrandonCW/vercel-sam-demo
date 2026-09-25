@@ -29,6 +29,8 @@ interface ActionStageProps {
   dynamicForm: JsonRenderForm | null;
   /** System 2's discovery form as it streams: shown read-only until the persisted form replaces it. */
   draftForm?: JsonRenderForm | null;
+  /** Jev has scored and System 2 is still running: show the running indicator. */
+  isSystem2Running?: boolean;
   onStartAssessment?: () => void;
   isAssessing?: boolean;
   onSubmitFeedback?: (
@@ -46,6 +48,7 @@ export function ActionStage({
   sessionState,
   dynamicForm,
   draftForm = null,
+  isSystem2Running = false,
   onStartAssessment,
   isAssessing = false,
   onSubmitFeedback,
@@ -397,6 +400,17 @@ export function ActionStage({
               </button>
             </div>
           </div>
+
+          {isSystem2Running && (
+            <div
+              role="status"
+              className="mt-5 flex items-center gap-2 p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 text-xs text-purple-200"
+            >
+              <span className="inline-block w-3.5 h-3.5 border-2 border-purple-300/30 border-t-purple-300 rounded-full animate-spin" />
+              <span className="font-semibold">System 2 analysis running&hellip;</span>
+              <span className="text-zinc-400">Jev scores are in; citations and the discovery form fill in as they are written.</span>
+            </div>
+          )}
 
           {/* System 2 draft: the discovery form fills in as the model writes it (read-only). */}
           {isAssessing && draftForm && (

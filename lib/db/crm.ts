@@ -343,10 +343,26 @@ export async function recordAssessmentStep(
       SELECT id, ${audit.actor}, ${audit.action}, ${JSON.stringify(audit.payload)}::jsonb FROM updated
       RETURNING *
     )
-    SELECT row_to_json(updated.*) AS opportunity, row_to_json(audit.*) AS interaction FROM updated, audit;
+    SELECT updated.*,
+      (SELECT MAX(created_at) FROM deal_interactions i WHERE i.opportunity_id = updated.id AND i.action = 'reset') AS last_reset_at,
+      audit.id AS audit_id, audit.actor AS audit_actor, audit.action AS audit_action,
+      audit.payload AS audit_payload, audit.created_at AS audit_created_at
+    FROM updated, audit;
   `;
   if (rows.length === 0) throw new Error(`Opportunity ${id} not found`);
-  return { opportunity: mapRowToOpportunity(rows[0].opportunity), interaction: mapRowToInteraction(rows[0].interaction) };
+  // Plain driver columns (not row_to_json), so both come back in the shape getOpportunity reads.
+  const row = rows[0];
+  return {
+    opportunity: mapRowToOpportunity(row),
+    interaction: mapRowToInteraction({
+      id: row.audit_id,
+      opportunity_id: row.id,
+      actor: row.audit_actor,
+      action: row.audit_action,
+      payload: row.audit_payload,
+      created_at: row.audit_created_at,
+    }),
+  };
 }
 
 export async function getInteractions(opportunityId: string): Promise<DealInteraction[]> {

@@ -76,6 +76,8 @@ describe('root agent tools: System 1 and System 2 run directly on the root (no s
       expect(result.opportunity.qualification_status).toBe('in_review');
       const [row] = await getSessionInteractions(ACME, 'wrun_J');
       expect(result.interactionId).toBe(row.id);
+      // The Opportunity returned by the write has the same shape and values as a normal read.
+      expect(result.opportunity).toEqual(await getOpportunity(ACME));
       expect(row.payload.turnId).toBe('turn_0');
     });
 

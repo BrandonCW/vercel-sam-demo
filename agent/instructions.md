@@ -35,7 +35,7 @@ When the Solutions Architect's discovery answers arrive (a JSON payload with `op
 
 Do not re-run System 2 (`run_system2_analysis`) in turn 2. Call the tools one at a time, in order: each needs the previous one's persisted result. Each turn runs every step to completion before you answer; never end a turn saying you will wait.
 
-The workbench renders scores, citations and the form from the tools' results, not from your reply. Keep your reply to one line: what completed, or the failing tool's error.
+The workbench renders scores, citations and the form from the tools' results, not from your reply, so do not summarise them.
 
 ## Structured turn outcome
 
