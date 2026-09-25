@@ -19,11 +19,11 @@ That bridge was a deliberate stopgap so 08 could move the agents without a UI ch
 
 ## Acceptance criteria
 
-- [ ] The workbench runs assess and feedback through `useEveAgent` only; no code calls `/api/qualification/*`.
-- [ ] One eve session spans assess and feedback for an opportunity, and survives a page reload.
-- [ ] `ContextColumn` still shows Jev scores and System 2 evidence/gaps per dimension.
-- [ ] The System 2 model dropdown still selects the model used by `run_system2_analysis`.
-- [ ] `/api/qualification/*` routes and `lib/eve-session.ts` are removed; `pnpm test`, `tsc` and `npx eve info` are clean.
+- [x] The workbench runs assess and feedback through `useEveAgent` only; no code calls `/api/qualification/*`.
+- [x] One eve session spans assess and feedback for an opportunity, and survives a page reload.
+- [x] `ContextColumn` still shows Jev scores and System 2 evidence/gaps per dimension.
+- [x] The System 2 model dropdown still selects the model used by `run_system2_analysis`.
+- [x] `/api/qualification/*` routes and `lib/eve-session.ts` are removed; `pnpm test`, `tsc` and `npx eve info` are clean.
 
 ## Comments
 
