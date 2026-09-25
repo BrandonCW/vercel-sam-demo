@@ -27,6 +27,8 @@ interface ActionStageProps {
   selectedModel: System2ModelOption;
   sessionState: AssessmentSessionState;
   dynamicForm: JsonRenderForm | null;
+  /** System 2's discovery form as it streams: shown read-only until the persisted form replaces it. */
+  draftForm?: JsonRenderForm | null;
   onStartAssessment?: () => void;
   isAssessing?: boolean;
   onSubmitFeedback?: (
@@ -43,6 +45,7 @@ export function ActionStage({
   selectedModel,
   sessionState,
   dynamicForm,
+  draftForm = null,
   onStartAssessment,
   isAssessing = false,
   onSubmitFeedback,
@@ -394,6 +397,16 @@ export function ActionStage({
               </button>
             </div>
           </div>
+
+          {/* System 2 draft: the discovery form fills in as the model writes it (read-only). */}
+          {isAssessing && draftForm && (
+            <div className="mt-5">
+              <div className="mb-2 text-[11px] font-mono uppercase tracking-wider text-purple-400 font-semibold">
+                System 2 drafting discovery form&hellip;
+              </div>
+              <DynamicFormRenderer form={draftForm} onSubmit={() => {}} readOnly />
+            </div>
+          )}
 
           {/* Zero-Cost Banner Preview */}
           <div className="mt-5 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">

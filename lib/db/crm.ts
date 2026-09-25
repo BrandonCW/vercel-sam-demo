@@ -304,10 +304,49 @@ export async function recordInteraction(
   return mapRowToInteraction(rows[0]);
 }
 
-/** The database clock, ISO. */
-export async function getDatabaseNow(): Promise<string> {
-  const [{ now }] = await getSql()`SELECT NOW() AS now;`;
-  return new Date(now).toISOString();
+/** Assessment fields one System 1 or System 2 result writes onto the Opportunity. */
+export interface AssessmentFields {
+  meddpicc_breakdown: Opportunity['meddpicc_breakdown'];
+  /** Omitted: left as stored. */
+  meddpicc_score?: number;
+  /** Omitted: left as stored. */
+  competitive_flags?: string[];
+  /** Moves an `unqualified` Opportunity to `in_review`; any other status is kept. */
+  markInReview?: boolean;
+}
+
+/**
+ * Writes one assessment step: the Opportunity's assessment fields and its audit row, in a
+ * single statement (one round trip, atomic: both or neither). Only the named fields change,
+ * so notes written concurrently are never overwritten. Throws if the Opportunity is missing.
+ */
+export async function recordAssessmentStep(
+  id: string,
+  fields: AssessmentFields,
+  audit: Pick<DealInteraction, 'actor' | 'action' | 'payload'>
+): Promise<{ opportunity: Opportunity; interaction: DealInteraction }> {
+  const sql = getSql();
+  const rows = await sql`
+    WITH updated AS (
+      UPDATE opportunities SET
+        meddpicc_breakdown = ${JSON.stringify(fields.meddpicc_breakdown)}::jsonb,
+        meddpicc_score = COALESCE(${fields.meddpicc_score ?? null}::int, meddpicc_score),
+        competitive_flags = COALESCE(${fields.competitive_flags ?? null}::text[], competitive_flags),
+        qualification_status = CASE
+          WHEN ${fields.markInReview ?? false}::boolean AND qualification_status = 'unqualified' THEN 'in_review'
+          ELSE qualification_status END,
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    ), audit AS (
+      INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
+      SELECT id, ${audit.actor}, ${audit.action}, ${JSON.stringify(audit.payload)}::jsonb FROM updated
+      RETURNING *
+    )
+    SELECT row_to_json(updated.*) AS opportunity, row_to_json(audit.*) AS interaction FROM updated, audit;
+  `;
+  if (rows.length === 0) throw new Error(`Opportunity ${id} not found`);
+  return { opportunity: mapRowToOpportunity(rows[0].opportunity), interaction: mapRowToInteraction(rows[0].interaction) };
 }
 
 export async function getInteractions(opportunityId: string): Promise<DealInteraction[]> {

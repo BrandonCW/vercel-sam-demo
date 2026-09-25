@@ -46,3 +46,7 @@ Deviations / follow-ups:
 - Freshness checks are per-opportunity, so concurrent runs on the same opportunity could cross (ticket 09 session ownership).
 - **System 2 schema fix**: the live Acme run first failed with schema-invalid structured output (a radio option with no `value`). Root cause: the model was asked to fill the UI render schema directly (`JsonRenderFormSchema`), which has optional fields, `.default()`, `.min()` constraints and a model-unknowable `opportunityId`; the Gateway structured output does not enforce those, so the model omitted keys. System 2 now has a model-facing schema (`System2ModelOutputSchema` in `lib/agents/system2.ts`) where every property is required (null for not-applicable, `options: []` for text fields) with `.describe()` guidance, a named `Output.object`, a tightened prompt with explicit form rules, and `toSystem2AnalysisResult` which maps to the render schema and throws on anything unrenderable (e.g. a choice field with no options). No defaults or fallbacks. Live `tests/eve-tools.live.test.ts` passes (8/8 citations verbatim).
 - UI migration to `useEveAgent` is issue 11.
+
+## Comments
+
+- 2026-09-25 (issue 18): superseded in part. The `qualification_assessor` and `playbook_generator` subagents and the `score_deal` / `analyze_deal` delegation tools are removed; the root agent calls `run_jev_scoring` and `run_system2_analysis` directly, and the workbench projects their results (and `action.partial` snapshots) under those names. See `18-direct-root-tools-progressive-results-haiku.md`.

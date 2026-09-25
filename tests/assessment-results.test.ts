@@ -14,6 +14,8 @@ const submitted = (message = 'Assess opportunity opp_acme_corp_001') =>
 const requested = (toolName: string) => ev('actions.requested', { actions: [{ callId: `c_${toolName}`, kind: 'tool-call', toolName, input: {} }], stepIndex: 0 });
 const ok = (toolName: string, output: unknown) =>
   ev('action.result', { status: 'completed', stepIndex: 0, result: { callId: `c_${toolName}`, kind: 'tool-result', toolName, output } });
+const partial = (toolName: string, output: unknown) =>
+  ev('action.partial', { stepIndex: 0, result: { callId: `c_${toolName}`, kind: 'tool-result', toolName, output } });
 const failed = (toolName: string, message: string) =>
   ev('action.result', {
     status: 'failed',
@@ -30,10 +32,10 @@ const assessTurn = [
   submitted(),
   ev('turn.started', {}),
   ok('crm_read_deal', { opportunity: opportunity({ meddpicc_score: null }) }),
-  requested('score_deal'),
-  ok('score_deal', { interactionId: 'i1', jevResult: jev({ overallScore: 56 }), opportunity: opportunity({ meddpicc_score: 56 }), report: 'r' }),
-  requested('analyze_deal'),
-  ok('analyze_deal', { interactionId: 'i2', system2Result: system2(), opportunity: opportunity({ meddpicc_score: 56 }), report: 'r' }),
+  requested('run_jev_scoring'),
+  ok('run_jev_scoring', { interactionId: 'i1', jevResult: jev({ overallScore: 56 }), opportunity: opportunity({ meddpicc_score: 56 }) }),
+  requested('run_system2_analysis'),
+  ok('run_system2_analysis', { interactionId: 'i2', system2Result: system2(), opportunity: opportunity({ meddpicc_score: 56 }) }),
   outcome({ outcome: 'completed', error: null }),
   turnCompleted(),
 ];
@@ -45,7 +47,7 @@ describe('assessmentReducer (workbench view from the eve stream)', () => {
 
   it('shows the assessment running, and which step, as soon as turn 1 is submitted', () => {
     expect(run([submitted()]).phase).toBe('assessing');
-    expect(run(assessTurn.slice(0, 4))).toMatchObject({ phase: 'assessing', runningTool: 'score_deal' });
+    expect(run(assessTurn.slice(0, 4))).toMatchObject({ phase: 'assessing', runningTool: 'run_jev_scoring' });
   });
 
   it('pauses awaiting SA feedback with scores, form, model and Opportunity once turn 1 completes', () => {
@@ -66,7 +68,7 @@ describe('assessmentReducer (workbench view from the eve stream)', () => {
         submitted('The Solutions Architect submitted …'),
         ev('turn.started', { sequence: 1, turnId: 'turn_1' }),
         ok('record_sa_feedback', { recorded: true, feedbackKey: 'k1' }),
-        ok('score_deal', { interactionId: 'i3', jevResult: jev({ overallScore: 89 }), opportunity: opportunity({ meddpicc_score: 89 }), report: 'r' }),
+        ok('run_jev_scoring', { interactionId: 'i3', jevResult: jev({ overallScore: 89 }), opportunity: opportunity({ meddpicc_score: 89 }) }),
         ok('crm_update_next_steps', {
           success: true,
           suggestedNextSteps: '[QUALIFIED] Run POC | Owner: AE | Focus: x | Watch: y',
@@ -93,7 +95,7 @@ describe('assessmentReducer (workbench view from the eve stream)', () => {
     const view = run([
       submitted(),
       ev('turn.started', {}),
-      failed('score_deal', 'Jev 402 payment required'),
+      failed('run_jev_scoring', 'Jev 402 payment required'),
       outcome({ outcome: 'failed', error: 'Jev 402 payment required' }),
       turnCompleted(),
     ]);
@@ -101,22 +103,22 @@ describe('assessmentReducer (workbench view from the eve stream)', () => {
   });
 
   it('fails when the agent reports a failed outcome even without a failed action', () => {
-    expect(run([submitted(), outcome({ outcome: 'failed', error: 'analyze_deal was not called' }), turnCompleted()])).toMatchObject({
+    expect(run([submitted(), outcome({ outcome: 'failed', error: 'run_system2_analysis was not called' }), turnCompleted()])).toMatchObject({
       phase: 'failed',
-      error: 'analyze_deal was not called',
+      error: 'run_system2_analysis was not called',
     });
   });
 
   it('fails when turn 1 claims success but produced no discovery form', () => {
-    const view = run([submitted(), ok('score_deal', { interactionId: 'i1', jevResult: jev(), opportunity: opportunity(), report: 'r' }), outcome({ outcome: 'completed', error: null }), turnCompleted()]);
+    const view = run([submitted(), ok('run_jev_scoring', { interactionId: 'i1', jevResult: jev(), opportunity: opportunity() }), outcome({ outcome: 'completed', error: null }), turnCompleted()]);
     expect(view.phase).toBe('failed');
     expect(view.error).toMatch(/without a System 2 discovery form/);
   });
 
   it('fails on a tool result it cannot read instead of rendering partial data', () => {
-    const view = run([submitted(), ok('analyze_deal', { system2Result: { nope: true }, opportunity: opportunity() })]);
+    const view = run([submitted(), ok('run_system2_analysis', { system2Result: { nope: true }, opportunity: opportunity() })]);
     expect(view.phase).toBe('failed');
-    expect(view.error).toMatch(/Unreadable analyze_deal result/);
+    expect(view.error).toMatch(/Unreadable run_system2_analysis result/);
   });
 
   it('fails on turn.failed, session.failed and a failed submission', () => {
@@ -125,6 +127,72 @@ describe('assessmentReducer (workbench view from the eve stream)', () => {
     expect(
       run([submitted(), { type: 'client.message.failed', data: { createdAt: 0, message: 'm', submissionId: 's1', error: { message: '401 Unauthorized' } } } as any])
     ).toMatchObject({ phase: 'failed', error: '401 Unauthorized' });
+  });
+
+  describe('progressive results (action.partial), before the CRM writes land', () => {
+    const readDeal = [submitted(), ev('turn.started', {}), ok('crm_read_deal', { opportunity: opportunity({ meddpicc_score: null, competitive_flags: [] }) })];
+
+    it('renders the Jev scores in the rubric as soon as Jev answers, before the write and before System 2', () => {
+      const view = run([...readDeal, requested('run_jev_scoring'), partial('run_jev_scoring', { jevResult: jev({ overallScore: 56 }) })]);
+      expect(view.phase).toBe('assessing');
+      expect(view.jevResult?.overallScore).toBe(56);
+      expect(view.opportunity?.meddpicc_score).toBe(56);
+      expect(view.opportunity?.meddpicc_breakdown.economicBuyer).toMatchObject({ score: 3 });
+      expect(view.opportunity?.meddpicc_breakdown.stageGate).toMatchObject({ gateReady: false });
+      expect(view.opportunity?.competitive_flags).toEqual(['Cloudflare Pages', 'Netlify']);
+      expect(view.opportunity?.qualification_status).toBe('in_review');
+    });
+
+    it('fails loudly when the write after the preliminary scores fails', () => {
+      const view = run([
+        ...readDeal,
+        partial('run_jev_scoring', { jevResult: jev({ overallScore: 56 }) }),
+        failed('run_jev_scoring', 'Postgres: connection terminated'),
+      ]);
+      expect(view).toMatchObject({ phase: 'failed', error: 'Postgres: connection terminated' });
+    });
+
+    it('fills in System 2 citations and a read-only form preview while System 2 streams', () => {
+      const form = system2().phase3Form;
+      const view = run([
+        ...readDeal,
+        ok('run_jev_scoring', {
+          interactionId: 'i1',
+          jevResult: jev(),
+          opportunity: opportunity({ meddpicc_score: 54, meddpicc_breakdown: { economicBuyer: jev().dimensions.economicBuyer } }),
+        }),
+        partial('run_system2_analysis', {
+          draft: { dimensionFindings: { economicBuyer: { citations: ['VP of E-Commerce mentioned budget'], gaps: [] } }, form: null },
+        }),
+        partial('run_system2_analysis', {
+          draft: { dimensionFindings: { economicBuyer: { citations: ['VP of E-Commerce mentioned budget'], gaps: ['No sign-off'] } }, form },
+        }),
+      ]);
+      expect(view.phase).toBe('assessing');
+      expect(view.system2Result).toBeNull();
+      expect(view.system2Draft?.form?.sections[0].fields[0].id).toBe('eb');
+      expect(view.opportunity?.meddpicc_breakdown.economicBuyer).toMatchObject({
+        score: 3,
+        evidence: ['VP of E-Commerce mentioned budget'],
+        gaps: ['No sign-off'],
+      });
+    });
+
+    it('replaces the draft with the persisted System 2 result', () => {
+      const view = run([
+        ...readDeal,
+        partial('run_system2_analysis', { draft: { dimensionFindings: {}, form: system2().phase3Form } }),
+        ok('run_system2_analysis', { interactionId: 'i2', system2Result: system2(), opportunity: opportunity({ meddpicc_score: 54 }) }),
+      ]);
+      expect(view.system2Draft).toBeNull();
+      expect(view.system2Result?.phase3Form.sections[0].fields[0].id).toBe('eb');
+    });
+
+    it('fails on a preliminary snapshot it cannot read instead of rendering it', () => {
+      const view = run([...readDeal, partial('run_jev_scoring', { jevResult: { nope: true } })]);
+      expect(view.phase).toBe('failed');
+      expect(view.error).toMatch(/Unreadable run_jev_scoring snapshot/);
+    });
   });
 
   it('ignores events it does not project (text, reasoning, subagent progress)', () => {
@@ -159,7 +227,7 @@ describe('assessmentReducer (workbench view from the eve stream)', () => {
   it('fails when System 2 ran with a model other than the one the turn asked for', () => {
     const view = run([
       submitted(assessTurnMessage('opp_acme_corp_001', 'openai/gpt-5.5')),
-      ok('analyze_deal', { interactionId: 'i2', system2Result: system2({ modelUsed: 'anthropic/claude-sonnet-5' }), opportunity: opportunity() }),
+      ok('run_system2_analysis', { interactionId: 'i2', system2Result: system2({ modelUsed: 'anthropic/claude-sonnet-5' }), opportunity: opportunity() }),
     ]);
     expect(view.phase).toBe('failed');
     expect(view.error).toMatch(/System 2 ran with anthropic\/claude-sonnet-5, not the requested model openai\/gpt-5.5/);

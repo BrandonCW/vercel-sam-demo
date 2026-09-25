@@ -58,11 +58,33 @@ describe('WorkbenchShell on useEveAgent', () => {
 
   it('shows the running step while System 1 / System 2 run, and locks Reset and scenario switching', () => {
     hook.state.status = 'streaming';
-    hook.state.data = view({ phase: 'assessing', turn: 'assess', runningTool: 'analyze_deal' });
+    hook.state.data = view({ phase: 'assessing', turn: 'assess', runningTool: 'run_system2_analysis' });
     renderShell();
     expect(screen.getAllByText(/ANALYZING/).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /Reset Demo/ })).toHaveProperty('disabled', true);
     expect(screen.getByLabelText('Select Scenario')).toHaveProperty('disabled', true);
+  });
+
+  it('shows Jev scores and a read-only discovery form preview while System 2 is still streaming', () => {
+    hook.state.status = 'streaming';
+    const scored = opportunity({
+      meddpicc_score: 56,
+      meddpicc_breakdown: { economicBuyer: { label: 'Economic Buyer', score: 3, status: 'unaddressed', confidence: 0.8, evidence: ['VP of E-Commerce mentioned budget'], gaps: [] } },
+    });
+    hook.state.data = view({
+      phase: 'assessing',
+      turn: 'assess',
+      runningTool: 'run_system2_analysis',
+      jevResult: jev({ overallScore: 56 }),
+      system2Draft: { dimensionFindings: {}, form: system2().phase3Form },
+      opportunity: scored,
+    });
+    renderShell();
+    expect(screen.getByText('56')).toBeTruthy();
+    expect(screen.getByText('Who signs?')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Submit Discovery Findings/ })).toBeNull();
+    fireEvent.click(screen.getByText('Economic Buyer'));
+    expect(screen.getByText(/VP of E-Commerce mentioned budget/)).toBeTruthy();
   });
 
   it('renders the paused session: discovery form, score and evidence from the stream results', () => {
@@ -75,7 +97,7 @@ describe('WorkbenchShell on useEveAgent', () => {
     expect(screen.getAllByText('PENDING_FEEDBACK').length).toBeGreaterThan(0);
     expect(screen.getByText('Who signs?')).toBeTruthy();
     expect(screen.getByText(/System 2 Reasoning Complete \(56\/100\)/)).toBeTruthy();
-    // ContextColumn: System 2 evidence and gaps per dimension, from the analyze_deal Opportunity.
+    // ContextColumn: System 2 evidence and gaps per dimension, from the run_system2_analysis Opportunity.
     fireEvent.click(screen.getByText('Economic Buyer'));
     expect(screen.getByText(/VP of E-Commerce mentioned budget/)).toBeTruthy();
     expect(screen.getByText(/No confirmed sign-off authority/)).toBeTruthy();

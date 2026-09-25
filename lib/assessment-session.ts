@@ -14,17 +14,13 @@ export interface AssessmentScope {
 interface EveSessionLike {
   id: string;
   turn: { id: string };
-  parent?: { rootSessionId: string; turn: { id: string } };
 }
 
-/** Resolves the Assessment Session from an eve tool ctx; subagent calls resolve to their root session. */
+/** Resolves the Assessment Session from an eve tool ctx. Every assessment tool runs on the root session. */
 export function assessmentScopeOf(ctx: { session?: EveSessionLike } | undefined): AssessmentScope {
   const session = ctx?.session;
   if (!session?.id || !session.turn?.id) {
     throw new Error('This tool must run inside an eve session (Assessment Session); no ctx.session was provided.');
-  }
-  if (session.parent) {
-    return { sessionId: session.parent.rootSessionId, turnId: session.parent.turn.id };
   }
   return { sessionId: session.id, turnId: session.turn.id };
 }

@@ -38,3 +38,7 @@ One durable eve session is one Assessment Session, spanning assess and feedback.
 **Live proof** (`tests/assessment-session.live.test.ts`, run against `pnpm dev` with `.env.test.local`): session `wrun_01M3AYCH410RTF2WX0H29XYNQ1`. Acme scored 58 → 67 (+9) → `[QUALIFIED] …`. All four row types were written in one session, with exactly one `writeback` and one `sa_feedback`, and `ae_notes` was unchanged. The live run came before the post-review hardening (the feedbackKey guard, the writeback-once guard, and `crm_read_deal` in the turn-1 message); those are covered by unit tests only.
 
 **Not proven here**: the `npx eve dev` TUI path was not exercised. It uses the same tools (a TUI user sends the JSON payload without a key). A turn 2 "hours later" was not exercised live; durability relies on eve's session guarantee and the explicit 30-day timeout.
+
+## Comments
+
+- 2026-09-25 (issue 18): superseded in part. The `qualification_assessor` and `playbook_generator` subagents and the `score_deal` / `analyze_deal` delegation tools are removed; the root agent calls `run_jev_scoring` and `run_system2_analysis` directly, and the workbench projects their results (and `action.partial` snapshots) under those names. See `18-direct-root-tools-progressive-results-haiku.md`.

@@ -219,7 +219,7 @@ The architecture defines two primary seams, keeping the total number of seams to
 
 ## Amendments (2026-09-25, eve review)
 
-Tracked in issues 06–10.
+Tracked in issues 06–10 and 18.
 
 - **Fail loudly**: No runtime fallbacks (regex scoring, canned System 2 output, in-memory CRM). Missing config or upstream failure throws. Supersedes any fallback behavior implied above.
 - **§4 System 1**: Jev is TypeSafe AI's `typesafe-ai/jev` evaluation model via AI Gateway (`evaluate` from `eve/ai`), answering typed score/choice questions. Composite and stage gates computed in code from its answers.
@@ -228,3 +228,6 @@ Tracked in issues 06–10.
 - **§6 Assessment Session**: implemented as a two-turn durable eve session (see 09).
 - **Testing**: fixture-based tests allowed only for pure logic, and only alongside live eve evals against the real Gateway and a Postgres test branch (see 10). Supersedes "LLM endpoints mocked at transport level" as the sole integration strategy.
 - **Jev request details (issue 07)**: Zero Data Retention is not required; Gateway retention of Jev requests is accepted (user decision). Score questions use 10 levels, because Jev allows at most 10. Level p stands for round(p × 10 / 9), worded with that value's rubric band.
+- **§3 agent structure (issue 18)**: the `QualificationAssessor` and `PlaybookGenerator` subagents are removed. System 1 (`run_jev_scoring`) and System 2 (`run_system2_analysis`) are each one deterministic tool call, so the root agent calls them directly as its own tools in `agent/tools/`. A subagent added nothing but a model step before the call and a summary nobody read after it (about 12s of the 14s System 1 step and 27s of the System 2 step). No subagent remains. Supersedes the sub-agent roles in §3 and the `score_deal` / `analyze_deal` delegation tools of issues 09 and 13.
+- **Progressive results (issue 18)**: the workbench shows Jev scores before the CRM write finishes, and System 2 citations and a read-only discovery form preview while System 2 streams (eve `action.partial` from async-generator tools). Each step's CRM update and audit row are one atomic statement. A failed write still fails the tool action.
+- **§1 / user story 20 models (issue 18)**: the default model for the root agent and System 2 is now `anthropic/claude-haiku-4.5`; `anthropic/claude-sonnet-5` stays selectable for System 2. Supersedes the Sonnet 5 default above.

@@ -59,3 +59,7 @@ The selected model is written into turn 1's message (`analyze_deal … with mode
   - the closed writeback;
   - failures, including a rejected send;
   - the control locks.
+
+## Comments
+
+- 2026-09-25 (issue 18): superseded in part. The `qualification_assessor` and `playbook_generator` subagents and the `score_deal` / `analyze_deal` delegation tools are removed; the root agent calls `run_jev_scoring` and `run_system2_analysis` directly, and the workbench projects their results (and `action.partial` snapshots) under those names. See `18-direct-root-tools-progressive-results-haiku.md`.

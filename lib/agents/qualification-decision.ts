@@ -1,6 +1,6 @@
 import type { JevScoringResult } from './jev-schema';
-import type { System2AnalysisResult } from './system2';
-import type { MEDDPICCBreakdown, QualificationStatus } from '@/lib/types/crm';
+import type { System2AnalysisResult, System2Draft } from './system2';
+import type { MEDDPICCBreakdown, Opportunity, QualificationStatus } from '@/lib/types/crm';
 
 /**
  * Deterministic qualification decisions. The models supply typed facts (Jev
@@ -74,4 +74,40 @@ export function mergeSystem2Findings(
     breakdown[key] = { ...dimension, evidence: finding.citations, gaps: finding.gaps };
   }
   return breakdown;
+}
+
+/** The Opportunity fields a System 1 result sets (persisted by recordJevScoring). */
+export function jevOpportunityFields(jev: JevScoringResult): {
+  meddpicc_score: number;
+  meddpicc_breakdown: MEDDPICCBreakdown;
+  competitive_flags: string[];
+} {
+  return {
+    meddpicc_score: jev.overallScore,
+    meddpicc_breakdown: { ...jev.dimensions, stageGate: jev.stageGate },
+    competitive_flags: jev.competitiveFlags.map((c) => c.name),
+  };
+}
+
+/**
+ * The Opportunity as it will read once a System 1 result is written: the same fields
+ * recordJevScoring writes, and an unqualified deal moves to in_review. Pure, for the
+ * workbench to show scores before the write lands.
+ */
+export function withJevScores(opportunity: Opportunity, jev: JevScoringResult): Opportunity {
+  return {
+    ...opportunity,
+    ...jevOpportunityFields(jev),
+    qualification_status: opportunity.qualification_status === 'unqualified' ? 'in_review' : opportunity.qualification_status,
+  };
+}
+
+/** The breakdown with a streaming System 2 draft's citations and gaps on the dimensions already scored. Pure. */
+export function withDraftFindings(breakdown: MEDDPICCBreakdown, draft: System2Draft): MEDDPICCBreakdown {
+  const next = { ...breakdown };
+  for (const [key, finding] of Object.entries(draft.dimensionFindings) as [keyof System2Draft['dimensionFindings'], NonNullable<System2Draft['dimensionFindings'][keyof System2Draft['dimensionFindings']]>][]) {
+    const dimension = next[key];
+    if (dimension) next[key] = { ...dimension, evidence: finding.citations, gaps: finding.gaps };
+  }
+  return next;
 }

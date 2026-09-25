@@ -4,9 +4,8 @@ import path from 'path';
 import crmReadDealTool from '@/agent/tools/crm_read_deal';
 import crmUpdateNextStepsTool from '@/agent/tools/crm_update_next_steps';
 import resetCrmDataTool from '@/agent/tools/reset_crm_data';
-import runJevScoringTool from '@/agent/subagents/qualification_assessor/tools/run_jev_scoring';
-import assessorReadDealTool from '@/agent/subagents/qualification_assessor/tools/crm_read_deal';
-import runSystem2AnalysisTool from '@/agent/subagents/playbook_generator/tools/run_system2_analysis';
+import runJevScoringTool from '@/agent/tools/run_jev_scoring';
+import runSystem2AnalysisTool from '@/agent/tools/run_system2_analysis';
 import {
   getInteractions,
   getOpportunity,
@@ -15,7 +14,7 @@ import {
 } from '@/lib/db/crm';
 import { recordJevScoring, recordSystem2Analysis } from '@/lib/db/assessments';
 import { jev, system2 } from './fixtures/qualification';
-import { rootCtx, scope } from './fixtures/eve-session';
+import { rootCtx, runTool, scope } from './fixtures/eve-session';
 
 const ACME = 'opp_acme_corp_001';
 const ctx = rootCtx('wrun_test', 'turn_1');
@@ -46,10 +45,9 @@ describe('eve agent tools', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('crm_read_deal reads the opportunity, and the assessor subagent exposes the same tool', async () => {
+  it('crm_read_deal reads the opportunity', async () => {
     const result = (await crmReadDealTool.execute({ opportunityId: ACME }, ctx)) as any;
     expect(result.opportunity.name).toBe('Acme Corp - Next.js Migration');
-    expect(assessorReadDealTool).toBe(crmReadDealTool);
   });
 
   it('scoring and analysis tools take only an opportunityId (plus model choice), never retyped deal data', () => {
@@ -60,13 +58,14 @@ describe('eve agent tools', () => {
 
   it('run_system2_analysis accepts current Gateway model IDs only', () => {
     const schema = runSystem2AnalysisTool.inputSchema as any;
+    expect(schema.safeParse({ opportunityId: ACME, model: 'anthropic/claude-haiku-4.5' }).success).toBe(true);
     expect(schema.safeParse({ opportunityId: ACME, model: 'anthropic/claude-sonnet-5' }).success).toBe(true);
     expect(schema.safeParse({ opportunityId: ACME, model: 'claude-3-5-sonnet' }).success).toBe(false);
   });
 
   it('run_system2_analysis refuses to run before System 1 has scored the deal', async () => {
     await expect(
-      Promise.resolve(runSystem2AnalysisTool.execute({ opportunityId: ACME }, ctx))
+      runTool(runSystem2AnalysisTool, { opportunityId: ACME }, ctx)
     ).rejects.toThrow(/run_jev_scoring/);
   });
 
@@ -82,7 +81,7 @@ describe('eve agent tools', () => {
 
     it('run_jev_scoring fails the tool action instead of returning a fallback score', async () => {
       await expect(
-        Promise.resolve(runJevScoringTool.execute({ opportunityId: ACME }, ctx))
+        runTool(runJevScoringTool, { opportunityId: ACME }, ctx)
       ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
     });
 
@@ -90,7 +89,7 @@ describe('eve agent tools', () => {
       const opp = (await getOpportunity(ACME))!;
       await recordJevScoring(opp, jev(), S);
       await expect(
-        Promise.resolve(runSystem2AnalysisTool.execute({ opportunityId: ACME }, ctx))
+        runTool(runSystem2AnalysisTool, { opportunityId: ACME }, ctx)
       ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
     });
   });

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import runJevScoringTool from '@/agent/subagents/qualification_assessor/tools/run_jev_scoring';
-import runSystem2AnalysisTool from '@/agent/subagents/playbook_generator/tools/run_system2_analysis';
+import runJevScoringTool from '@/agent/tools/run_jev_scoring';
+import runSystem2AnalysisTool from '@/agent/tools/run_system2_analysis';
 import crmUpdateNextStepsTool from '@/agent/tools/crm_update_next_steps';
 import { getOpportunity, resetCrmDatabase } from '@/lib/db/crm';
-import { rootCtx } from './fixtures/eve-session';
+import { rootCtx, runTool } from './fixtures/eve-session';
 
 // Billed: one real typesafe-ai/jev call and one System 2 model call through AI Gateway,
 // against the Postgres test branch. Opt in with JEV_LIVE=1.
@@ -15,11 +15,11 @@ describe.skipIf(!live)('eve tools - live Acme assessment through writeback', () 
   it('scores with Jev, cites with System 2, and writes back a code-decided next step', async () => {
     const baseline = await resetCrmDatabase('scenario_acme_netlify');
 
-    const { jevResult } = (await runJevScoringTool.execute({ opportunityId: ACME }, ctx)) as any;
+    const { jevResult } = (await runTool(runJevScoringTool, { opportunityId: ACME }, ctx)).result;
     expect(jevResult.stageGate.gateReady).toBe(false);
     expect(jevResult.stageGate.blockingDimensions).toContain('economicBuyer');
 
-    const { system2Result } = (await runSystem2AnalysisTool.execute({ opportunityId: ACME }, ctx)) as any;
+    const { system2Result } = (await runTool(runSystem2AnalysisTool, { opportunityId: ACME }, ctx)).result;
     console.log('SYSTEM2_FINDINGS', JSON.stringify({
       findings: system2Result.dimensionFindings,
       fatalBlocker: system2Result.fatalBlocker,

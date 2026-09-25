@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import crmUpdateNextStepsTool from '@/agent/tools/crm_update_next_steps';
 import recordSaFeedbackTool from '@/agent/tools/record_sa_feedback';
-import runSystem2AnalysisTool from '@/agent/subagents/playbook_generator/tools/run_system2_analysis';
+import runSystem2AnalysisTool from '@/agent/tools/run_system2_analysis';
 import { getInteractions, getOpportunity, resetCrmDatabase } from '@/lib/db/crm';
 import { recordJevScoring, recordSystem2Analysis } from '@/lib/db/assessments';
-import { rootCtx, subagentCtx, scope } from './fixtures/eve-session';
+import { rootCtx, runTool, scope } from './fixtures/eve-session';
 import { jev, system2 } from './fixtures/qualification';
 import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 
@@ -30,19 +30,19 @@ describe('Assessment Session: tools are scoped to the root eve session', { timeo
     expect(result.suggestedNextSteps).toContain('Focus: Session A focus');
   });
 
-  it('subagent tools resolve the root session through parent lineage', async () => {
+  it('run_system2_analysis reads only its own Assessment Session', async () => {
     await assessIn('wrun_A');
     const saved = process.env.AI_GATEWAY_API_KEY;
     delete process.env.AI_GATEWAY_API_KEY;
     try {
-      // Finds wrun_A's System 1 result via lineage, then stops at the (missing) Gateway key.
-      await expect(
-        Promise.resolve(runSystem2AnalysisTool.execute({ opportunityId: ACME }, subagentCtx('wrun_A', 'turn_1')))
-      ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
-      // No System 1 result exists for another root session.
-      await expect(
-        Promise.resolve(runSystem2AnalysisTool.execute({ opportunityId: ACME }, subagentCtx('wrun_Z', 'turn_1')))
-      ).rejects.toThrow(/run_jev_scoring/);
+      // Finds wrun_A's System 1 result, then stops at the (missing) Gateway key.
+      await expect(runTool(runSystem2AnalysisTool, { opportunityId: ACME }, rootCtx('wrun_A', 'turn_1'))).rejects.toThrow(
+        /AI_GATEWAY_API_KEY/
+      );
+      // No System 1 result exists for another session.
+      await expect(runTool(runSystem2AnalysisTool, { opportunityId: ACME }, rootCtx('wrun_Z', 'turn_1'))).rejects.toThrow(
+        /run_jev_scoring/
+      );
     } finally {
       if (saved !== undefined) process.env.AI_GATEWAY_API_KEY = saved;
     }

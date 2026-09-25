@@ -40,12 +40,16 @@ _Avoid_: Mock deal, fixture, test case
 The fast rubric evaluation layer (powered by Jev via Vercel AI Gateway) that extracts structured MEDDPICC dimensions, detects competitors, and computes stage gate thresholds without deep reasoning overhead.
 _Avoid_: Heuristic model, classifier, fast LLM
 
+**System 2 Draft**:
+The display-only, partial System 2 output streamed to the workbench while the model is still writing (citations so far and the renderable part of the discovery form). It is never persisted and is replaced by the validated System 2 result.
+_Avoid_: Preliminary result, partial analysis
+
 **Stage Gate**:
 The formal criteria threshold required before an Opportunity can advance from its current Deal Stage to the next milestone in the sales process.
 _Avoid_: Stage exit criteria, deal milestone gate
 
 **System 2**:
-The deep-reasoning LLM analysis layer that synthesizes qualification gaps, constructs targeted competitive playbooks, and formulates interactive questions for the Solutions Architect.
+The deep-reasoning LLM analysis layer that synthesizes qualification gaps, constructs targeted competitive playbooks, and formulates interactive questions for the Solutions Architect. Like System 1, it is a single tool the root agent calls directly; neither runs in a subagent.
 _Avoid_: Reasoning engine, slow LLM, deep model
 
 **JSON Render**:

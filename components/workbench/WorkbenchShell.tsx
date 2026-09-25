@@ -231,6 +231,7 @@ function AssessmentWorkbench({
             selectedModel={view.system2Result?.modelUsed ?? selectedModel}
             sessionState={stage.sessionState}
             dynamicForm={stage.form}
+            draftForm={view.system2Draft?.form ?? null}
             onStartAssessment={handleStartAssessment}
             isAssessing={stage.isAssessing || turnInFlight}
             onSubmitFeedback={handleSubmitFeedback}

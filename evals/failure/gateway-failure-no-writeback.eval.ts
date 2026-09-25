@@ -21,7 +21,7 @@ export default defineEval({
     const turn = await t.send(assessTurnMessage(GLOBEX, DEFAULT_SYSTEM2_MODEL, { writeback: true }), TURN);
 
     // The Gateway error surfaces as a failed tool action...
-    t.calledTool("score_deal", { status: "failed" });
+    t.calledTool("run_jev_scoring", { status: "failed" });
     // ...which is exactly what t.noFailedActions() gates on in the happy-path evals. Recorded
     // tracked-only here: its score must be 0 in this eval's artifact (see README).
     t.noFailedActions().soft().label("noFailedActions detects the Gateway failure");

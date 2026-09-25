@@ -1,6 +1,6 @@
 # Deal Qualification System
 
-A Next.js workbench plus an eve agent (`agent/`) that qualifies enterprise deals against MEDDPICC. System 1 is `typesafe-ai/jev` and System 2 is a Gateway language model, both called through Vercel AI Gateway. The CRM is simulated in Postgres (Neon). Every failure is loud: there are no fallbacks. Configuration is described in `.env.example`.
+A Next.js workbench plus an eve agent (`agent/`) that qualifies enterprise deals against MEDDPICC. System 1 is `typesafe-ai/jev` and System 2 is a Gateway language model, both called through Vercel AI Gateway. The root agent calls both directly as its own tools (no subagents). The default model for the root agent and System 2 is `anthropic/claude-haiku-4.5`; the workbench can still select Claude Sonnet 5 for System 2. The CRM is simulated in Postgres (Neon). Every failure is loud: there are no fallbacks. Configuration is described in `.env.example`.
 
 ## Database
 
@@ -49,7 +49,7 @@ Runtime resets read the scenarios from `deal_scenarios`, and they fail loudly if
 | `acme/assess-then-qualify` | One two-turn session, with `t.toolOrder` and `t.noFailedActions()`. The baseline composite is 50–58, Identify Pain is ≥ 8, Netlify is `high` and Gate 2 is blocked on Economic Buyer. The persisted composite and dimension statuses are consistent, and the form matches the render schema. After SA feedback the composite is ≥ 70, the status is `qualified`, the next step reads `[QUALIFIED] …`, there is exactly one writeback and `ae_notes` is unchanged. Judges grade citations and playbook. |
 | `globex/amplify-in-review` | AWS Amplify is detected, and the writeback is `[IN REVIEW]` in the standard format. |
 | `soylent/q4-freeze-headless` | The headless / Q4-freeze path: no high-threat competitor, no fatal blocker, and a standardized writeback. A judge checks that the Nov 1 freeze is addressed. |
-| `failure/gateway-failure-no-writeback` | An unknown Jev model (`JEV_MODEL_ID`) produces a **failed** `score_deal` action and no CRM writeback. `t.noFailedActions()` is recorded tracked-only here, and scores 0 in the artifact. |
+| `failure/gateway-failure-no-writeback` | An unknown Jev model (`JEV_MODEL_ID`) produces a **failed** `run_jev_scoring` action and no CRM writeback. `t.noFailedActions()` is recorded tracked-only here, and scores 0 in the artifact. |
 
 `pnpm eval` runs in two passes:
 1. `eve eval --exclude-tag failure`;
@@ -68,7 +68,8 @@ The workbench (`components/workbench/WorkbenchShell.tsx`) talks to the eve agent
   - turn 1 sends `assessTurnMessage` with the selected System 2 model;
   - turn 2 sends `feedbackTurnMessage` with the SA answers and their `feedbackKey`.
   - Both request the structured `{ outcome, error }` result.
-- **What the UI renders.** `lib/assessment-results.ts` projects the stream into the view: the typed root tool results (`score_deal`, `analyze_deal`, `record_sa_feedback`, `crm_update_next_steps`) and the outcome. Failures show verbatim.
+- **What the UI renders.** `lib/assessment-results.ts` projects the stream into the view: the typed root tool results (`run_jev_scoring`, `run_system2_analysis`, `record_sa_feedback`, `crm_update_next_steps`) and the outcome. Failures show verbatim.
+- **Progressive results.** The two assessment tools are async generators, and eve streams each earlier `yield` as an `action.partial` event. `run_jev_scoring` yields the Jev scores before its CRM write, so the rubric fills in while Postgres is still writing. `run_system2_analysis` streams its structured output (`streamText` + `Output.object`) and yields throttled drafts, so citations and a read-only preview of the discovery form fill in while the model writes. The final `action.result` is the persisted result; a failed write still fails the action and the view.
 - **Reloads.** The session ID is saved per Opportunity in `localStorage` and resumed with `resume: true`, so a reload reattaches to a paused or running session. A session saved before the Opportunity was reset is dropped.
 - **Data routes.** `/api/crm/reset` and `/api/crm/opportunity` stay as plain Next.js data routes. They call no model: they are the deterministic demo reset and a CRM read. The agent keeps its own `reset_crm_data` tool.
 

@@ -21,7 +21,7 @@ export default defineEval({
     // Turn 1: assess.
     const first = await t.send(assessTurnMessage(ACME, DEFAULT_SYSTEM2_MODEL), TURN);
     await t.require(first.data, completedOutcome);
-    first.toolOrder(["crm_read_deal", "score_deal", "analyze_deal"]);
+    first.toolOrder(["crm_read_deal", "run_jev_scoring", "run_system2_analysis"]);
     first.notCalledTool("crm_update_next_steps");
     const sessionId = first.sessionId;
 
@@ -84,10 +84,10 @@ export default defineEval({
     };
     const second = await first.session.send(feedbackTurnMessage(payload, await saFeedbackKey(payload.formResponses, payload.notesDelta)), TURN);
     await t.require(second.data, completedOutcome);
-    second.toolOrder(["record_sa_feedback", "score_deal", "crm_update_next_steps"]);
-    second.notCalledTool("analyze_deal");
+    second.toolOrder(["record_sa_feedback", "run_jev_scoring", "crm_update_next_steps"]);
+    second.notCalledTool("run_system2_analysis");
 
-    t.toolOrder(["crm_read_deal", "score_deal", "analyze_deal", "record_sa_feedback", "score_deal", "crm_update_next_steps"]);
+    t.toolOrder(["crm_read_deal", "run_jev_scoring", "run_system2_analysis", "record_sa_feedback", "run_jev_scoring", "crm_update_next_steps"]);
     t.noFailedActions();
     t.succeeded();
 

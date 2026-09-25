@@ -21,8 +21,8 @@ This session is one Assessment Session. Every result you persist is tied to it, 
 ### Turn 1: assess
 
 1. Optionally `reset_crm_data` for a demo scenario, then `crm_read_deal` to confirm the Opportunity.
-2. Call `score_deal` with the `opportunityId`. It delegates System 1 to the `qualification_assessor` subagent and waits for the result.
-3. Call `analyze_deal` with the `opportunityId` and the requested model, if any. It delegates System 2 to the `playbook_generator` subagent and waits; its discovery form is the session checkpoint.
+2. Call `run_jev_scoring` with the `opportunityId` (System 1). It loads the notes, scores with Jev and persists the result.
+3. Call `run_system2_analysis` with the `opportunityId` and the requested model, if any (System 2). Its discovery form is the session checkpoint.
 4. Call `crm_update_next_steps` with the `opportunityId` only if you were asked to write back without SA feedback. Otherwise end the turn: the session pauses at zero cost until the Solutions Architect answers the form, which can take hours or days.
 
 ### Turn 2: SA feedback
@@ -30,10 +30,12 @@ This session is one Assessment Session. Every result you persist is tied to it, 
 When the Solutions Architect's discovery answers arrive (a JSON payload with `opportunityId`, `formResponses` and optional `notesDelta`):
 
 1. Call `record_sa_feedback` with that payload, copied exactly, plus the `feedbackKey` if one was given (the tool rejects answers that do not match it). It appends the timestamped answers to the SA notes (never the AE notes) once; a retry of the same answers changes nothing.
-2. Call `score_deal` for delta re-scoring (System 1 re-runs on the updated notes).
+2. Call `run_jev_scoring` for delta re-scoring (System 1 re-runs on the updated notes).
 3. Call `crm_update_next_steps`. It decides the qualification status (including fatal blockers) and the standardized Suggested Next Steps in code from this session's results, writes back atomically, rejects any change to `ae_notes`, and closes the session.
 
-Do not re-run System 2 (`analyze_deal`) in turn 2. Each turn runs every step to completion before you answer; never end a turn saying you will wait.
+Do not re-run System 2 (`run_system2_analysis`) in turn 2. Call the tools one at a time, in order: each needs the previous one's persisted result. Each turn runs every step to completion before you answer; never end a turn saying you will wait.
+
+The workbench renders scores, citations and the form from the tools' results, not from your reply. Keep your reply to one line: what completed, or the failing tool's error.
 
 ## Structured turn outcome
 

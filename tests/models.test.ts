@@ -13,18 +13,18 @@ function walk(dir: string): string[] {
 }
 
 describe('System 2 model configuration', () => {
-  it('offers current Vercel AI Gateway model IDs, defaulting to Claude Sonnet 5', () => {
-    expect(DEFAULT_SYSTEM2_MODEL).toBe('anthropic/claude-sonnet-5');
+  it('offers current Vercel AI Gateway model IDs, defaulting to Claude Haiku 4.5 with Sonnet 5 still selectable', () => {
+    expect(DEFAULT_SYSTEM2_MODEL).toBe('anthropic/claude-haiku-4.5');
     expect(SYSTEM2_MODELS.map((m) => m.id)).toEqual([
-      'anthropic/claude-sonnet-5',
       'anthropic/claude-haiku-4.5',
+      'anthropic/claude-sonnet-5',
       'openai/gpt-5.5',
       'google/gemini-3.5-flash',
     ]);
   });
 
   it('uses the default when SYSTEM2_MODEL_ID is unset and honours a supported override', () => {
-    expect(resolveAgentModel({})).toBe('anthropic/claude-sonnet-5');
+    expect(resolveAgentModel({})).toBe('anthropic/claude-haiku-4.5');
     expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('openai/gpt-5.5');
   });
 

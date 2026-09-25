@@ -15,7 +15,7 @@ export default defineEval({
   async test(t) {
     const turn = await t.send(assessTurnMessage(SOYLENT, DEFAULT_SYSTEM2_MODEL, { writeback: true }), TURN);
     await t.require(turn.data, completedOutcome);
-    t.toolOrder(["crm_read_deal", "score_deal", "analyze_deal", "crm_update_next_steps"]);
+    t.toolOrder(["crm_read_deal", "run_jev_scoring", "run_system2_analysis", "crm_update_next_steps"]);
     t.noFailedActions();
     t.succeeded();
 

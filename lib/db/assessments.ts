@@ -1,8 +1,7 @@
 import {
   appendSaFeedbackOnce,
   getSessionInteractions,
-  recordInteraction,
-  updateOpportunity,
+  recordAssessmentStep,
   writebackOpportunityQualification,
 } from './crm';
 import { z } from 'zod';
@@ -12,6 +11,7 @@ import { JevScoringResult, JevScoringResultSchema } from '@/lib/agents/jev-schem
 import { System2AnalysisResult, System2AnalysisResultSchema } from '@/lib/agents/system2';
 import {
   decideQualificationStatus,
+  jevOpportunityFields,
   mergeSystem2Findings,
   synthesizeSuggestedNextSteps,
 } from '@/lib/agents/qualification-decision';
@@ -26,51 +26,48 @@ import type { DealInteraction, Opportunity } from '@/lib/types/crm';
 
 const stamp = (scope: AssessmentScope) => ({ assessmentSessionId: scope.sessionId, turnId: scope.turnId });
 
+/** The persisted row and the Opportunity as it stands after one assessment step. */
+export interface RecordedStep {
+  interaction: DealInteraction;
+  opportunity: Opportunity;
+}
+
+/** Persists a System 1 result: scores, flags and stage gate on the Opportunity plus its `initial_scoring` row, atomically. */
 export async function recordJevScoring(
   opportunity: Opportunity,
   jevResult: JevScoringResult,
   scope: AssessmentScope
-): Promise<Opportunity> {
-  const updated = await updateOpportunity(opportunity.id, {
-    meddpicc_score: jevResult.overallScore,
-    meddpicc_breakdown: { ...jevResult.dimensions, stageGate: jevResult.stageGate },
-    competitive_flags: jevResult.competitiveFlags.map((c) => c.name),
-    stage_gate: jevResult.stageGate,
-    qualification_status:
-      opportunity.qualification_status === 'unqualified' ? 'in_review' : opportunity.qualification_status,
-  });
-  await recordInteraction({
-    opportunity_id: opportunity.id,
-    actor: 'system1_jev',
-    action: 'initial_scoring',
-    payload: { ...stamp(scope), jevResult },
-  });
-  return updated;
+): Promise<RecordedStep> {
+  return recordAssessmentStep(
+    opportunity.id,
+    { ...jevOpportunityFields(jevResult), markInReview: true },
+    { actor: 'system1_jev', action: 'initial_scoring', payload: { ...stamp(scope), jevResult } }
+  );
 }
 
+/** Persists a System 2 result: citations and gaps merged into the breakdown plus its `questions_generated` checkpoint row, atomically. */
 export async function recordSystem2Analysis(
   opportunity: Opportunity,
   jevResult: JevScoringResult,
   system2Result: System2AnalysisResult,
   scope: AssessmentScope
-): Promise<Opportunity> {
-  const updated = await updateOpportunity(opportunity.id, {
-    meddpicc_breakdown: mergeSystem2Findings(jevResult, system2Result),
-  });
-  await recordInteraction({
-    opportunity_id: opportunity.id,
-    actor: 'system2_llm',
-    action: 'questions_generated',
-    payload: {
-      ...stamp(scope),
-      system2Result,
-      form: system2Result.phase3Form,
-      model: system2Result.modelUsed,
-      sessionState: 'pending_feedback',
-      checkpointTimestamp: new Date().toISOString(),
-    },
-  });
-  return updated;
+): Promise<RecordedStep> {
+  return recordAssessmentStep(
+    opportunity.id,
+    { meddpicc_breakdown: mergeSystem2Findings(jevResult, system2Result) },
+    {
+      actor: 'system2_llm',
+      action: 'questions_generated',
+      payload: {
+        ...stamp(scope),
+        system2Result,
+        form: system2Result.phase3Form,
+        model: system2Result.modelUsed,
+        sessionState: 'pending_feedback',
+        checkpointTimestamp: new Date().toISOString(),
+      },
+    }
+  );
 }
 
 async function sessionPayloads(

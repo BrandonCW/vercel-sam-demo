@@ -9,7 +9,7 @@ import type { SaFeedbackPayload } from '@/lib/agents/feedback-schema';
 
 /** Turn 1: read, score (System 1) and analyze (System 2). Writeback only when asked (no SA feedback). */
 export function assessTurnMessage(opportunityId: string, model: string, options: { writeback?: boolean } = {}): string {
-  const base = `Assess opportunity ${opportunityId}: call crm_read_deal, then score_deal, then analyze_deal with model ${model}`;
+  const base = `Assess opportunity ${opportunityId}: call crm_read_deal, then run_jev_scoring, then run_system2_analysis with model ${model}`;
   return options.writeback
     ? `${base}, then call crm_update_next_steps for ${opportunityId} without waiting for SA feedback.`
     : `${base}. Do not write back to the CRM yet: the Solutions Architect answers the discovery form first.`;
@@ -19,7 +19,7 @@ export function assessTurnMessage(opportunityId: string, model: string, options:
 export function feedbackTurnMessage(payload: SaFeedbackPayload, feedbackKey: string): string {
   return (
     `The Solutions Architect submitted the discovery form for opportunity ${payload.opportunityId}. ` +
-    `Call record_sa_feedback with exactly this payload and feedbackKey ${feedbackKey}, then call score_deal for delta re-scoring, ` +
+    `Call record_sa_feedback with exactly this payload and feedbackKey ${feedbackKey}, then call run_jev_scoring for delta re-scoring, ` +
     `then call crm_update_next_steps for ${payload.opportunityId}. Do not re-run System 2.\n\n` +
     `SA feedback payload (JSON):\n${JSON.stringify(payload)}`
   );
@@ -30,7 +30,7 @@ export type TurnRequest = { turn: 'assess'; model: string } | { turn: 'feedback'
 
 /** Reads a turn message built by assessTurnMessage / feedbackTurnMessage back; null for any other message. */
 export function parseTurnRequest(message: string): TurnRequest | null {
-  const assess = /^Assess opportunity \S+: call crm_read_deal, then score_deal, then analyze_deal with model (\S+?)(?:\. Do not|, then)/.exec(message);
+  const assess = /^Assess opportunity \S+: call crm_read_deal, then run_jev_scoring, then run_system2_analysis with model (\S+?)(?:\. Do not|, then)/.exec(message);
   if (assess) return { turn: 'assess', model: assess[1] };
   const feedback = /record_sa_feedback with exactly this payload and feedbackKey ([0-9a-zA-Z_-]+),/.exec(message);
   if (feedback) return { turn: 'feedback', feedbackKey: feedback[1] };

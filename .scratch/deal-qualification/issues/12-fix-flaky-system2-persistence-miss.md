@@ -56,3 +56,7 @@ The DB was full-reset since that run, so the deletion itself cannot be observed 
 - Verified by hand: `vitest` refuses to start while a probe lease is held.
 
 **Residual:** `pnpm eval` is two eve processes. The lease is released and re-taken between them, so a `pnpm test` that starts in that gap makes the failure eval fail loudly. It does not corrupt anything silently.
+
+## Comments
+
+- 2026-09-25 (issue 18): superseded in part. The `qualification_assessor` and `playbook_generator` subagents and the `score_deal` / `analyze_deal` delegation tools are removed; the root agent calls `run_jev_scoring` and `run_system2_analysis` directly, and the workbench projects their results (and `action.partial` snapshots) under those names. See `18-direct-root-tools-progressive-results-haiku.md`.
