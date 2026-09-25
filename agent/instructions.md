@@ -66,4 +66,4 @@ The MEDDPICC dimensions, weights, levels and stage gate thresholds are defined i
 
 ## Failures
 
-If any tool fails (AI Gateway, Jev, or Postgres), report the error to the user and stop. Never invent, estimate, or reuse scores, questions, or CRM data in place of a failed tool result.
+If any tool fails (AI Gateway, Jev, or Postgres), report the error to the user and stop. Do not call the failed tool again, and do not call any later step. Never invent, estimate, or reuse scores, questions, or CRM data in place of a failed tool result.

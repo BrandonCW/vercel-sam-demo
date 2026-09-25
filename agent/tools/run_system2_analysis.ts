@@ -113,17 +113,26 @@ export default defineTool({
         streamError ??= error;
       },
     });
+    // Drafts are throttled and sent only when what the workbench shows has changed.
     let lastDraftAt = 0;
-    let pending: unknown = null;
+    let lastSent = "";
+    let pending: System2Draft | null = null;
     for await (const partial of result.partialOutputStream) {
-      pending = partial;
+      const draft = toSystem2Draft(partial, opportunity.id);
+      const key = JSON.stringify(draft);
+      if (key === lastSent) {
+        pending = null;
+        continue;
+      }
+      pending = draft;
       if (Date.now() - lastDraftAt < DRAFT_INTERVAL_MS) continue;
       lastDraftAt = Date.now();
+      lastSent = key;
       pending = null;
-      yield { draft: toSystem2Draft(partial, opportunity.id) };
+      yield { draft };
     }
     if (streamError) throw streamError;
-    if (pending) yield { draft: toSystem2Draft(pending, opportunity.id) };
+    if (pending) yield { draft: pending };
     const output = await result.output;
     if (!output) throw new Error(`System 2 model ${model} returned no structured output`);
 

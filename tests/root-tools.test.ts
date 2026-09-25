@@ -170,6 +170,19 @@ describe('root agent tools: System 1 and System 2 run directly on the root (no s
       expect(result.interactionId).toBe(checkpoint.id);
     });
 
+    it('sends a draft only when what the workbench shows changed (not while System 2 writes gaps and playbook)', async () => {
+      await scoredIn('wrun_S');
+      const shown = { dimensionFindings: modelOutput.dimensionFindings, phase3Form: modelOutput.phase3Form };
+      gatewayCalls.streamText.mockReturnValue(
+        streamed(
+          [shown, { ...shown, fatalBlocker: null }, { ...shown, fatalBlocker: null, phase1Gaps: [] }],
+          Promise.resolve(modelOutput)
+        )
+      );
+      const { partials } = await runTool(runSystem2AnalysisTool, { opportunityId: ACME }, rootCtx('wrun_S', 'turn_0'));
+      expect(partials).toHaveLength(1);
+    });
+
     it('fails the action and persists nothing when the model output does not match the schema', async () => {
       await scoredIn('wrun_S');
       gatewayCalls.streamText.mockReturnValue(
