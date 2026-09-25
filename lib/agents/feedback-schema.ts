@@ -1,4 +1,3 @@
-import { createHash } from 'crypto';
 import { z } from 'zod';
 
 export const SaFeedbackPayloadSchema = z.object({
@@ -11,16 +10,21 @@ export type SaFeedbackPayload = z.infer<typeof SaFeedbackPayloadSchema>;
 
 /**
  * Idempotency key for one SA feedback submission: the same answers produce the
- * same key, so a retried turn cannot append them twice.
+ * same key, so a retried turn cannot append them twice. SHA-256 through Web Crypto,
+ * so the workbench (browser) and record_sa_feedback (server) compute the same key.
  */
-export function saFeedbackKey(formResponses: Record<string, string | string[]>, notesDelta?: string | null): string {
+export async function saFeedbackKey(
+  formResponses: Record<string, string | string[]>,
+  notesDelta?: string | null
+): Promise<string> {
   const canonical = JSON.stringify({
     formResponses: Object.keys(formResponses)
       .sort()
       .map((k) => [k, formResponses[k]]),
     notesDelta: notesDelta?.trim() || null,
   });
-  return createHash('sha256').update(canonical).digest('hex');
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /** One timestamped SA discovery update block (the text appended to SA Notes). */

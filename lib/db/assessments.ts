@@ -123,7 +123,7 @@ export async function recordSaFeedback(
   scope: AssessmentScope
 ): Promise<{ recorded: boolean; feedbackKey: string }> {
   await loadLatestSystem2Result(opportunityId, scope.sessionId);
-  const feedbackKey = saFeedbackKey(feedback.formResponses, feedback.notesDelta);
+  const feedbackKey = await saFeedbackKey(feedback.formResponses, feedback.notesDelta);
   // The caller's key proves the answers were passed through unaltered; nothing is written otherwise.
   if (feedback.expectedKey !== undefined && feedback.expectedKey !== feedbackKey) {
     throw new Error(

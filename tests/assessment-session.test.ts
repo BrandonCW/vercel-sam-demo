@@ -120,7 +120,7 @@ describe('Assessment Session: tools are scoped to the root eve session', { timeo
   it('record_sa_feedback rejects answers that do not match the submitted feedbackKey and writes nothing', async () => {
     await assessIn('wrun_A');
     const before = (await getOpportunity(ACME))!;
-    const submitted = saFeedbackKey({ q: 'Verified sign-off authority.' });
+    const submitted = await saFeedbackKey({ q: 'Verified sign-off authority.' });
     await expect(
       Promise.resolve(
         recordSaFeedbackTool.execute(

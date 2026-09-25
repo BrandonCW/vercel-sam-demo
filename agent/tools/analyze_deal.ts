@@ -1,11 +1,11 @@
 import { defineWorkflowTool } from "eve/tools";
 import { z } from "zod";
 import { System2ModelSchema } from "@/lib/models";
-import { delegationStartedAt, requireDelegatedResult } from "@/lib/agents/delegation";
+import { delegationStartedAt, requireDelegatedResult, analyzeDealResult } from "@/lib/agents/delegation";
 
 export default defineWorkflowTool({
   description:
-    "Delegate System 2 to the playbook_generator subagent and wait for it: it runs run_system2_analysis (citations, gap callouts, competitive playbook and the SA discovery form, which is the Assessment Session checkpoint) on an Opportunity already scored in this session. Fails unless a fresh analysis was persisted.",
+    "Delegate System 2 to the playbook_generator subagent and wait for it: it runs run_system2_analysis (citations, gap callouts, competitive playbook and the SA discovery form, which is the Assessment Session checkpoint) on an Opportunity already scored in this session. Fails unless a fresh analysis was persisted with the requested model. Returns the persisted System 2 result and the updated Opportunity.",
   inputSchema: z.object({
     opportunityId: z.string().min(1).describe("The ID of the Opportunity to analyze"),
     model: System2ModelSchema.optional().describe("Vercel AI Gateway model for System 2, if one was requested"),
@@ -20,7 +20,7 @@ export default defineWorkflowTool({
         (model ? ` with model ${model}` : "") +
         ". Report what it returned without adding content, or the tool error verbatim.",
     });
-    const { interaction, report: checkedReport } = await requireDelegatedResult({
+    const delegated = await requireDelegatedResult({
       agent: "playbook_generator",
       tool: "run_system2_analysis",
       action: "questions_generated",
@@ -30,6 +30,7 @@ export default defineWorkflowTool({
       delegatedAt,
       report: typeof report === "string" ? report : JSON.stringify(report),
     });
-    return { interactionId: interaction.id, report: checkedReport };
+    // Typed result on the root stream (action.result): the workbench renders from it.
+    return analyzeDealResult(delegated, model);
   },
 });

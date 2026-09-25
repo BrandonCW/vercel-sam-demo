@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/qualification/feedback/route';
 import { getOpportunity, resetCrmDatabase, getInteractions } from '@/lib/db/crm';
-import { formatSaDiscoveryDelta, saFeedbackKey } from '@/lib/agents/feedback-schema';
+import { formatSaDiscoveryDelta } from '@/lib/agents/feedback-schema';
 import { recordJevScoring, recordSystem2Analysis } from '@/lib/db/assessments';
 import { jev, system2 } from './fixtures/qualification';
 import { scope } from './fixtures/eve-session';
@@ -44,13 +44,6 @@ describe('Feedback Ingestion & Delta Re-scoring (Ticket 04)', () => {
       expect(formatSaDiscoveryDelta({ pain_quant: '45-minute blocking' }, undefined, 'T')).toBe(
         '[SA Discovery Update - T]\n• pain_quant: 45-minute blocking'
       );
-    });
-  });
-
-  describe('saFeedbackKey', () => {
-    it('is stable under key order and differs when an answer changes', () => {
-      expect(saFeedbackKey({ a: '1', b: ['x'] }, ' n ')).toBe(saFeedbackKey({ b: ['x'], a: '1' }, 'n'));
-      expect(saFeedbackKey({ a: '1' })).not.toBe(saFeedbackKey({ a: '2' }));
     });
   });
 

@@ -82,7 +82,7 @@ export default defineEval({
         "Success metric: p95 build time from 45 to under 5 minutes and zero launch-day deploy queueing. " +
         "Paper process mapped: legal owns MSA redlines, security review uses our SOC2 report, procurement runs a standard 30-day cycle.",
     };
-    const second = await first.session.send(feedbackTurnMessage(payload, saFeedbackKey(payload.formResponses, payload.notesDelta)), TURN);
+    const second = await first.session.send(feedbackTurnMessage(payload, await saFeedbackKey(payload.formResponses, payload.notesDelta)), TURN);
     await t.require(second.data, completedOutcome);
     second.toolOrder(["record_sa_feedback", "score_deal", "crm_update_next_steps"]);
     second.notCalledTool("analyze_deal");

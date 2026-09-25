@@ -1,6 +1,7 @@
 // Fixtures for pure-logic tests only; tests/eve-tools.live.test.ts covers the same paths live.
 import type { JevScoringResult } from '@/lib/agents/jev-schema';
 import type { System2AnalysisResult } from '@/lib/agents/system2';
+import type { Opportunity } from '@/lib/types/crm';
 
 const dim = (key: string, score: number) => ({
   key,
@@ -84,3 +85,26 @@ export function system2(overrides: Partial<System2AnalysisResult> = {}): System2
   } as System2AnalysisResult;
 }
 
+
+export function opportunity(overrides: Partial<Opportunity> = {}): Opportunity {
+  return {
+    id: 'opp_acme_corp_001',
+    name: 'Acme Corp - Next.js Migration',
+    account_name: 'Acme Global',
+    stage_name: 'Stage 2 - Discovery',
+    amount: 180000,
+    close_date: '2026-12-14',
+    ae_name: 'Sarah Jenkins',
+    sa_name: 'Priya',
+    ae_notes: 'AE notes',
+    sa_notes: 'SA notes',
+    suggested_next_steps: null,
+    qualification_status: 'in_review',
+    meddpicc_score: 54,
+    meddpicc_breakdown: {},
+    competitive_flags: ['Netlify'],
+    created_at: '2026-09-25T00:00:00.000Z',
+    updated_at: '2026-09-25T00:00:00.000Z',
+    ...overrides,
+  };
+}

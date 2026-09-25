@@ -1,9 +1,9 @@
 import { satisfies } from "eve/evals/expect";
 import type { EveEvalTurn } from "eve/evals";
-import { TurnOutcomeSchema, TURN_OUTCOME_JSON_SCHEMA } from "@/lib/eve-session";
+import { TurnOutcomeSchema, TURN_OUTCOME_JSON_SCHEMA } from "@/lib/assessment-turns";
 import { getSessionInteractions } from "@/lib/db/crm";
 
-/** Send options every eval turn uses: the same structured outcome the /api/qualification routes require. */
+/** Send options every eval turn uses: the same structured outcome the workbench requests. */
 export const TURN = { outputSchema: TURN_OUTCOME_JSON_SCHEMA };
 
 /** Standardized Suggested Next Steps (agent/instructions.md). */

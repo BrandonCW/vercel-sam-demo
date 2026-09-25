@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Turn 2 of the same Assessment Session. The agent records the answers (record_sa_feedback appends
     // the SA notes atomically and idempotently), re-scores with Jev and writes back in code.
-    const feedbackKey = saFeedbackKey(payload.formResponses, payload.notesDelta);
+    const feedbackKey = await saFeedbackKey(payload.formResponses, payload.notesDelta);
     const before = await snapshotSessionInteractions(opportunity.id, sessionId);
     await runAssessmentTurn({
       origin,

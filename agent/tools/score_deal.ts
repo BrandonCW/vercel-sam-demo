@@ -1,10 +1,10 @@
 import { defineWorkflowTool } from "eve/tools";
 import { z } from "zod";
-import { delegationStartedAt, requireDelegatedResult } from "@/lib/agents/delegation";
+import { delegationStartedAt, requireDelegatedResult, scoreDealResult } from "@/lib/agents/delegation";
 
 export default defineWorkflowTool({
   description:
-    "Delegate System 1 to the qualification_assessor subagent and wait for it: it runs run_jev_scoring (the typesafe-ai/jev evaluation model) on the Opportunity's current notes and persists the result in this Assessment Session. Use for the baseline score (turn 1) and for delta re-scoring after SA feedback (turn 2). Fails unless a fresh score was persisted.",
+    "Delegate System 1 to the qualification_assessor subagent and wait for it: it runs run_jev_scoring (the typesafe-ai/jev evaluation model) on the Opportunity's current notes and persists the result in this Assessment Session. Use for the baseline score (turn 1) and for delta re-scoring after SA feedback (turn 2). Fails unless a fresh score was persisted. Returns the persisted System 1 result and the updated Opportunity.",
   inputSchema: z.object({
     opportunityId: z.string().min(1).describe("The ID of the Opportunity to score"),
   }),
@@ -15,7 +15,7 @@ export default defineWorkflowTool({
     const report = await ctx.agent("qualification_assessor", {
       message: `Run run_jev_scoring for opportunityId ${opportunityId} and report the composite score and stage gate exactly as returned, or the tool error verbatim.`,
     });
-    const { interaction, report: checkedReport } = await requireDelegatedResult({
+    const delegated = await requireDelegatedResult({
       agent: "qualification_assessor",
       tool: "run_jev_scoring",
       action: "initial_scoring",
@@ -25,6 +25,7 @@ export default defineWorkflowTool({
       delegatedAt,
       report: typeof report === "string" ? report : JSON.stringify(report),
     });
-    return { interactionId: interaction.id, report: checkedReport };
+    // Typed result on the root stream (action.result): the workbench renders from it.
+    return scoreDealResult(delegated);
   },
 });

@@ -1,5 +1,5 @@
 import { Client } from 'eve/client';
-import { z } from 'zod';
+import { TurnOutcomeSchema, TURN_OUTCOME_JSON_SCHEMA } from '@/lib/assessment-turns';
 
 /**
  * Server-side bridge from the Next.js `/api/qualification/*` routes to the eve
@@ -12,25 +12,6 @@ import { z } from 'zod';
  *
  * This file calls no model: every model call happens inside the eve agent.
  */
-
-export const TurnOutcomeSchema = z.object({
-  outcome: z.enum(['completed', 'failed']),
-  error: z.string().nullable(),
-});
-
-/** JSON Schema twin of TurnOutcomeSchema (zod 3 is not a Standard JSON Schema). */
-export const TURN_OUTCOME_JSON_SCHEMA = {
-  type: 'object',
-  properties: {
-    outcome: { type: 'string', enum: ['completed', 'failed'] },
-    error: {
-      type: ['string', 'null'],
-      description: 'The failing tool error, verbatim, when outcome is failed; otherwise null',
-    },
-  },
-  required: ['outcome', 'error'],
-  additionalProperties: false,
-};
 
 /**
  * Headers for the server-side eve client: the caller's cookie (eve channel auth) and,
