@@ -43,3 +43,19 @@ export function resolveAgentModel(
   }
   return parsed.data;
 }
+
+export const DEFAULT_JEV_MODEL = 'typesafe-ai/jev';
+
+/**
+ * Evaluation model for System 1. JEV_MODEL_ID may override it with another
+ * Gateway evaluation model ID (`provider/model`); the failure eval uses this to
+ * force a failing Gateway call. Malformed values throw.
+ */
+export function resolveJevModel(env: Record<string, string | undefined> = process.env): string {
+  const raw = env.JEV_MODEL_ID?.trim();
+  if (!raw) return DEFAULT_JEV_MODEL;
+  if (!/^[a-z0-9-]+\/[a-z0-9][a-z0-9.-]*$/i.test(raw)) {
+    throw new Error(`JEV_MODEL_ID "${raw}" is not a provider/model Gateway ID (e.g. ${DEFAULT_JEV_MODEL}).`);
+  }
+  return raw;
+}

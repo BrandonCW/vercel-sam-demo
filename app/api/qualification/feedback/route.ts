@@ -12,6 +12,7 @@ import {
 } from '@/lib/db/assessments';
 import { assertAiGatewayConfigured, getEveAgentOrigin } from '@/lib/env';
 import { runAssessmentTurn } from '@/lib/eve-session';
+import { feedbackTurnMessage } from '@/lib/assessment-turns';
 import { SaFeedbackPayloadSchema, saFeedbackKey } from '@/lib/agents/feedback-schema';
 
 export async function POST(request: NextRequest) {
@@ -61,11 +62,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       cookie: request.headers.get('cookie'),
       signal: request.signal,
-      message:
-        `The Solutions Architect submitted the discovery form for opportunity ${opportunity.id}. ` +
-        `Call record_sa_feedback with exactly this payload and feedbackKey ${feedbackKey}, then call score_deal for delta re-scoring, ` +
-        `then call crm_update_next_steps for ${opportunity.id}. Do not re-run System 2.\n\n` +
-        `SA feedback payload (JSON):\n${JSON.stringify(payload)}`,
+      message: feedbackTurnMessage(payload, feedbackKey),
     });
     await requireRecordedSaFeedback(opportunity.id, sessionId, feedbackKey);
     await requireFreshSessionInteractions(opportunity.id, sessionId, before, {

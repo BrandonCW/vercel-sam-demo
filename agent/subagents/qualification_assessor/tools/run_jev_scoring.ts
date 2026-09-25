@@ -6,6 +6,7 @@ import { buildJevEvaluationRequest, interpretJevEvaluation } from "@/lib/agents/
 import { recordJevScoring } from "@/lib/db/assessments";
 import { assessmentScopeOf } from "@/lib/assessment-session";
 import { assertAiGatewayConfigured } from "@/lib/env";
+import { resolveJevModel } from "@/lib/models";
 
 export default defineTool({
   description:
@@ -27,7 +28,11 @@ export default defineTool({
       saNotes: opportunity.sa_notes,
     };
     // Jev answers typed questions; composite and stage gate are computed in code.
-    const evaluation = await evaluate({ ...buildJevEvaluationRequest(input), abortSignal: ctx.abortSignal });
+    const evaluation = await evaluate({
+      model: resolveJevModel(),
+      ...buildJevEvaluationRequest(input),
+      abortSignal: ctx.abortSignal,
+    });
     const jevResult = interpretJevEvaluation(input, evaluation);
     await recordJevScoring(opportunity, jevResult, scope);
     return { jevResult };

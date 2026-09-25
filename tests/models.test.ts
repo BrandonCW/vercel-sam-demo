@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { SYSTEM2_MODELS, DEFAULT_SYSTEM2_MODEL, resolveAgentModel } from '@/lib/models';
+import { SYSTEM2_MODELS, DEFAULT_SYSTEM2_MODEL, resolveAgentModel, resolveJevModel } from '@/lib/models';
 
 const RETIRED = /claude-3[-.]5|gpt-4o-mini|gemini-2(\.0)?-flash|Claude 3\.5|GPT-4o-mini|Gemini 2\.0/;
 
@@ -48,5 +48,17 @@ describe('System 2 model configuration', () => {
       return RETIRED.test(body);
     });
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('resolveJevModel', () => {
+  it('is typesafe-ai/jev unless JEV_MODEL_ID overrides it', () => {
+    expect(resolveJevModel({})).toBe('typesafe-ai/jev');
+    expect(resolveJevModel({ JEV_MODEL_ID: '  ' })).toBe('typesafe-ai/jev');
+    expect(resolveJevModel({ JEV_MODEL_ID: 'typesafe-ai/jev-nonexistent' })).toBe('typesafe-ai/jev-nonexistent');
+  });
+
+  it('rejects a JEV_MODEL_ID that is not a provider/model Gateway ID', () => {
+    expect(() => resolveJevModel({ JEV_MODEL_ID: 'jev' })).toThrow(/JEV_MODEL_ID/);
   });
 });

@@ -8,7 +8,7 @@ import {
   recordInteraction,
   getInteractions,
 } from '@/lib/db/crm';
-import { SCENARIO_FIXTURES } from '@/lib/db/fixtures';
+import { DEMO_SCENARIOS } from '@/lib/db/scenarios';
 
 describe('CRM fails loudly without Postgres', () => {
   it('throws a descriptive error instead of using an in-memory store when POSTGRES_URL is unset', async () => {

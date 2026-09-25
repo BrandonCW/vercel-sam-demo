@@ -6,7 +6,7 @@ import {
   System2ModelOption,
   SYSTEM2_MODELS,
 } from '@/lib/types/crm';
-import { SCENARIO_FIXTURES } from '@/lib/db/fixtures';
+import { DEMO_SCENARIOS } from '@/lib/db/scenarios';
 import {
   RotateCcw,
   Sparkles,
@@ -113,7 +113,7 @@ export function TopNavBar({
               onChange={(e) => onScenarioChange(e.target.value)}
               className="bg-transparent text-zinc-200 font-semibold focus:outline-none cursor-pointer pr-1"
             >
-              {Object.entries(SCENARIO_FIXTURES).map(([id, scenario]) => (
+              {Object.entries(DEMO_SCENARIOS).map(([id, scenario]) => (
                 <option key={id} value={id} className="bg-[#18181b] text-zinc-200">
                   {scenario.title}
                 </option>

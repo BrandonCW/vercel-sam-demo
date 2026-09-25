@@ -6,7 +6,7 @@ import {
   QualificationStatus,
   MEDDPICCBreakdown,
 } from '@/lib/types/crm';
-import { SCENARIO_FIXTURES, DEFAULT_SCENARIO_ID } from './fixtures';
+import { DEFAULT_SCENARIO_ID, DEMO_SCENARIO_IDS as EXPECTED_SCENARIO_IDS } from './scenarios';
 import { getPostgresUrl } from '@/lib/env';
 
 /**
@@ -32,9 +32,9 @@ export async function requireOpportunity(id: string): Promise<Opportunity> {
 }
 
 export async function getOpportunityByScenario(scenarioId: string): Promise<Opportunity | null> {
-  const fixture = SCENARIO_FIXTURES[scenarioId];
-  if (!fixture) return null;
-  return getOpportunity(fixture.default_data.id);
+  const scenario = (await getScenarios()).find((s) => s.scenario_id === scenarioId);
+  if (!scenario) return null;
+  return getOpportunity(scenario.default_data.id);
 }
 
 export async function listOpportunities(): Promise<Opportunity[]> {
@@ -187,17 +187,11 @@ export async function appendSaFeedbackOnce(input: {
   return inserted.length > 0;
 }
 
-export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity> {
-  const targetScenarioId = scenarioId ?? DEFAULT_SCENARIO_ID;
-  const fixture = SCENARIO_FIXTURES[targetScenarioId];
-  if (!fixture) throw new Error(`Unknown scenario '${targetScenarioId}'`);
-  const now = new Date().toISOString();
-  const sql = getSql();
-  const seed = fixture.default_data;
+const NOT_SEEDED_HINT = 'Seed the demo data with `pnpm db:seed` (see README).';
 
-  // One transaction: the upsert, telemetry purge and reset event land together or not at all.
-  const [rows] = await sql.transaction([
-    sql`
+/** Baseline upsert of one scenario's Opportunity: unqualified, no score, no next steps. */
+function upsertBaseline(sql: ReturnType<typeof getSql>, seed: DealScenario['default_data'], now: string) {
+  return sql`
     INSERT INTO opportunities (
       id, name, account_name, stage_name, amount, close_date,
       ae_name, sa_name, ae_notes, sa_notes, suggested_next_steps,
@@ -226,19 +220,71 @@ export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity
       competitive_flags = EXCLUDED.competitive_flags,
       updated_at = ${now}
     RETURNING *;
-  `,
-    sql`DELETE FROM deal_interactions WHERE opportunity_id = ${seed.id};`,
-    sql`
-    INSERT INTO deal_interactions (opportunity_id, actor, action, payload, created_at)
-    VALUES (${seed.id}, 'sa_user', 'reset', ${JSON.stringify({ scenarioId: targetScenarioId })}::jsonb, ${now});
-  `,
-  ]);
+  `;
+}
 
+function resetEvent(sql: ReturnType<typeof getSql>, opportunityId: string, scenarioId: string, now: string) {
+  return sql`
+    INSERT INTO deal_interactions (opportunity_id, actor, action, payload, created_at)
+    VALUES (${opportunityId}, 'sa_user', 'reset', ${JSON.stringify({ scenarioId })}::jsonb, ${now});
+  `;
+}
+
+/**
+ * Restores one demo scenario to its seeded baseline (from `deal_scenarios`) and
+ * clears that Opportunity's telemetry. Throws if the scenario is not seeded.
+ */
+export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity> {
+  const targetScenarioId = scenarioId ?? DEFAULT_SCENARIO_ID;
+  const scenario = (await getScenarios()).find((s) => s.scenario_id === targetScenarioId);
+  if (!scenario) throw new Error(`Scenario '${targetScenarioId}' is not seeded in Postgres. ${NOT_SEEDED_HINT}`);
+  const now = new Date().toISOString();
+  const sql = getSql();
+  const seed = scenario.default_data;
+
+  // One transaction: the upsert, telemetry purge and reset event land together or not at all.
+  const [rows] = await sql.transaction([
+    upsertBaseline(sql, seed, now),
+    sql`DELETE FROM deal_interactions WHERE opportunity_id = ${seed.id};`,
+    resetEvent(sql, seed.id, targetScenarioId, now),
+  ]);
   return mapRowToOpportunity(rows[0]);
 }
 
+/**
+ * Full reset: deletes every Opportunity and interaction, then restores every seeded
+ * scenario to its baseline, in one transaction. Throws if the scenarios are not seeded.
+ */
+export async function resetAllScenarios(): Promise<Opportunity[]> {
+  const seeded = await getScenarios();
+  const missing = EXPECTED_SCENARIO_IDS.filter((id) => !seeded.some((s) => s.scenario_id === id));
+  if (missing.length > 0) {
+    throw new Error(`Scenario(s) ${missing.join(', ')} not seeded in Postgres. ${NOT_SEEDED_HINT}`);
+  }
+  // Only the demo scenarios are restored; a stale extra deal_scenarios row is not resurrected.
+  const scenarios = seeded.filter((s) => EXPECTED_SCENARIO_IDS.includes(s.scenario_id));
+  const now = new Date().toISOString();
+  const sql = getSql();
+  const [, , ...perScenario] = await sql.transaction([
+    sql`DELETE FROM deal_interactions;`,
+    sql`DELETE FROM opportunities;`,
+    ...scenarios.flatMap((s) => [upsertBaseline(sql, s.default_data, now), resetEvent(sql, s.default_data.id, s.scenario_id, now)]),
+  ]);
+  // perScenario alternates [upsert rows, reset event] per scenario.
+  return scenarios.map((_, i) => mapRowToOpportunity(perScenario[i * 2][0]));
+}
+
+/** The demo scenarios seeded in Postgres (`deal_scenarios`). */
 export async function getScenarios(): Promise<DealScenario[]> {
-  return Object.values(SCENARIO_FIXTURES);
+  const sql = getSql();
+  const rows = await sql`SELECT * FROM deal_scenarios ORDER BY scenario_id ASC;`;
+  return rows.map((r: any) => ({
+    scenario_id: String(r.scenario_id),
+    title: String(r.title),
+    description: String(r.description),
+    default_data: typeof r.default_data === 'string' ? JSON.parse(r.default_data) : r.default_data,
+    created_at: new Date(r.created_at).toISOString(),
+  }));
 }
 
 export async function recordInteraction(

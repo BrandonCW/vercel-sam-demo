@@ -4,6 +4,7 @@ import { loadLatestJevResult, loadLatestSystem2Result, requireFreshSessionIntera
 import { assertAiGatewayConfigured, getEveAgentOrigin } from '@/lib/env';
 import { resolveAgentModel, System2ModelSchema } from '@/lib/models';
 import { runAssessmentTurn } from '@/lib/eve-session';
+import { assessTurnMessage } from '@/lib/assessment-turns';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,10 +42,7 @@ export async function POST(request: NextRequest) {
       origin,
       cookie: request.headers.get('cookie'),
       signal: request.signal,
-      message:
-        `Assess opportunity ${opportunity.id}: call crm_read_deal, then score_deal, then analyze_deal with model ${model}. ` +
-        `Do not write back to the CRM yet: ` +
-        `the Solutions Architect answers the discovery form first.`,
+      message: assessTurnMessage(opportunity.id, model),
     });
     await requireFreshSessionInteractions(opportunity.id, sessionId, {}, {
       initial_scoring: 'run_jev_scoring',

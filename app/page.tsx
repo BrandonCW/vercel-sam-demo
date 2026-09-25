@@ -1,5 +1,5 @@
 import { getOpportunityByScenario } from '@/lib/db/crm';
-import { DEFAULT_SCENARIO_ID } from '@/lib/db/fixtures';
+import { DEFAULT_SCENARIO_ID } from '@/lib/db/scenarios';
 import { assertAiGatewayConfigured } from '@/lib/env';
 import { WorkbenchShell } from '@/components/workbench/WorkbenchShell';
 

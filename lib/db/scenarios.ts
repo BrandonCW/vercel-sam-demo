@@ -83,7 +83,12 @@ export const INITIAL_MEDDPICC_BREAKDOWN: MEDDPICCBreakdown = {
   },
 };
 
-export const SCENARIO_FIXTURES: Record<string, DealScenario> = {
+/**
+ * Demo scenario seed data (not test fixtures). Loaded into Postgres `deal_scenarios` by
+ * `pnpm db:seed` (lib/db/seed.ts); runtime resets read the seeded rows, never this constant.
+ * The Scenario selector lists these ids and titles.
+ */
+export const DEMO_SCENARIOS: Record<string, DealScenario> = {
   scenario_acme_netlify: {
     scenario_id: 'scenario_acme_netlify',
     title: 'Acme Corp (Netlify Renewal Contested)',
@@ -165,5 +170,8 @@ export const SCENARIO_FIXTURES: Record<string, DealScenario> = {
     },
   },
 };
+
+/** Scenario ids a full reset requires to be seeded. */
+export const DEMO_SCENARIO_IDS = Object.keys(DEMO_SCENARIOS);
 
 export const DEFAULT_SCENARIO_ID = 'scenario_acme_netlify';

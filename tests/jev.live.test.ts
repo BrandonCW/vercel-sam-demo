@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { evaluate } from 'eve/ai';
 import { buildJevEvaluationRequest, interpretJevEvaluation } from '@/lib/agents/jev-scorer';
-import { SCENARIO_FIXTURES } from '@/lib/db/fixtures';
+import { DEMO_SCENARIOS } from '@/lib/db/scenarios';
 
 // Billed: runs one real typesafe-ai/jev call. Opt in with JEV_LIVE=1 (needs AI_GATEWAY_API_KEY).
 const live = process.env.JEV_LIVE === '1' && !!process.env.AI_GATEWAY_API_KEY;
 
 describe.skipIf(!live)('System 1 (Jev) - live Acme baseline', () => {
   it('scores the Acme Netlify scenario within the spec baseline', async () => {
-    const opp = SCENARIO_FIXTURES.scenario_acme_netlify.default_data;
+    const opp = DEMO_SCENARIOS.scenario_acme_netlify.default_data;
     const input = {
       opportunityId: opp.id,
       name: opp.name,

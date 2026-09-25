@@ -13,13 +13,13 @@ import { z } from 'zod';
  * This file calls no model: every model call happens inside the eve agent.
  */
 
-const TurnOutcomeSchema = z.object({
+export const TurnOutcomeSchema = z.object({
   outcome: z.enum(['completed', 'failed']),
   error: z.string().nullable(),
 });
 
 /** JSON Schema twin of TurnOutcomeSchema (zod 3 is not a Standard JSON Schema). */
-const TURN_OUTCOME_JSON_SCHEMA = {
+export const TURN_OUTCOME_JSON_SCHEMA = {
   type: 'object',
   properties: {
     outcome: { type: 'string', enum: ['completed', 'failed'] },
@@ -31,6 +31,27 @@ const TURN_OUTCOME_JSON_SCHEMA = {
   required: ['outcome', 'error'],
   additionalProperties: false,
 };
+
+/**
+ * Headers for the server-side eve client: the caller's cookie (eve channel auth) and,
+ * on Vercel, the Protection Bypass for Automation header. Vercel Authentication guards
+ * every *.vercel.app deployment URL, including the one this deployment calls for
+ * /eve/v1, so on Vercel the call needs VERCEL_AUTOMATION_BYPASS_SECRET (a system env
+ * var Vercel sets once a bypass secret exists in Settings -> Deployment Protection).
+ */
+export function eveClientHeaders(cookie: string | null): Record<string, string> {
+  const headers: Record<string, string> = cookie ? { cookie } : {};
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+  if (bypass) return { ...headers, 'x-vercel-protection-bypass': bypass };
+  if (process.env.VERCEL === '1') {
+    throw new Error(
+      'Missing or invalid environment configuration: VERCEL_AUTOMATION_BYPASS_SECRET is not set, so Vercel Deployment ' +
+        'Protection would block this deployment calling its own /eve/v1 routes. Create a Protection Bypass for Automation ' +
+        'secret (Project Settings -> Deployment Protection) and redeploy.'
+    );
+  }
+  return headers;
+}
 
 export interface AssessmentTurn {
   /** Origin that serves `/eve/v1/*` (see getEveAgentOrigin). */
@@ -56,7 +77,7 @@ export async function runAssessmentTurn({
 }: AssessmentTurn): Promise<{ sessionId: string }> {
   const client = new Client({
     host: origin,
-    headers: cookie ? { cookie } : undefined,
+    headers: eveClientHeaders(cookie),
     redirect: 'error',
   });
   const response = sessionId
