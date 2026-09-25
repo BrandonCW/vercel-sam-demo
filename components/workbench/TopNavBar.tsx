@@ -6,12 +6,10 @@ import {
   System2ModelOption,
   SYSTEM2_MODELS,
 } from '@/lib/types/crm';
-import { SCENARIO_FIXTURES } from '@/lib/db/fixtures';
+import { DEMO_SCENARIOS } from '@/lib/db/scenarios';
 import {
   RotateCcw,
   Sparkles,
-  Database,
-  ShieldAlert,
   Flame,
   User,
   DollarSign,
@@ -27,7 +25,8 @@ interface TopNavBarProps {
   onModelChange: (model: System2ModelOption) => void;
   onReset: () => Promise<void>;
   isResetting: boolean;
-  isPostgres: boolean;
+  /** An Assessment Session turn is in flight: a reset or scenario switch would delete or orphan its results. */
+  controlsLocked: boolean;
   runtimeStatus: string;
 }
 
@@ -39,11 +38,12 @@ export function TopNavBar({
   onModelChange,
   onReset,
   isResetting,
-  isPostgres,
+  controlsLocked,
   runtimeStatus,
 }: TopNavBarProps) {
   // Competitor threat calculation
   const primaryCompetitor = opportunity.competitive_flags[0];
+
 
   return (
     <header className="bg-[#121215] border-b border-[#27272a] sticky top-0 z-50 px-4 py-3 shadow-md">
@@ -114,9 +114,10 @@ export function TopNavBar({
               aria-label="Select Scenario"
               value={currentScenarioId}
               onChange={(e) => onScenarioChange(e.target.value)}
+              disabled={controlsLocked}
               className="bg-transparent text-zinc-200 font-semibold focus:outline-none cursor-pointer pr-1"
             >
-              {Object.entries(SCENARIO_FIXTURES).map(([id, scenario]) => (
+              {Object.entries(DEMO_SCENARIOS).map(([id, scenario]) => (
                 <option key={id} value={id} className="bg-[#18181b] text-zinc-200">
                   {scenario.title}
                 </option>
@@ -145,26 +146,14 @@ export function TopNavBar({
           {/* Reset Demo State Button */}
           <button
             onClick={onReset}
-            disabled={isResetting}
-            title="Reset Scenario to baseline unqualified state"
+            disabled={isResetting || controlsLocked}
+            title={controlsLocked ? 'Wait for the running assessment to finish' : 'Reset Scenario to baseline unqualified state'}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#27272a] hover:bg-[#3f3f46] text-zinc-200 font-semibold rounded-lg border border-zinc-700 disabled:opacity-50 transition-colors shadow-sm"
           >
             <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin text-[#0070f3]' : ''}`} />
             <span>{isResetting ? 'Resetting...' : 'Reset Demo'}</span>
           </button>
 
-          {/* Database Connection Pill */}
-          <div
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-mono ${
-              isPostgres
-                ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400'
-            }`}
-            title={isPostgres ? 'Connected to Neon/Postgres' : 'Using In-Memory Store fallback'}
-          >
-            <Database className="w-3 h-3" />
-            <span>{isPostgres ? 'Neon PG' : 'In-Memory'}</span>
-          </div>
         </div>
       </div>
     </header>

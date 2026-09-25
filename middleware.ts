@@ -34,8 +34,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 5. Handle unauthorized: API routes return 401 JSON, page routes redirect to /login
-  if (pathname.startsWith('/api/')) {
+  // 5. Handle unauthorized: API and eve agent routes (the workbench's useEveAgent calls) return
+  //    401 JSON, page routes redirect to /login
+  if (pathname.startsWith('/api/') || pathname.startsWith('/eve/')) {
     return NextResponse.json(
       { error: 'Authentication required' },
       { status: 401 }

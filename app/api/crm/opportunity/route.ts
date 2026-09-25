@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getOpportunityByScenario, getOpportunity } from '@/lib/db/crm';
-import { DEFAULT_SCENARIO_ID } from '@/lib/db/fixtures';
+import { DEFAULT_SCENARIO_ID } from '@/lib/db/scenarios';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

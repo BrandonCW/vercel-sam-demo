@@ -44,20 +44,29 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
       },
     };
 
-    const writebackResult = await writebackOpportunityQualification('opp_acme_corp_001', {
-      sa_notes: `${oppBefore!.sa_notes}\n[SA Discovery Update - 2026-09-24T00:00:00.000Z]\n• Verified EB signoff`,
+    const { opportunity: writebackResult, writebackId } = await writebackOpportunityQualification('opp_acme_corp_001', {
+      expectedAeNotes: oppBefore!.ae_notes,
       suggested_next_steps:
         '[QUALIFIED] Advance to Stage 3 (Technical Validation). Schedule architecture review with VP of E-Commerce. | Owner: SA (Lead) + AE | Focus: Turborepo Remote Caching | Watch: Netlify 30% discount renewal offer.',
       qualification_status: 'qualified',
       meddpicc_score: 72,
       meddpicc_breakdown: sampleBreakdown,
+      sessionId: 'wrun_wb',
+      audit: { actor: 'system1_jev', payload: { sessionState: 'closed' } },
     });
 
     // 1. Designated writeback fields MUST be updated
     expect(writebackResult.qualification_status).toBe('qualified');
     expect(writebackResult.meddpicc_score).toBe(72);
     expect(writebackResult.suggested_next_steps).toContain('[QUALIFIED]');
-    expect(writebackResult.sa_notes).toContain('Verified EB signoff');
+    // sa_notes is appended only by record_sa_feedback; writeback never rewrites it.
+    expect(writebackResult.sa_notes).toBe(oppBefore!.sa_notes);
+    // Exactly one writeback audit row, written in the same statement.
+    const audits = (await getInteractions('opp_acme_corp_001')).filter((i) => i.action === 'writeback');
+    expect(audits).toHaveLength(1);
+    expect(audits[0].payload).toMatchObject({ assessmentSessionId: 'wrun_wb', sessionState: 'closed' });
+    // The same statement returns the audit row's id, so the tool can report it.
+    expect(writebackId).toBe(audits[0].id);
     expect(writebackResult.meddpicc_breakdown.economicBuyer?.score).toBe(8);
     expect(writebackResult.stage_gate?.gateReady).toBe(true);
 
@@ -124,11 +133,13 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
   it('throws error when writing back to non-existent opportunity', async () => {
     await expect(
       writebackOpportunityQualification('opp_non_existent_id', {
-        sa_notes: 'notes',
+        expectedAeNotes: '',
         suggested_next_steps: 'steps',
         qualification_status: 'qualified',
         meddpicc_score: 50,
         meddpicc_breakdown: {},
+        sessionId: 'wrun_none',
+        audit: { actor: 'system1_jev', payload: {} },
       })
     ).rejects.toThrow(/not found/i);
   });

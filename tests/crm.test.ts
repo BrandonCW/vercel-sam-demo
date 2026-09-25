@@ -8,9 +8,32 @@ import {
   recordInteraction,
   getInteractions,
 } from '@/lib/db/crm';
-import { SCENARIO_FIXTURES } from '@/lib/db/fixtures';
+import { DEMO_SCENARIOS } from '@/lib/db/scenarios';
 
-describe('Simulated CRM Persistence & Seeding', () => {
+describe('CRM fails loudly without Postgres', () => {
+  it('throws a descriptive error instead of using an in-memory store when POSTGRES_URL is unset', async () => {
+    const saved = process.env.POSTGRES_URL;
+    delete process.env.POSTGRES_URL;
+    try {
+      await expect(getOpportunity('opp_acme_corp_001')).rejects.toThrow(/POSTGRES_URL/);
+      await expect(resetCrmDatabase('scenario_acme_netlify')).rejects.toThrow(/POSTGRES_URL/);
+    } finally {
+      process.env.POSTGRES_URL = saved;
+    }
+  });
+
+  it('propagates query failures instead of silently switching stores', async () => {
+    const saved = process.env.POSTGRES_URL;
+    process.env.POSTGRES_URL = 'postgresql://nobody:wrong@127.0.0.1:1/none';
+    try {
+      await expect(getOpportunity('opp_acme_corp_001')).rejects.toThrow();
+    } finally {
+      process.env.POSTGRES_URL = saved;
+    }
+  });
+});
+
+describe('Simulated CRM Persistence & Seeding (live Postgres test branch)', () => {
   beforeEach(async () => {
     // Reset to clean fixture baseline
     await resetCrmDatabase('scenario_acme_netlify');
@@ -110,5 +133,17 @@ describe('Simulated CRM Persistence & Seeding', () => {
     expect(interactions.length).toBeGreaterThan(0);
     const latest = interactions[0];
     expect(latest.opportunity_id).toBe('opp_acme_corp_001');
+  });
+});
+
+describe('Opportunity reset marker (issue 15)', { timeout: 30_000 }, () => {
+  it('reports when the Opportunity was last reset, and a newer value after every reset', async () => {
+    const first = await resetCrmDatabase('scenario_acme_netlify');
+    const read = (await getOpportunity('opp_acme_corp_001'))!;
+    expect(read.last_reset_at).toEqual(expect.any(String));
+    expect(first.last_reset_at).toBe(read.last_reset_at);
+    await resetCrmDatabase('scenario_acme_netlify');
+    const after = (await getOpportunity('opp_acme_corp_001'))!;
+    expect(Date.parse(after.last_reset_at!)).toBeGreaterThan(Date.parse(read.last_reset_at!));
   });
 });

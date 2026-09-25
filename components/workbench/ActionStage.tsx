@@ -27,6 +27,8 @@ interface ActionStageProps {
   selectedModel: System2ModelOption;
   sessionState: AssessmentSessionState;
   dynamicForm: JsonRenderForm | null;
+  /** Jev has scored and System 2 is still running: show the running indicator. */
+  isSystem2Running?: boolean;
   onStartAssessment?: () => void;
   isAssessing?: boolean;
   onSubmitFeedback?: (
@@ -34,6 +36,8 @@ interface ActionStageProps {
     notesDelta?: string
   ) => Promise<void> | void;
   isSubmittingFeedback?: boolean;
+  /** Disable the discovery form without the evaluating panel (e.g. while a session resumes). */
+  isFormLocked?: boolean;
 }
 
 export function ActionStage({
@@ -41,10 +45,12 @@ export function ActionStage({
   selectedModel,
   sessionState,
   dynamicForm,
+  isSystem2Running = false,
   onStartAssessment,
   isAssessing = false,
   onSubmitFeedback,
   isSubmittingFeedback = false,
+  isFormLocked = false,
 }: ActionStageProps) {
   const [hasCopied, setHasCopied] = useState(false);
 
@@ -275,6 +281,7 @@ export function ActionStage({
             form={dynamicForm}
             onSubmit={handleFormSubmit}
             isSubmitting={isSubmittingFeedback}
+            isLocked={isFormLocked}
             submitButtonText="Submit Discovery Findings & Run Delta Re-scoring"
           />
         </div>
@@ -319,7 +326,7 @@ export function ActionStage({
                 1. System 1 (Jev)
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
-                Deterministic 8-dimension scoring, evidence extraction, and competitor detection in &lt;1.5s.
+                8-dimension MEDDPICC scoring through Vercel AI Gateway.
               </p>
             </div>
 
@@ -390,6 +397,17 @@ export function ActionStage({
               </button>
             </div>
           </div>
+
+          {isSystem2Running && (
+            <div
+              role="status"
+              className="mt-5 flex items-center gap-2 p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 text-xs text-purple-200"
+            >
+              <span className="inline-block w-3.5 h-3.5 border-2 border-purple-300/30 border-t-purple-300 rounded-full animate-spin" />
+              <span className="font-semibold">System 2 analysis running&hellip;</span>
+              <span className="text-zinc-400">Jev scores are in; citations and the discovery form appear when System 2 finishes.</span>
+            </div>
+          )}
 
           {/* Zero-Cost Banner Preview */}
           <div className="mt-5 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">

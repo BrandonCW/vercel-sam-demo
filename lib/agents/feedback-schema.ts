@@ -9,15 +9,30 @@ export const SaFeedbackPayloadSchema = z.object({
 export type SaFeedbackPayload = z.infer<typeof SaFeedbackPayloadSchema>;
 
 /**
- * Formats SA discovery updates into a structured, timestamped markdown log
- * to be appended to the Opportunity's SA Notes, leaving AE Notes immutable.
+ * Idempotency key for one SA feedback submission: the same answers produce the
+ * same key, so a retried turn cannot append them twice. SHA-256 through Web Crypto,
+ * so the workbench (browser) and record_sa_feedback (server) compute the same key.
  */
-export function formatSaDiscoveryNotes(
+export async function saFeedbackKey(
   formResponses: Record<string, string | string[]>,
-  notesDelta?: string,
-  existingSaNotes?: string
+  notesDelta?: string | null
+): Promise<string> {
+  const canonical = JSON.stringify({
+    formResponses: Object.keys(formResponses)
+      .sort()
+      .map((k) => [k, formResponses[k]]),
+    notesDelta: notesDelta?.trim() || null,
+  });
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** One timestamped SA discovery update block (the text appended to SA Notes). */
+export function formatSaDiscoveryDelta(
+  formResponses: Record<string, string | string[]>,
+  notesDelta: string | null | undefined,
+  timestamp: string
 ): string {
-  const timestamp = new Date().toISOString();
   const entries = Object.entries(formResponses)
     .filter(([_, val]) => val !== undefined && val !== null && val !== '')
     .map(([fieldId, val]) => `• ${fieldId}: ${Array.isArray(val) ? val.join(', ') : val}`);
@@ -29,12 +44,5 @@ export function formatSaDiscoveryNotes(
   if (notesDelta && notesDelta.trim().length > 0) {
     deltaParts.push(`• Additional SA Notes: ${notesDelta.trim()}`);
   }
-
-  const formattedDelta = deltaParts.join('\n').trim();
-
-  if (!existingSaNotes || existingSaNotes.trim().length === 0) {
-    return formattedDelta;
-  }
-
-  return `${existingSaNotes.trim()}\n\n${formattedDelta}`;
+  return deltaParts.join('\n').trim();
 }

@@ -23,7 +23,7 @@ The Deal Qualification System is an automated qualification workbench built on N
 2. As a Solutions Architect, I want to trigger an automated qualification assessment with a single click, so that the Opportunity is immediately evaluated against the MEDDPICC rubric without manual calculation.
 3. As a Solutions Architect, I want System 1 to evaluate the deal across all 8 MEDDPICC dimensions (Metrics, Economic Buyer, Decision Criteria, Decision Process, Paper Process, Identify Pain, Champion, Competition) within 1.5 seconds, so that I get immediate qualification feedback.
 4. As a Solutions Architect, I want each MEDDPICC dimension scored from 0 to 10 with an associated status (unaddressed, partial, verified), so that I know exactly how mature our understanding is for each area.
-5. As a Solutions Architect, I want to view direct textual citations from AE Notes and SA Notes supporting each dimension score, so that I can verify the agent's reasoning against customer statements.
+5. As a Solutions Architect, I want to view direct textual citations from AE Notes and SA Notes supporting each dimension score, so that I can verify the agent's reasoning against customer statements. (Citations and gap callouts are produced by System 2; Jev returns no text.)
 6. As a Solutions Architect, I want to see explicit gap callouts for every incomplete dimension, so that I know what evidence is still missing before the deal can advance.
 7. As a Solutions Architect, I want System 1 to automatically detect competitor mentions (such as Netlify, AWS Amplify, Cloudflare Pages, or DIY Kubernetes) and assign a threat level, so that I am alerted to active bake-offs.
 8. As a Solutions Architect, I want System 2 to generate targeted competitive battlecards and counter-positioning tactics based on detected competitors, so that I can expose competitor limitations during customer calls.
@@ -38,7 +38,7 @@ The Deal Qualification System is an automated qualification workbench built on N
 17. As an Account Executive, I want the Opportunity's Qualification Status (Unqualified, In Review, Qualified, Disqualified) updated automatically upon writeback, so that deal pipelines accurately reflect technical readiness.
 18. As a Solutions Architect, I want to select from pre-seeded Scenarios (such as Acme Corp / Netlify, Globex FinTech / AWS Amplify, and Soylent Retail / Headless) from a top navigation bar, so that I can demonstrate different deal qualification paths.
 19. As a Solutions Architect, I want an instant Reset button that restores the active Scenario to its baseline unqualified state, so that I can run clean, repeatable demonstrations on demand.
-20. As a Solutions Architect, I want to select the System 2 reasoning model from a dropdown in the UI (defaulting to Claude 3.5 Sonnet, with Claude 3.5 Haiku, GPT-4o-mini, and Gemini 2.0 Flash as options), so that I can compare reasoning depth, question phrasing, and execution speed across models.
+20. As a Solutions Architect, I want to select the System 2 reasoning model from a dropdown in the UI (defaulting to Claude Sonnet 5, with Claude Haiku 4.5, GPT-5.5, and Gemini 3.5 Flash as options, all routed through Vercel AI Gateway), so that I can compare reasoning depth, question phrasing, and execution speed across models.
 21. As a Platform Administrator, I want the application protected by a lightweight password gate on Preview and Production environments, so that sensitive deal scenarios and agent endpoints are shielded from unauthorized public access.
 22. As a Developer, I want the password authentication gate automatically bypassed when running in local development (`NODE_ENV === 'development'`), so that I can iterate rapidly without repetitive logins.
 23. As an Engineering Lead, I want a Git-driven deployment pipeline where pushes to the `mvp` branch automatically trigger Vercel Preview deployments and merges to `main` deploy to Vercel Production, so that releases are predictable and automated.
@@ -50,7 +50,7 @@ The Deal Qualification System is an automated qualification workbench built on N
 ### 1. Architectural Overview & Split Workbench UI
 
 The user interface follows a persistent two-column Split Workbench layout (derived from prototype `.scratch/deal-qualification/prototypes/interactive-ui-flow.html`):
-- **Header**: Displays Opportunity name, Deal Stage badge, Annual Contract Value (ACV), assigned AE/SA, detected Competitor threat pill, runtime session status, the demo Scenario selector with Reset trigger, and the System 2 Model Selector dropdown (options: Claude 3.5 Sonnet [default], Claude 3.5 Haiku, GPT-4o-mini, Gemini 2.0 Flash).
+- **Header**: Displays Opportunity name, Deal Stage badge, Annual Contract Value (ACV), assigned AE/SA, detected Competitor threat pill, runtime session status, the demo Scenario selector with Reset trigger, and the System 2 Model Selector dropdown (options: Claude Sonnet 5 [default], Claude Haiku 4.5, GPT-5.5, Gemini 3.5 Flash; Gateway IDs in `lib/models.ts`).
 - **Left Column (Context & Real-Time Rubric)**:
   - Read-only AE Notes card.
   - Cumulative SA Notes card.
@@ -85,7 +85,7 @@ The Eve Agent framework coordinates the deal qualification lifecycle:
 
 ### 4. System 1 (Jev) Deterministic MEDDPICC & Stage Gate Scoring
 
-System 1 provides fast (<1.5s), deterministic rubric scoring and competitor detection:
+System 1 is TypeSafe AI's `typesafe-ai/jev` evaluation model, called through Vercel AI Gateway with `evaluate` from `eve/ai` (no Zero Data Retention; Gateway retention is accepted). It is not an LLM prompt and returns no text. Jev answers one `score` question per MEDDPICC dimension (10 levels, level p = round(p × 10 / 9) on 0–10, worded from `docs/meddpicc-rubric.md`) and one `choice` question per taxonomy competitor (`absent | low | medium | high`). Per-dimension confidence comes from `providerMetadata.typesafe.confidence`. Status, the weighted composite and the stage gates are computed deterministically in code from those answers. Citations and gap callouts come from System 2.
 - **Weighted 8-Dimension Formula**:
   $$\text{Composite Score} = \sum_{i=1}^{8} \left( \text{Dimension Score}_i \times 10 \times \text{Weight}_i \right)$$
   - Identify Pain: 20%
@@ -101,7 +101,7 @@ System 1 provides fast (<1.5s), deterministic rubric scoring and competitor dete
   - `4 - 7` (`partial`): Qualitative mention present, lacking confirmed stakeholder sign-off or metrics.
   - `8 - 10` (`verified`): Documented evidence or confirmed stakeholder agreement.
 - **Stage Gate Rules**:
-  - **Gate 2 (Discovery $\rightarrow$ Technical Validation)**: Requires Identify Pain $\ge 6$, Champion $\ge 5$, Metrics $\ge 4$, Composite Score $\ge 50$.
+  - **Gate 2 (Discovery $\rightarrow$ Technical Validation)**: Requires Identify Pain $\ge 6$, Champion $\ge 5$, Metrics $\ge 4$, Economic Buyer $\ge 4$, Composite Score $\ge 50$.
   - **Gate 3 (Technical Validation $\rightarrow$ Proposal)**: Requires Decision Criteria $\ge 7$, Economic Buyer $\ge 6$, Decision Process $\ge 5$, Identify Pain $\ge 7$, Champion $\ge 7$, Composite Score $\ge 70$.
 - **Competitive Mention Extraction**: Scans against taxonomy (`Netlify`, `AWS Amplify`, `Cloudflare Pages`, `Akamai/Fastly`, `DIY Kubernetes / AWS ECS`) and assigns threat levels (`low`, `medium`, `high`).
 - **Type-Safe Contract**: Enforced via Zod schema (`JevScoringResultSchema`).
@@ -176,7 +176,7 @@ Tests must verify external system behavior and observable state transitions rath
 The architecture defines two primary seams, keeping the total number of seams to the absolute minimum:
 
 1. **Primary Seam: API Route & Workflow Integration Seam (Highest Seam)**
-   - **Target**: Next.js API Route Handlers (`/api/qualification/assess`, `/api/qualification/feedback`, `/api/crm/reset`).
+   - **Target**: the eve agent's Assessment Session (the two turns the workbench sends through `useEveAgent`, exercised by `pnpm eval` and the eve tools) and the `/api/crm/reset` data route. _(Amended by issue 16: the `/api/qualification/*` routes were retired; the UI calls eve directly.)_
    - **Mechanism**: Execute HTTP requests against route handlers connected to a test Postgres database (or local Neon test branch).
    - **Isolation Boundary**: LLM model endpoints (Jev and System 2) are mocked at the network/client transport level using deterministic canned response fixtures matching the Zod schemas (`JevScoringResultSchema` and `JsonRenderFormSchema`).
    - **Behaviors Verified**:
@@ -214,3 +214,22 @@ The architecture defines two primary seams, keeping the total number of seams to
 - **Interactive UI Prototype Asset**: Available for visual and state reference at [`.scratch/deal-qualification/prototypes/interactive-ui-flow.html`](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/prototypes/interactive-ui-flow.html).
 - **MEDDPICC Rubric Reference**: Formal dimension definitions, weights, and stage exit gate thresholds are documented in [`docs/meddpicc-rubric.md`](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/docs/meddpicc-rubric.md).
 - **Issue Tracking**: Implementation tickets 01 through 07 in `.scratch/deal-qualification/issues/` document the individual technical decisions leading to this master specification.
+
+---
+
+## Amendments (2026-09-25, eve review)
+
+Tracked in issues 06–10 and 18–20.
+
+- **Fail loudly**: No runtime fallbacks (regex scoring, canned System 2 output, in-memory CRM). Missing config or upstream failure throws. Supersedes any fallback behavior implied above.
+- **§4 System 1**: Jev is TypeSafe AI's `typesafe-ai/jev` evaluation model via AI Gateway (`evaluate` from `eve/ai`), answering typed score/choice questions. Composite and stage gates computed in code from its answers.
+- **User story 5 / citations**: Jev returns no text; per-dimension citations and gap callouts are produced by System 2.
+- **§1 / user story 20 models**: the original 2024-era options are retired; replaced with current Gateway IDs `anthropic/claude-sonnet-5` (default), `anthropic/claude-haiku-4.5`, `openai/gpt-5.5`, `google/gemini-3.5-flash`, defined once in `lib/models.ts` (issue 08).
+- **§6 Assessment Session**: implemented as a two-turn durable eve session (see 09). Superseded by issue 19: one `run_assessment` workflow tool sequences the whole session in code, pausing durably on `ctx.ask` for the SA's answers.
+- **Testing**: fixture-based tests allowed only for pure logic, and only alongside live eve evals against the real Gateway and a Postgres test branch (see 10). Supersedes "LLM endpoints mocked at transport level" as the sole integration strategy.
+- **Jev request details (issue 07)**: Zero Data Retention is not required; Gateway retention of Jev requests is accepted (user decision). Score questions use 10 levels, because Jev allows at most 10. Level p stands for round(p × 10 / 9), worded with that value's rubric band.
+- **§3 agent structure (issue 18)**: the `QualificationAssessor` and `PlaybookGenerator` subagents are removed. System 1 (`run_jev_scoring`) and System 2 (`run_system2_analysis`) are each one deterministic tool call, so the root agent calls them directly as its own tools in `agent/tools/`. A subagent added nothing but a model step before the call and a summary nobody read after it (about 12s of the 14s System 1 step and 27s of the System 2 step). No subagent remains. Supersedes the sub-agent roles in §3 and the `score_deal` / `analyze_deal` delegation tools of issues 09 and 13.
+- **Progressive results (issue 18)**: the workbench shows Jev scores before the CRM write finishes, and System 2 citations and a read-only discovery form preview while System 2 streams (eve `action.partial` from async-generator tools). Each step's CRM update and audit row are one atomic statement. A failed write still fails the tool action.
+- **§1 / user story 20 models (issue 18)**: the root agent stays on `anthropic/claude-sonnet-5` (`AGENT_MODEL_ID`): on Haiku 4.5 it ended every turn with prose instead of the structured outcome (6 of 6 live sessions). System 2 defaults to `google/gemini-3.8-flash` (`SYSTEM2_MODEL_ID`), a fast default the user accepted for the demo at some cost in depth. The model list is now Gemini 3.8 Flash (the default), Claude Haiku 4.5, Claude Sonnet 5 and GPT-5.5; Gemini 3.5 Flash was replaced by 3.8. Through the Gateway, Haiku 4.5 stops after the first property of the System 2 object (5 of 5 calls). It stays selectable and fails loudly.
+- **Sequencing in code (issue 19)**: `run_assessment` (a `defineWorkflowTool`) replaces the per-step root tools; the root model makes about 2 steps per session. System 2 is not streamed (a workflow step returns one value), so the draft preview of issue 18 is gone. The root runs on `google/gemini-3.8-flash`. Supersedes the §3 amendment's direct root tools.
+- **Pass or fail in code (issue 20)**: no structured turn outcome is requested. The verdict is the `run_assessment` action: completed with a result that parses as `AssessmentResultSchema`, or failed with the tool's error. The workbench and the evals read only that; the root model's reply is not interpreted.

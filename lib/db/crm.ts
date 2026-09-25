@@ -6,184 +6,44 @@ import {
   QualificationStatus,
   MEDDPICCBreakdown,
 } from '@/lib/types/crm';
-import { SCENARIO_FIXTURES, DEFAULT_SCENARIO_ID } from './fixtures';
+import { DEFAULT_SCENARIO_ID, DEMO_SCENARIO_IDS as EXPECTED_SCENARIO_IDS } from './scenarios';
+import { getPostgresUrl } from '@/lib/env';
 
-// --- In-Memory State Fallback ---
-interface InMemoryStore {
-  opportunities: Map<string, Opportunity>;
-  scenarios: Map<string, DealScenario>;
-  interactions: DealInteraction[];
-  scenarioToOppMap: Map<string, string>;
-}
-
-function createDefaultInMemoryStore(): InMemoryStore {
-  const store: InMemoryStore = {
-    opportunities: new Map(),
-    scenarios: new Map(),
-    interactions: [],
-    scenarioToOppMap: new Map(),
-  };
-
-  const now = new Date().toISOString();
-
-  for (const [scenarioId, scenario] of Object.entries(SCENARIO_FIXTURES)) {
-    store.scenarios.set(scenarioId, { ...scenario });
-    const opp: Opportunity = {
-      ...scenario.default_data,
-      created_at: now,
-      updated_at: now,
-    };
-    store.opportunities.set(opp.id, opp);
-    store.scenarioToOppMap.set(scenarioId, opp.id);
-  }
-
-  return store;
-}
-
-// Global in-memory singleton for serverless dev / tests
-declare global {
-  // eslint-disable-next-line no-var
-  var __deal_qual_in_memory_store: InMemoryStore | undefined;
-}
-
-function getInMemoryStore(): InMemoryStore {
-  if (!global.__deal_qual_in_memory_store) {
-    global.__deal_qual_in_memory_store = createDefaultInMemoryStore();
-  }
-  return global.__deal_qual_in_memory_store;
-}
-
-export function isUsingPostgres(): boolean {
-  return Boolean(process.env.POSTGRES_URL && process.env.POSTGRES_URL.trim() !== '');
-}
-
+/**
+ * Simulated Salesforce CRM backed exclusively by Postgres (Neon).
+ * Tables are defined in db/schema.sql. A missing POSTGRES_URL or any query
+ * failure throws; there is no alternate store.
+ */
 function getSql() {
-  if (!isUsingPostgres()) return null;
-  return neon(process.env.POSTGRES_URL!);
-}
-
-let pgTablesInitialized = false;
-
-async function ensurePostgresTables() {
-  const sql = getSql();
-  if (!sql || pgTablesInitialized) return;
-
-  try {
-    await sql`
-      CREATE TABLE IF NOT EXISTS opportunities (
-        id VARCHAR(64) PRIMARY KEY,
-        name TEXT NOT NULL,
-        account_name TEXT NOT NULL,
-        stage_name TEXT NOT NULL,
-        amount NUMERIC(12, 2) DEFAULT 0.00,
-        close_date DATE NOT NULL,
-        ae_name TEXT NOT NULL,
-        sa_name TEXT NOT NULL DEFAULT 'Unassigned',
-        ae_notes TEXT NOT NULL,
-        sa_notes TEXT DEFAULT '',
-        suggested_next_steps TEXT DEFAULT NULL,
-        qualification_status VARCHAR(32) NOT NULL DEFAULT 'unqualified',
-        meddpicc_score INTEGER DEFAULT NULL,
-        meddpicc_breakdown JSONB DEFAULT '{}'::jsonb,
-        competitive_flags TEXT[] DEFAULT ARRAY[]::TEXT[],
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `;
-
-    await sql`
-      CREATE TABLE IF NOT EXISTS deal_scenarios (
-        scenario_id VARCHAR(64) PRIMARY KEY,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        default_data JSONB NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `;
-
-    await sql`
-      CREATE TABLE IF NOT EXISTS deal_interactions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        opportunity_id VARCHAR(64) NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
-        actor VARCHAR(32) NOT NULL,
-        action VARCHAR(64) NOT NULL,
-        payload JSONB NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `;
-
-    // Seed scenarios if empty
-    const existing = await sql`SELECT scenario_id FROM deal_scenarios LIMIT 1;`;
-    if (existing.length === 0) {
-      for (const [id, s] of Object.entries(SCENARIO_FIXTURES)) {
-        await sql`
-          INSERT INTO deal_scenarios (scenario_id, title, description, default_data)
-          VALUES (${id}, ${s.title}, ${s.description}, ${JSON.stringify(s.default_data)}::jsonb)
-          ON CONFLICT (scenario_id) DO NOTHING;
-        `;
-        const d = s.default_data;
-        await sql`
-          INSERT INTO opportunities (
-            id, name, account_name, stage_name, amount, close_date,
-            ae_name, sa_name, ae_notes, sa_notes, suggested_next_steps,
-            qualification_status, meddpicc_score, meddpicc_breakdown, competitive_flags
-          ) VALUES (
-            ${d.id}, ${d.name}, ${d.account_name}, ${d.stage_name}, ${d.amount}, ${d.close_date},
-            ${d.ae_name}, ${d.sa_name}, ${d.ae_notes}, ${d.sa_notes}, ${d.suggested_next_steps},
-            ${d.qualification_status}, ${d.meddpicc_score}, ${JSON.stringify(d.meddpicc_breakdown)}::jsonb,
-            ${d.competitive_flags}
-          ) ON CONFLICT (id) DO NOTHING;
-        `;
-      }
-    }
-
-    pgTablesInitialized = true;
-  } catch (err) {
-    console.warn('Postgres connection/table check failed, falling back to in-memory:', err);
-  }
+  return neon(getPostgresUrl());
 }
 
 export async function getOpportunity(id: string): Promise<Opportunity | null> {
-  if (isUsingPostgres()) {
-    try {
-      await ensurePostgresTables();
-      const sql = getSql()!;
-      const rows = await sql`SELECT * FROM opportunities WHERE id = ${id} LIMIT 1;`;
-      if (rows.length > 0) {
-        return mapRowToOpportunity(rows[0]);
-      }
-    } catch (e) {
-      console.warn('Postgres getOpportunity failed, using in-memory:', e);
-    }
-  }
+  const sql = getSql();
+  const rows = await sql`
+    SELECT o.*,
+      (SELECT MAX(created_at) FROM deal_interactions i WHERE i.opportunity_id = o.id AND i.action = 'reset') AS last_reset_at
+    FROM opportunities o WHERE o.id = ${id} LIMIT 1;`;
+  return rows.length > 0 ? mapRowToOpportunity(rows[0]) : null;
+}
 
-  const store = getInMemoryStore();
-  return store.opportunities.get(id) || null;
+/** Like getOpportunity, but a missing record throws. */
+export async function requireOpportunity(id: string): Promise<Opportunity> {
+  const opportunity = await getOpportunity(id);
+  if (!opportunity) throw new Error(`Opportunity "${id}" not found in CRM.`);
+  return opportunity;
 }
 
 export async function getOpportunityByScenario(scenarioId: string): Promise<Opportunity | null> {
-  const fixture = SCENARIO_FIXTURES[scenarioId] || SCENARIO_FIXTURES[DEFAULT_SCENARIO_ID];
-  if (!fixture) return null;
-
-  return getOpportunity(fixture.default_data.id);
+  const scenario = (await getScenarios()).find((s) => s.scenario_id === scenarioId);
+  if (!scenario) return null;
+  return getOpportunity(scenario.default_data.id);
 }
 
 export async function listOpportunities(): Promise<Opportunity[]> {
-  if (isUsingPostgres()) {
-    try {
-      await ensurePostgresTables();
-      const sql = getSql()!;
-      const rows = await sql`SELECT * FROM opportunities ORDER BY created_at ASC;`;
-      if (rows.length > 0) {
-        return rows.map(mapRowToOpportunity);
-      }
-    } catch (e) {
-      console.warn('Postgres listOpportunities failed, using in-memory:', e);
-    }
-  }
-
-  const store = getInMemoryStore();
-  return Array.from(store.opportunities.values());
+  const sql = getSql();
+  const rows = await sql`SELECT * FROM opportunities ORDER BY created_at ASC;`;
+  return rows.map(mapRowToOpportunity);
 }
 
 export async function updateOpportunity(
@@ -191,270 +51,352 @@ export async function updateOpportunity(
   updates: Partial<Opportunity>
 ): Promise<Opportunity> {
   const now = new Date().toISOString();
+  const sql = getSql();
+  const existing = await getOpportunity(id);
+  if (!existing) throw new Error(`Opportunity ${id} not found`);
 
-  if (isUsingPostgres()) {
-    try {
-      await ensurePostgresTables();
-      const sql = getSql()!;
-      const existing = await getOpportunity(id);
-      if (!existing) throw new Error(`Opportunity ${id} not found`);
-
-      const merged: Opportunity = {
-        ...existing,
-        ...updates,
-        updated_at: now,
-      };
-
-      await sql`
-        UPDATE opportunities SET
-          name = ${merged.name},
-          account_name = ${merged.account_name},
-          stage_name = ${merged.stage_name},
-          amount = ${merged.amount},
-          close_date = ${merged.close_date},
-          ae_name = ${merged.ae_name},
-          sa_name = ${merged.sa_name},
-          ae_notes = ${merged.ae_notes},
-          sa_notes = ${merged.sa_notes},
-          suggested_next_steps = ${merged.suggested_next_steps},
-          qualification_status = ${merged.qualification_status},
-          meddpicc_score = ${merged.meddpicc_score},
-          meddpicc_breakdown = ${JSON.stringify(merged.meddpicc_breakdown)}::jsonb,
-          competitive_flags = ${merged.competitive_flags},
-          updated_at = ${now}
-        WHERE id = ${id};
-      `;
-
-      return merged;
-    } catch (e) {
-      console.warn('Postgres updateOpportunity failed, updating in-memory:', e);
-    }
-  }
-
-  const store = getInMemoryStore();
-  const existing = store.opportunities.get(id);
-  if (!existing) {
-    throw new Error(`Opportunity ${id} not found in store`);
-  }
-
-  const updated: Opportunity = {
+  const merged: Opportunity = {
     ...existing,
     ...updates,
     updated_at: now,
   };
-  store.opportunities.set(id, updated);
-  return updated;
+
+  await sql`
+    UPDATE opportunities SET
+      name = ${merged.name},
+      account_name = ${merged.account_name},
+      stage_name = ${merged.stage_name},
+      amount = ${merged.amount},
+      close_date = ${merged.close_date},
+      ae_name = ${merged.ae_name},
+      sa_name = ${merged.sa_name},
+      ae_notes = ${merged.ae_notes},
+      sa_notes = ${merged.sa_notes},
+      suggested_next_steps = ${merged.suggested_next_steps},
+      qualification_status = ${merged.qualification_status},
+      meddpicc_score = ${merged.meddpicc_score},
+      meddpicc_breakdown = ${JSON.stringify(merged.meddpicc_breakdown)}::jsonb,
+      competitive_flags = ${merged.competitive_flags},
+      updated_at = ${now}
+    WHERE id = ${id};
+  `;
+
+  return merged;
 }
 
 export interface QualificationWritebackData {
-  sa_notes: string;
+  /** The ae_notes the caller read. The write is rejected if the stored value differs (ae_notes is immutable). */
+  expectedAeNotes: string;
   suggested_next_steps: string;
   qualification_status: QualificationStatus;
   meddpicc_score: number;
   meddpicc_breakdown: MEDDPICCBreakdown;
+  /** The Assessment Session this writeback closes; each session is written back at most once. */
+  sessionId: string;
+  /** The single `writeback` audit row, inserted in the same statement as the update. */
+  audit: { actor: DealInteraction['actor']; payload: Record<string, unknown> };
 }
 
 export async function writebackOpportunityQualification(
   id: string,
   writeback: QualificationWritebackData
-): Promise<Opportunity> {
+): Promise<{ opportunity: Opportunity; writebackId: string }> {
   const now = new Date().toISOString();
-
-  if (isUsingPostgres()) {
-    try {
-      await ensurePostgresTables();
-      const sql = getSql()!;
-      await sql`
-        UPDATE opportunities SET
-          sa_notes = ${writeback.sa_notes},
-          suggested_next_steps = ${writeback.suggested_next_steps},
-          qualification_status = ${writeback.qualification_status},
-          meddpicc_score = ${writeback.meddpicc_score},
-          meddpicc_breakdown = ${JSON.stringify(writeback.meddpicc_breakdown)}::jsonb,
-          updated_at = ${now}
-        WHERE id = ${id};
-      `;
-
-      const updated = await getOpportunity(id);
-      if (!updated) throw new Error(`Opportunity ${id} not found after writeback`);
-      return updated;
-    } catch (e) {
-      console.warn('Postgres writebackOpportunityQualification failed, falling back to in-memory:', e);
-    }
-  }
-
-  const store = getInMemoryStore();
-  const existing = store.opportunities.get(id);
-  if (!existing) {
-    throw new Error(`Opportunity ${id} not found in store`);
-  }
-
-  // Atomically update ONLY the designated writeback fields; ae_notes and others are strictly untouched
-  const updated: Opportunity = {
-    ...existing,
-    sa_notes: writeback.sa_notes,
-    suggested_next_steps: writeback.suggested_next_steps,
-    qualification_status: writeback.qualification_status,
-    meddpicc_score: writeback.meddpicc_score,
-    meddpicc_breakdown: writeback.meddpicc_breakdown,
-    stage_gate: writeback.meddpicc_breakdown.stageGate,
-    updated_at: now,
-  };
-
-  store.opportunities.set(id, updated);
-  return updated;
-}
-
-export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity> {
-  const targetScenarioId = scenarioId && SCENARIO_FIXTURES[scenarioId]
-    ? scenarioId
-    : DEFAULT_SCENARIO_ID;
-  const fixture = SCENARIO_FIXTURES[targetScenarioId];
-  const now = new Date().toISOString();
-
-  if (isUsingPostgres()) {
-    try {
-      await ensurePostgresTables();
-      const sql = getSql()!;
-      const d = fixture.default_data;
-
-      // Re-seed default opportunity
-      await sql`
-        INSERT INTO opportunities (
-          id, name, account_name, stage_name, amount, close_date,
-          ae_name, sa_name, ae_notes, sa_notes, suggested_next_steps,
-          qualification_status, meddpicc_score, meddpicc_breakdown, competitive_flags,
-          created_at, updated_at
-        ) VALUES (
-          ${d.id}, ${d.name}, ${d.account_name}, ${d.stage_name}, ${d.amount}, ${d.close_date},
-          ${d.ae_name}, ${d.sa_name}, ${d.ae_notes}, ${d.sa_notes}, ${null},
-          'unqualified', ${null}, ${JSON.stringify(d.meddpicc_breakdown)}::jsonb, ${d.competitive_flags},
-          ${now}, ${now}
+  const sql = getSql();
+  const payload = { ...writeback.audit.payload, assessmentSessionId: writeback.sessionId };
+  // One transaction, serialised per session: updates ONLY the designated writeback fields
+  // (ae_notes and sa_notes are untouched) and inserts the single writeback audit row, or
+  // neither when ae_notes changed or the session is already closed.
+  const [, closedRows, rows] = await sql.transaction([
+    sql`SELECT pg_advisory_xact_lock(hashtext(${`writeback:${id}:${writeback.sessionId}`}));`,
+    sql`SELECT EXISTS (
+      SELECT 1 FROM deal_interactions
+      WHERE opportunity_id = ${id} AND action = 'writeback'
+        AND payload->>'assessmentSessionId' = ${writeback.sessionId}
+    ) AS closed;`,
+    sql`
+    WITH updated AS (
+      UPDATE opportunities SET
+        suggested_next_steps = ${writeback.suggested_next_steps},
+        qualification_status = ${writeback.qualification_status},
+        meddpicc_score = ${writeback.meddpicc_score},
+        meddpicc_breakdown = ${JSON.stringify(writeback.meddpicc_breakdown)}::jsonb,
+        updated_at = ${now}
+      WHERE id = ${id} AND ae_notes = ${writeback.expectedAeNotes}
+        AND NOT EXISTS (
+          SELECT 1 FROM deal_interactions
+          WHERE opportunity_id = ${id} AND action = 'writeback'
+            AND payload->>'assessmentSessionId' = ${writeback.sessionId}
         )
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name,
-          account_name = EXCLUDED.account_name,
-          stage_name = EXCLUDED.stage_name,
-          amount = EXCLUDED.amount,
-          close_date = EXCLUDED.close_date,
-          ae_name = EXCLUDED.ae_name,
-          sa_name = EXCLUDED.sa_name,
-          ae_notes = EXCLUDED.ae_notes,
-          sa_notes = EXCLUDED.sa_notes,
-          suggested_next_steps = NULL,
-          qualification_status = 'unqualified',
-          meddpicc_score = NULL,
-          meddpicc_breakdown = EXCLUDED.meddpicc_breakdown,
-          competitive_flags = EXCLUDED.competitive_flags,
-          updated_at = ${now};
-      `;
-
-      // Clear interactions for this opportunity
-      await sql`DELETE FROM deal_interactions WHERE opportunity_id = ${d.id};`;
-
-      // Record reset interaction
-      await sql`
-        INSERT INTO deal_interactions (opportunity_id, actor, action, payload, created_at)
-        VALUES (${d.id}, 'sa_user', 'reset', ${JSON.stringify({ scenarioId: targetScenarioId })}::jsonb, ${now});
-      `;
-
-      return {
-        ...d,
-        suggested_next_steps: null,
-        qualification_status: 'unqualified',
-        meddpicc_score: null,
-        created_at: now,
-        updated_at: now,
-      };
-    } catch (e) {
-      console.warn('Postgres resetCrmDatabase failed, resetting in-memory:', e);
+      RETURNING *
+    ), audit AS (
+      INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
+      SELECT id, ${writeback.audit.actor}, 'writeback', ${JSON.stringify(payload)}::jsonb FROM updated
+      RETURNING id
+    )
+    SELECT updated.*, (SELECT id FROM audit) AS writeback_id FROM updated;
+  `,
+  ]);
+  if (rows.length === 0) {
+    if (closedRows[0]?.closed) {
+      throw new Error(`Writeback to ${id} rejected: Assessment Session ${writeback.sessionId} is already closed.`);
     }
+    const existing = await getOpportunity(id);
+    if (!existing) throw new Error(`Opportunity ${id} not found`);
+    throw new Error(`Writeback to ${id} rejected: ae_notes changed since it was read; ae_notes is immutable.`);
   }
-
-  // In-memory reset
-  const store = getInMemoryStore();
-  const resetOpp: Opportunity = {
-    ...fixture.default_data,
-    suggested_next_steps: null,
-    qualification_status: 'unqualified',
-    meddpicc_score: null,
-    created_at: now,
-    updated_at: now,
-  };
-  store.opportunities.set(resetOpp.id, resetOpp);
-  store.interactions = store.interactions.filter((i) => i.opportunity_id !== resetOpp.id);
-  store.interactions.push({
-    id: `interaction_${Date.now()}`,
-    opportunity_id: resetOpp.id,
-    actor: 'sa_user',
-    action: 'reset',
-    payload: { scenarioId: targetScenarioId },
-    created_at: now,
-  });
-
-  return resetOpp;
+  const { writeback_id: writebackId, ...row } = rows[0];
+  return { opportunity: mapRowToOpportunity(row), writebackId: String(writebackId) };
 }
 
+/**
+ * Appends one SA discovery update to sa_notes and records its `sa_feedback` row
+ * atomically, at most once per (Assessment Session, feedbackKey). Returns false
+ * when that feedback was already recorded (a retried turn), changing nothing.
+ */
+export async function appendSaFeedbackOnce(input: {
+  opportunityId: string;
+  sessionId: string;
+  feedbackKey: string;
+  notesDelta: string;
+  payload: Record<string, unknown>;
+}): Promise<boolean> {
+  const sql = getSql();
+  const now = new Date().toISOString();
+  const lockKey = `sa_feedback:${input.opportunityId}:${input.sessionId}:${input.feedbackKey}`;
+  const [, inserted] = await sql.transaction([
+    // Serialises identical concurrent submissions; released at commit.
+    sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}));`,
+    sql`
+      WITH existing AS (
+        SELECT 1 FROM deal_interactions
+        WHERE opportunity_id = ${input.opportunityId}
+          AND action = 'sa_feedback'
+          AND payload->>'assessmentSessionId' = ${input.sessionId}
+          AND payload->>'feedbackKey' = ${input.feedbackKey}
+      ), updated AS (
+        UPDATE opportunities SET
+          sa_notes = CASE
+            WHEN btrim(coalesce(sa_notes, '')) = '' THEN ${input.notesDelta}
+            ELSE btrim(sa_notes) || E'\n\n' || ${input.notesDelta}
+          END,
+          updated_at = ${now}
+        WHERE id = ${input.opportunityId} AND NOT EXISTS (SELECT 1 FROM existing)
+        RETURNING id
+      )
+      INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
+      SELECT id, 'sa_user', 'sa_feedback', ${JSON.stringify(input.payload)}::jsonb FROM updated
+      RETURNING id;
+    `,
+  ]);
+  return inserted.length > 0;
+}
+
+const NOT_SEEDED_HINT = 'Seed the demo data with `pnpm db:seed` (see README).';
+
+/** Baseline upsert of one scenario's Opportunity: unqualified, no score, no next steps. */
+function upsertBaseline(sql: ReturnType<typeof getSql>, seed: DealScenario['default_data'], now: string) {
+  return sql`
+    INSERT INTO opportunities (
+      id, name, account_name, stage_name, amount, close_date,
+      ae_name, sa_name, ae_notes, sa_notes, suggested_next_steps,
+      qualification_status, meddpicc_score, meddpicc_breakdown, competitive_flags,
+      created_at, updated_at
+    ) VALUES (
+      ${seed.id}, ${seed.name}, ${seed.account_name}, ${seed.stage_name}, ${seed.amount}, ${seed.close_date},
+      ${seed.ae_name}, ${seed.sa_name}, ${seed.ae_notes}, ${seed.sa_notes}, ${null},
+      'unqualified', ${null}, ${JSON.stringify(seed.meddpicc_breakdown)}::jsonb, ${seed.competitive_flags},
+      ${now}, ${now}
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name,
+      account_name = EXCLUDED.account_name,
+      stage_name = EXCLUDED.stage_name,
+      amount = EXCLUDED.amount,
+      close_date = EXCLUDED.close_date,
+      ae_name = EXCLUDED.ae_name,
+      sa_name = EXCLUDED.sa_name,
+      ae_notes = EXCLUDED.ae_notes,
+      sa_notes = EXCLUDED.sa_notes,
+      suggested_next_steps = NULL,
+      qualification_status = 'unqualified',
+      meddpicc_score = NULL,
+      meddpicc_breakdown = EXCLUDED.meddpicc_breakdown,
+      competitive_flags = EXCLUDED.competitive_flags,
+      updated_at = ${now}
+    RETURNING *;
+  `;
+}
+
+/** The reset audit row, stamped by the database clock (delegation compares against it). */
+function resetEvent(sql: ReturnType<typeof getSql>, opportunityId: string, scenarioId: string) {
+  return sql`
+    INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
+    VALUES (${opportunityId}, 'sa_user', 'reset', ${JSON.stringify({ scenarioId })}::jsonb);
+  `;
+}
+
+/**
+ * Restores one demo scenario to its seeded baseline (from `deal_scenarios`) and
+ * clears that Opportunity's telemetry. Throws if the scenario is not seeded.
+ */
+export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity> {
+  const targetScenarioId = scenarioId ?? DEFAULT_SCENARIO_ID;
+  const scenario = (await getScenarios()).find((s) => s.scenario_id === targetScenarioId);
+  if (!scenario) throw new Error(`Scenario '${targetScenarioId}' is not seeded in Postgres. ${NOT_SEEDED_HINT}`);
+  const now = new Date().toISOString();
+  const sql = getSql();
+  const seed = scenario.default_data;
+
+  // One transaction: the upsert, telemetry purge and reset event land together or not at all.
+  await sql.transaction([
+    upsertBaseline(sql, seed, now),
+    sql`DELETE FROM deal_interactions WHERE opportunity_id = ${seed.id};`,
+    resetEvent(sql, seed.id, targetScenarioId),
+  ]);
+  // Re-read so the result carries its new reset marker (last_reset_at).
+  return requireOpportunity(seed.id);
+}
+
+/**
+ * Full reset: deletes every Opportunity and interaction, then restores every seeded
+ * scenario to its baseline, in one transaction. Throws if the scenarios are not seeded.
+ */
+export async function resetAllScenarios(): Promise<Opportunity[]> {
+  const seeded = await getScenarios();
+  const missing = EXPECTED_SCENARIO_IDS.filter((id) => !seeded.some((s) => s.scenario_id === id));
+  if (missing.length > 0) {
+    throw new Error(`Scenario(s) ${missing.join(', ')} not seeded in Postgres. ${NOT_SEEDED_HINT}`);
+  }
+  // Only the demo scenarios are restored; a stale extra deal_scenarios row is not resurrected.
+  const scenarios = seeded.filter((s) => EXPECTED_SCENARIO_IDS.includes(s.scenario_id));
+  const now = new Date().toISOString();
+  const sql = getSql();
+  const [, , ...perScenario] = await sql.transaction([
+    sql`DELETE FROM deal_interactions;`,
+    sql`DELETE FROM opportunities;`,
+    ...scenarios.flatMap((s) => [upsertBaseline(sql, s.default_data, now), resetEvent(sql, s.default_data.id, s.scenario_id)]),
+  ]);
+  // perScenario alternates [upsert rows, reset event] per scenario.
+  return scenarios.map((_, i) => mapRowToOpportunity(perScenario[i * 2][0]));
+}
+
+/** The demo scenarios seeded in Postgres (`deal_scenarios`). */
 export async function getScenarios(): Promise<DealScenario[]> {
-  return Object.values(SCENARIO_FIXTURES);
+  const sql = getSql();
+  const rows = await sql`SELECT * FROM deal_scenarios ORDER BY scenario_id ASC;`;
+  return rows.map((r: any) => ({
+    scenario_id: String(r.scenario_id),
+    title: String(r.title),
+    description: String(r.description),
+    default_data: typeof r.default_data === 'string' ? JSON.parse(r.default_data) : r.default_data,
+    created_at: new Date(r.created_at).toISOString(),
+  }));
 }
 
 export async function recordInteraction(
   interaction: Omit<DealInteraction, 'id' | 'created_at'>
 ): Promise<DealInteraction> {
-  const now = new Date().toISOString();
-  const full: DealInteraction = {
-    ...interaction,
-    id: `interaction_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    created_at: now,
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
+    VALUES (${interaction.opportunity_id}, ${interaction.actor}, ${interaction.action}, ${JSON.stringify(interaction.payload)}::jsonb)
+    RETURNING *;
+  `;
+  return mapRowToInteraction(rows[0]);
+}
+
+/** Assessment fields one System 1 or System 2 result writes onto the Opportunity. */
+export interface AssessmentFields {
+  meddpicc_breakdown: Opportunity['meddpicc_breakdown'];
+  /** Omitted: left as stored. */
+  meddpicc_score?: number;
+  /** Omitted: left as stored. */
+  competitive_flags?: string[];
+  /** Moves an `unqualified` Opportunity to `in_review`; any other status is kept. */
+  markInReview?: boolean;
+}
+
+/**
+ * Writes one assessment step: the Opportunity's assessment fields and its audit row, in a
+ * single statement (one round trip, atomic: both or neither). Only the named fields change,
+ * so notes written concurrently are never overwritten. Throws if the Opportunity is missing.
+ */
+export async function recordAssessmentStep(
+  id: string,
+  fields: AssessmentFields,
+  audit: Pick<DealInteraction, 'actor' | 'action' | 'payload'>
+): Promise<{ opportunity: Opportunity; interaction: DealInteraction }> {
+  const sql = getSql();
+  const rows = await sql`
+    WITH updated AS (
+      UPDATE opportunities SET
+        meddpicc_breakdown = ${JSON.stringify(fields.meddpicc_breakdown)}::jsonb,
+        meddpicc_score = COALESCE(${fields.meddpicc_score ?? null}::int, meddpicc_score),
+        competitive_flags = COALESCE(${fields.competitive_flags ?? null}::text[], competitive_flags),
+        qualification_status = CASE
+          WHEN ${fields.markInReview ?? false}::boolean AND qualification_status = 'unqualified' THEN 'in_review'
+          ELSE qualification_status END,
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    ), audit AS (
+      INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
+      SELECT id, ${audit.actor}, ${audit.action}, ${JSON.stringify(audit.payload)}::jsonb FROM updated
+      RETURNING *
+    )
+    SELECT updated.*,
+      (SELECT MAX(created_at) FROM deal_interactions i WHERE i.opportunity_id = updated.id AND i.action = 'reset') AS last_reset_at,
+      audit.id AS audit_id, audit.actor AS audit_actor, audit.action AS audit_action,
+      audit.payload AS audit_payload, audit.created_at AS audit_created_at
+    FROM updated, audit;
+  `;
+  if (rows.length === 0) throw new Error(`Opportunity ${id} not found`);
+  // Plain driver columns (not row_to_json), so both come back in the shape getOpportunity reads.
+  const row = rows[0];
+  return {
+    opportunity: mapRowToOpportunity(row),
+    interaction: mapRowToInteraction({
+      id: row.audit_id,
+      opportunity_id: row.id,
+      actor: row.audit_actor,
+      action: row.audit_action,
+      payload: row.audit_payload,
+      created_at: row.audit_created_at,
+    }),
   };
-
-  if (isUsingPostgres()) {
-    try {
-      await ensurePostgresTables();
-      const sql = getSql()!;
-      await sql`
-        INSERT INTO deal_interactions (opportunity_id, actor, action, payload, created_at)
-        VALUES (${full.opportunity_id}, ${full.actor}, ${full.action}, ${JSON.stringify(full.payload)}::jsonb, ${now});
-      `;
-      return full;
-    } catch (e) {
-      console.warn('Postgres recordInteraction failed, recording in-memory:', e);
-    }
-  }
-
-  const store = getInMemoryStore();
-  store.interactions.push(full);
-  return full;
 }
 
 export async function getInteractions(opportunityId: string): Promise<DealInteraction[]> {
-  if (isUsingPostgres()) {
-    try {
-      await ensurePostgresTables();
-      const sql = getSql()!;
-      const rows = await sql`
-        SELECT * FROM deal_interactions
-        WHERE opportunity_id = ${opportunityId}
-        ORDER BY created_at DESC;
-      `;
-      return rows.map((r: any) => ({
-        id: String(r.id),
-        opportunity_id: String(r.opportunity_id),
-        actor: r.actor,
-        action: r.action,
-        payload: typeof r.payload === 'string' ? JSON.parse(r.payload) : r.payload,
-        created_at: new Date(r.created_at).toISOString(),
-      }));
-    } catch (e) {
-      console.warn('Postgres getInteractions failed, reading from in-memory:', e);
-    }
-  }
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM deal_interactions
+    WHERE opportunity_id = ${opportunityId}
+    ORDER BY created_at DESC;
+  `;
+  return rows.map(mapRowToInteraction);
+}
 
-  const store = getInMemoryStore();
-  return store.interactions
-    .filter((i) => i.opportunity_id === opportunityId)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+/** Interactions of one Assessment Session (root eve session), newest first. */
+export async function getSessionInteractions(opportunityId: string, sessionId: string): Promise<DealInteraction[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM deal_interactions
+    WHERE opportunity_id = ${opportunityId} AND payload->>'assessmentSessionId' = ${sessionId}
+    ORDER BY created_at DESC, id DESC;
+  `;
+  return rows.map(mapRowToInteraction);
+}
+
+function mapRowToInteraction(r: any): DealInteraction {
+  return {
+    id: String(r.id),
+    opportunity_id: String(r.opportunity_id),
+    actor: r.actor,
+    action: r.action,
+    payload: typeof r.payload === 'string' ? JSON.parse(r.payload) : r.payload,
+    created_at: new Date(r.created_at).toISOString(),
+  };
 }
 
 function mapRowToOpportunity(row: any): Opportunity {
@@ -481,5 +423,8 @@ function mapRowToOpportunity(row: any): Opportunity {
     stage_gate: breakdown?.stageGate,
     created_at: new Date(row.created_at).toISOString(),
     updated_at: new Date(row.updated_at).toISOString(),
+    ...(row.last_reset_at !== undefined
+      ? { last_reset_at: row.last_reset_at === null ? null : new Date(row.last_reset_at).toISOString() }
+      : {}),
   };
 }
