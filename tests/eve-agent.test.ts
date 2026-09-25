@@ -8,15 +8,18 @@ import runJevScoringTool from '@/agent/subagents/qualification_assessor/tools/ru
 import assessorReadDealTool from '@/agent/subagents/qualification_assessor/tools/crm_read_deal';
 import runSystem2AnalysisTool from '@/agent/subagents/playbook_generator/tools/run_system2_analysis';
 import {
+  getInteractions,
   getOpportunity,
   resetCrmDatabase,
   writebackOpportunityQualification,
 } from '@/lib/db/crm';
 import { recordJevScoring, recordSystem2Analysis } from '@/lib/db/assessments';
 import { jev, system2 } from './fixtures/qualification';
+import { rootCtx, scope } from './fixtures/eve-session';
 
 const ACME = 'opp_acme_corp_001';
-const ctx = {} as any;
+const ctx = rootCtx('wrun_test', 'turn_1');
+const S = scope('wrun_test', 'turn_1');
 
 function walk(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -85,7 +88,7 @@ describe('eve agent tools', () => {
 
     it('run_system2_analysis fails the tool action instead of returning canned output', async () => {
       const opp = (await getOpportunity(ACME))!;
-      await recordJevScoring(opp, jev());
+      await recordJevScoring(opp, jev(), S);
       await expect(
         Promise.resolve(runSystem2AnalysisTool.execute({ opportunityId: ACME }, ctx))
       ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
@@ -94,8 +97,8 @@ describe('eve agent tools', () => {
 
   it('crm_update_next_steps decides status and next steps in code from the latest System 1 and System 2 results', async () => {
     const opp = (await getOpportunity(ACME))!;
-    await recordJevScoring(opp, jev());
-    await recordSystem2Analysis(opp, jev(), system2());
+    await recordJevScoring(opp, jev(), S);
+    await recordSystem2Analysis(opp, jev(), system2(), S);
 
     const result = (await crmUpdateNextStepsTool.execute({ opportunityId: ACME }, ctx)) as any;
 
@@ -123,16 +126,18 @@ describe('eve agent tools', () => {
     await expect(
       writebackOpportunityQualification(ACME, {
         expectedAeNotes: `${opp.ae_notes} (stale copy)`,
-        sa_notes: 'overwritten',
         suggested_next_steps: '[IN REVIEW] x | Owner: AE | Focus: y | Watch: z',
         qualification_status: 'in_review',
         meddpicc_score: 1,
         meddpicc_breakdown: {},
+        sessionId: 'wrun_stale',
+        audit: { actor: 'system1_jev', payload: {} },
       })
     ).rejects.toThrow(/ae_notes/);
     const after = (await getOpportunity(ACME))!;
     expect(after.sa_notes).toBe(opp.sa_notes);
     expect(after.suggested_next_steps).toBeNull();
+    expect((await getInteractions(ACME)).some((i) => i.action === 'writeback')).toBe(false);
   });
 
   it('reset_crm_data restores baseline state', async () => {

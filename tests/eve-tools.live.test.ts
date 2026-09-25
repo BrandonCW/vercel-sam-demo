@@ -3,12 +3,13 @@ import runJevScoringTool from '@/agent/subagents/qualification_assessor/tools/ru
 import runSystem2AnalysisTool from '@/agent/subagents/playbook_generator/tools/run_system2_analysis';
 import crmUpdateNextStepsTool from '@/agent/tools/crm_update_next_steps';
 import { getOpportunity, resetCrmDatabase } from '@/lib/db/crm';
+import { rootCtx } from './fixtures/eve-session';
 
 // Billed: one real typesafe-ai/jev call and one System 2 model call through AI Gateway,
 // against the Postgres test branch. Opt in with JEV_LIVE=1.
 const live = process.env.JEV_LIVE === '1' && !!process.env.AI_GATEWAY_API_KEY;
 const ACME = 'opp_acme_corp_001';
-const ctx = {} as any;
+const ctx = rootCtx(`wrun_live_tools_${Date.now()}`, 'turn_1');
 
 describe.skipIf(!live)('eve tools - live Acme assessment through writeback', () => {
   it('scores with Jev, cites with System 2, and writes back a code-decided next step', async () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getAiGatewayApiKey, getPostgresUrl, getAuthEnv, getEveAgentOrigin } from '@/lib/env';
 
-const KEYS = ['AI_GATEWAY_API_KEY', 'POSTGRES_URL', 'APP_PASSWORD', 'AUTH_SECRET', 'NODE_ENV', 'EVE_AGENT_ORIGIN'] as const;
+const KEYS = ['AI_GATEWAY_API_KEY', 'POSTGRES_URL', 'APP_PASSWORD', 'AUTH_SECRET', 'NODE_ENV', 'EVE_AGENT_ORIGIN', 'VERCEL_URL'] as const;
 
 describe('Required environment configuration (lib/env)', () => {
   const saved: Record<string, string | undefined> = {};
@@ -17,9 +17,30 @@ describe('Required environment configuration (lib/env)', () => {
     }
   });
 
-  it('throws a descriptive error when EVE_AGENT_ORIGIN is unset', () => {
+  it('throws a descriptive error when neither EVE_AGENT_ORIGIN nor VERCEL_URL is set', () => {
     delete process.env.EVE_AGENT_ORIGIN;
-    expect(() => getEveAgentOrigin()).toThrow(/EVE_AGENT_ORIGIN/);
+    delete process.env.VERCEL_URL;
+    expect(() => getEveAgentOrigin()).toThrow(/EVE_AGENT_ORIGIN.*VERCEL_URL|VERCEL_URL.*EVE_AGENT_ORIGIN/);
+  });
+
+  it('falls back to the platform VERCEL_URL over https when EVE_AGENT_ORIGIN is unset (preview deployments)', () => {
+    delete process.env.EVE_AGENT_ORIGIN;
+    process.env.VERCEL_URL = 'deal-qual-git-feat-abc123.vercel.app';
+    expect(getEveAgentOrigin()).toBe('https://deal-qual-git-feat-abc123.vercel.app');
+  });
+
+  it('prefers EVE_AGENT_ORIGIN over VERCEL_URL', () => {
+    process.env.EVE_AGENT_ORIGIN = 'http://localhost:3000';
+    process.env.VERCEL_URL = 'deal-qual-abc.vercel.app';
+    expect(getEveAgentOrigin()).toBe('http://localhost:3000');
+  });
+
+  it('rejects a VERCEL_URL that is not a bare host', () => {
+    delete process.env.EVE_AGENT_ORIGIN;
+    for (const bad of ['https://deal-qual.vercel.app', 'deal-qual.vercel.app/path', 'evil.com@deal.vercel.app']) {
+      process.env.VERCEL_URL = bad;
+      expect(() => getEveAgentOrigin()).toThrow(/VERCEL_URL/);
+    }
   });
 
   it('rejects an EVE_AGENT_ORIGIN that is not a bare http(s) origin', () => {

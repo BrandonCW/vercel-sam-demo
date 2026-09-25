@@ -43,3 +43,7 @@ CREATE TABLE IF NOT EXISTS deal_interactions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_interactions_opp ON deal_interactions (opportunity_id, created_at DESC);
+
+-- Assessment Session lookups (issue 09): every row is stamped with its root eve session.
+CREATE INDEX IF NOT EXISTS idx_interactions_session
+    ON deal_interactions (opportunity_id, (payload->>'assessmentSessionId'), action);

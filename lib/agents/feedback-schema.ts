@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { z } from 'zod';
 
 export const SaFeedbackPayloadSchema = z.object({
@@ -9,15 +10,25 @@ export const SaFeedbackPayloadSchema = z.object({
 export type SaFeedbackPayload = z.infer<typeof SaFeedbackPayloadSchema>;
 
 /**
- * Formats SA discovery updates into a structured, timestamped markdown log
- * to be appended to the Opportunity's SA Notes, leaving AE Notes immutable.
+ * Idempotency key for one SA feedback submission: the same answers produce the
+ * same key, so a retried turn cannot append them twice.
  */
-export function formatSaDiscoveryNotes(
+export function saFeedbackKey(formResponses: Record<string, string | string[]>, notesDelta?: string | null): string {
+  const canonical = JSON.stringify({
+    formResponses: Object.keys(formResponses)
+      .sort()
+      .map((k) => [k, formResponses[k]]),
+    notesDelta: notesDelta?.trim() || null,
+  });
+  return createHash('sha256').update(canonical).digest('hex');
+}
+
+/** One timestamped SA discovery update block (the text appended to SA Notes). */
+export function formatSaDiscoveryDelta(
   formResponses: Record<string, string | string[]>,
-  notesDelta?: string,
-  existingSaNotes?: string
+  notesDelta: string | null | undefined,
+  timestamp: string
 ): string {
-  const timestamp = new Date().toISOString();
   const entries = Object.entries(formResponses)
     .filter(([_, val]) => val !== undefined && val !== null && val !== '')
     .map(([fieldId, val]) => `• ${fieldId}: ${Array.isArray(val) ? val.join(', ') : val}`);
@@ -29,12 +40,5 @@ export function formatSaDiscoveryNotes(
   if (notesDelta && notesDelta.trim().length > 0) {
     deltaParts.push(`• Additional SA Notes: ${notesDelta.trim()}`);
   }
-
-  const formattedDelta = deltaParts.join('\n').trim();
-
-  if (!existingSaNotes || existingSaNotes.trim().length === 0) {
-    return formattedDelta;
-  }
-
-  return `${existingSaNotes.trim()}\n\n${formattedDelta}`;
+  return deltaParts.join('\n').trim();
 }

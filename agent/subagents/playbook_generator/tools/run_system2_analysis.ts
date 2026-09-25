@@ -5,6 +5,7 @@ import { requireOpportunity } from "@/lib/db/crm";
 import { loadLatestJevResult, recordSystem2Analysis } from "@/lib/db/assessments";
 import { resolveAgentModel, System2ModelSchema } from "@/lib/models";
 import { assertAiGatewayConfigured } from "@/lib/env";
+import { assessmentScopeOf } from "@/lib/assessment-session";
 import { System2ModelOutputSchema, toSystem2AnalysisResult } from "@/lib/agents/system2";
 
 const SYSTEM_PROMPT = `You are the Vercel Enterprise System 2 Deal Qualification Reasoning Engine.
@@ -34,8 +35,9 @@ export default defineTool({
     model: System2ModelSchema.optional().describe("Vercel AI Gateway model for System 2 (defaults to the configured model)"),
   }),
   async execute({ opportunityId, model: requested }, ctx) {
+    const scope = assessmentScopeOf(ctx);
     const opportunity = await requireOpportunity(opportunityId);
-    const jevResult = await loadLatestJevResult(opportunityId);
+    const jevResult = await loadLatestJevResult(opportunityId, scope.sessionId);
     assertAiGatewayConfigured();
     const model = requested ?? resolveAgentModel();
     const timeout = AbortSignal.timeout(TIMEOUT_MS);
@@ -72,7 +74,7 @@ export default defineTool({
     if (!output) throw new Error(`System 2 model ${model} returned no structured output`);
 
     const system2Result = toSystem2AnalysisResult(output, { opportunityId: opportunity.id, model });
-    await recordSystem2Analysis(opportunity, jevResult, system2Result);
+    await recordSystem2Analysis(opportunity, jevResult, system2Result, scope);
     return { system2Result };
   },
 });

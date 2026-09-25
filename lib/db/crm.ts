@@ -84,11 +84,14 @@ export async function updateOpportunity(
 export interface QualificationWritebackData {
   /** The ae_notes the caller read. The write is rejected if the stored value differs (ae_notes is immutable). */
   expectedAeNotes: string;
-  sa_notes: string;
   suggested_next_steps: string;
   qualification_status: QualificationStatus;
   meddpicc_score: number;
   meddpicc_breakdown: MEDDPICCBreakdown;
+  /** The Assessment Session this writeback closes; each session is written back at most once. */
+  sessionId: string;
+  /** The single `writeback` audit row, inserted in the same statement as the update. */
+  audit: { actor: DealInteraction['actor']; payload: Record<string, unknown> };
 }
 
 export async function writebackOpportunityQualification(
@@ -97,24 +100,91 @@ export async function writebackOpportunityQualification(
 ): Promise<Opportunity> {
   const now = new Date().toISOString();
   const sql = getSql();
-  // Updates ONLY the designated writeback fields; ae_notes and others are untouched.
-  const rows = await sql`
-    UPDATE opportunities SET
-      sa_notes = ${writeback.sa_notes},
-      suggested_next_steps = ${writeback.suggested_next_steps},
-      qualification_status = ${writeback.qualification_status},
-      meddpicc_score = ${writeback.meddpicc_score},
-      meddpicc_breakdown = ${JSON.stringify(writeback.meddpicc_breakdown)}::jsonb,
-      updated_at = ${now}
-    WHERE id = ${id} AND ae_notes = ${writeback.expectedAeNotes}
-    RETURNING *;
-  `;
+  const payload = { ...writeback.audit.payload, assessmentSessionId: writeback.sessionId };
+  // One transaction, serialised per session: updates ONLY the designated writeback fields
+  // (ae_notes and sa_notes are untouched) and inserts the single writeback audit row, or
+  // neither when ae_notes changed or the session is already closed.
+  const [, closedRows, rows] = await sql.transaction([
+    sql`SELECT pg_advisory_xact_lock(hashtext(${`writeback:${id}:${writeback.sessionId}`}));`,
+    sql`SELECT EXISTS (
+      SELECT 1 FROM deal_interactions
+      WHERE opportunity_id = ${id} AND action = 'writeback'
+        AND payload->>'assessmentSessionId' = ${writeback.sessionId}
+    ) AS closed;`,
+    sql`
+    WITH updated AS (
+      UPDATE opportunities SET
+        suggested_next_steps = ${writeback.suggested_next_steps},
+        qualification_status = ${writeback.qualification_status},
+        meddpicc_score = ${writeback.meddpicc_score},
+        meddpicc_breakdown = ${JSON.stringify(writeback.meddpicc_breakdown)}::jsonb,
+        updated_at = ${now}
+      WHERE id = ${id} AND ae_notes = ${writeback.expectedAeNotes}
+        AND NOT EXISTS (
+          SELECT 1 FROM deal_interactions
+          WHERE opportunity_id = ${id} AND action = 'writeback'
+            AND payload->>'assessmentSessionId' = ${writeback.sessionId}
+        )
+      RETURNING *
+    ), audit AS (
+      INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
+      SELECT id, ${writeback.audit.actor}, 'writeback', ${JSON.stringify(payload)}::jsonb FROM updated
+    )
+    SELECT * FROM updated;
+  `,
+  ]);
   if (rows.length === 0) {
+    if (closedRows[0]?.closed) {
+      throw new Error(`Writeback to ${id} rejected: Assessment Session ${writeback.sessionId} is already closed.`);
+    }
     const existing = await getOpportunity(id);
     if (!existing) throw new Error(`Opportunity ${id} not found`);
     throw new Error(`Writeback to ${id} rejected: ae_notes changed since it was read; ae_notes is immutable.`);
   }
   return mapRowToOpportunity(rows[0]);
+}
+
+/**
+ * Appends one SA discovery update to sa_notes and records its `sa_feedback` row
+ * atomically, at most once per (Assessment Session, feedbackKey). Returns false
+ * when that feedback was already recorded (a retried turn), changing nothing.
+ */
+export async function appendSaFeedbackOnce(input: {
+  opportunityId: string;
+  sessionId: string;
+  feedbackKey: string;
+  notesDelta: string;
+  payload: Record<string, unknown>;
+}): Promise<boolean> {
+  const sql = getSql();
+  const now = new Date().toISOString();
+  const lockKey = `sa_feedback:${input.opportunityId}:${input.sessionId}:${input.feedbackKey}`;
+  const [, inserted] = await sql.transaction([
+    // Serialises identical concurrent submissions; released at commit.
+    sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}));`,
+    sql`
+      WITH existing AS (
+        SELECT 1 FROM deal_interactions
+        WHERE opportunity_id = ${input.opportunityId}
+          AND action = 'sa_feedback'
+          AND payload->>'assessmentSessionId' = ${input.sessionId}
+          AND payload->>'feedbackKey' = ${input.feedbackKey}
+      ), updated AS (
+        UPDATE opportunities SET
+          sa_notes = CASE
+            WHEN btrim(coalesce(sa_notes, '')) = '' THEN ${input.notesDelta}
+            ELSE btrim(sa_notes) || E'\n\n' || ${input.notesDelta}
+          END,
+          updated_at = ${now}
+        WHERE id = ${input.opportunityId} AND NOT EXISTS (SELECT 1 FROM existing)
+        RETURNING id
+      )
+      INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
+      SELECT id, 'sa_user', 'sa_feedback', ${JSON.stringify(input.payload)}::jsonb FROM updated
+      RETURNING id;
+    `,
+  ]);
+  return inserted.length > 0;
 }
 
 export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity> {
@@ -189,6 +259,17 @@ export async function getInteractions(opportunityId: string): Promise<DealIntera
     SELECT * FROM deal_interactions
     WHERE opportunity_id = ${opportunityId}
     ORDER BY created_at DESC;
+  `;
+  return rows.map(mapRowToInteraction);
+}
+
+/** Interactions of one Assessment Session (root eve session), newest first. */
+export async function getSessionInteractions(opportunityId: string, sessionId: string): Promise<DealInteraction[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM deal_interactions
+    WHERE opportunity_id = ${opportunityId} AND payload->>'assessmentSessionId' = ${sessionId}
+    ORDER BY created_at DESC, id DESC;
   `;
   return rows.map(mapRowToInteraction);
 }

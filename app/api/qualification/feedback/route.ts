@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { getOpportunity, recordInteraction, updateOpportunity } from '@/lib/db/crm';
+import { getOpportunity } from '@/lib/db/crm';
 import {
+  findOpenAssessmentSession,
   loadLatestJevResult,
-  loadLatestSystem2Result,
-  requireFreshInteractions,
-  snapshotInteractions,
+  loadSessionWriteback,
+  OpenSessionError,
+  requireFreshSessionInteractions,
+  requireRecordedSaFeedback,
+  snapshotSessionInteractions,
 } from '@/lib/db/assessments';
 import { assertAiGatewayConfigured, getEveAgentOrigin } from '@/lib/env';
-import { runAgentTurn } from '@/lib/eve-session';
-import { SaFeedbackPayloadSchema, formatSaDiscoveryNotes } from '@/lib/agents/feedback-schema';
+import { runAssessmentTurn } from '@/lib/eve-session';
+import { SaFeedbackPayloadSchema, saFeedbackKey } from '@/lib/agents/feedback-schema';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,7 +29,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { opportunityId, formResponses, notesDelta } = parseResult.data;
+    const payload = parseResult.data;
+    const { opportunityId } = payload;
 
     const opportunity = await getOpportunity(opportunityId);
     if (!opportunity) {
@@ -36,67 +40,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fail fast on missing config and on feedback with no System 2 analysis to answer.
+    let sessionId: string;
+    try {
+      sessionId = await findOpenAssessmentSession(opportunity.id);
+    } catch (error) {
+      if (error instanceof OpenSessionError) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 409 });
+      }
+      throw error;
+    }
     assertAiGatewayConfigured();
     const origin = getEveAgentOrigin();
-    await loadLatestSystem2Result(opportunity.id);
-    const previousScore = opportunity.meddpicc_score ?? 0;
 
-    // 1. Append timestamped SA discovery notes; ae_notes is never touched.
-    await updateOpportunity(opportunity.id, {
-      sa_notes: formatSaDiscoveryNotes(formResponses, notesDelta, opportunity.sa_notes),
-    });
-    await recordInteraction({
-      opportunity_id: opportunity.id,
-      actor: 'sa_user',
-      action: 'sa_feedback',
-      payload: { formResponses, notesDelta: notesDelta ?? null },
-    });
-
-    // 2. Delta re-scoring (qualification_assessor) and the code-decided writeback (crm_update_next_steps) run in eve.
-    const before = await snapshotInteractions(opportunity.id);
-    await runAgentTurn({
+    // Turn 2 of the same Assessment Session. The agent records the answers (record_sa_feedback appends
+    // the SA notes atomically and idempotently), re-scores with Jev and writes back in code.
+    const feedbackKey = saFeedbackKey(payload.formResponses, payload.notesDelta);
+    const before = await snapshotSessionInteractions(opportunity.id, sessionId);
+    await runAssessmentTurn({
       origin,
+      sessionId,
       cookie: request.headers.get('cookie'),
       signal: request.signal,
       message:
-        `The Solutions Architect's discovery answers for opportunity ${opportunity.id} are now in its SA notes. ` +
-        `Delegate delta re-scoring to qualification_assessor, then call crm_update_next_steps for ${opportunity.id}.`,
+        `The Solutions Architect submitted the discovery form for opportunity ${opportunity.id}. ` +
+        `Call record_sa_feedback with exactly this payload and feedbackKey ${feedbackKey}, then call score_deal for delta re-scoring, ` +
+        `then call crm_update_next_steps for ${opportunity.id}. Do not re-run System 2.\n\n` +
+        `SA feedback payload (JSON):\n${JSON.stringify(payload)}`,
     });
-    await requireFreshInteractions(opportunity.id, before, {
+    await requireRecordedSaFeedback(opportunity.id, sessionId, feedbackKey);
+    await requireFreshSessionInteractions(opportunity.id, sessionId, before, {
       initial_scoring: 'run_jev_scoring',
       writeback: 'crm_update_next_steps',
     });
 
-    const [updatedOpportunity, jevResult] = await Promise.all([
+    const [updatedOpportunity, jevResult, writeback] = await Promise.all([
       getOpportunity(opportunity.id),
-      loadLatestJevResult(opportunity.id),
+      loadLatestJevResult(opportunity.id, sessionId),
+      loadSessionWriteback(opportunity.id, sessionId),
     ]);
     if (!updatedOpportunity?.suggested_next_steps) {
       throw new Error(`crm_update_next_steps wrote no Suggested Next Steps for ${opportunity.id}`);
     }
-    const suggestedNextSteps = updatedOpportunity.suggested_next_steps;
-    const qualificationStatus = updatedOpportunity.qualification_status;
-    const deltaScore = jevResult.overallScore - previousScore;
-
-    // 3. Audit telemetry: the Assessment Session closes.
-    await recordInteraction({
-      opportunity_id: opportunity.id,
-      actor: 'system1_jev',
-      action: 'writeback',
-      payload: {
-        formResponses,
-        notesDelta: notesDelta ?? null,
-        previousScore,
-        newScore: jevResult.overallScore,
-        deltaScore,
-        qualificationStatus,
-        suggestedNextSteps,
-        stageGate: jevResult.stageGate,
-        sessionState: 'closed',
-        timestamp: new Date().toISOString(),
-      },
-    });
 
     try {
       revalidatePath('/');
@@ -109,8 +93,8 @@ export async function POST(request: NextRequest) {
       opportunity: updatedOpportunity,
       sessionState: 'closed',
       jevResult,
-      deltaScore,
-      suggestedNextSteps,
+      deltaScore: writeback.deltaScore,
+      suggestedNextSteps: writeback.suggestedNextSteps,
     });
   } catch (error: any) {
     console.error('Error processing SA feedback and CRM writeback:', error);

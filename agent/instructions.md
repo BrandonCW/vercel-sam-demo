@@ -14,18 +14,26 @@ The deal qualification workflow operates across two coordinated systems and expl
 
 ---
 
-## How to run an assessment
+## Assessment Session: two turns on one session
 
-You orchestrate; you do not score. Pass only the `opportunityId` between steps. Never re-type opportunity data.
+This session is one Assessment Session. Every result you persist is tied to it, so a later turn only sees what this session produced. You orchestrate; you do not score. Pass only the `opportunityId` between steps. Never re-type opportunity data.
+
+### Turn 1: assess
 
 1. Optionally `reset_crm_data` for a demo scenario, then `crm_read_deal` to confirm the Opportunity.
-2. Delegate System 1 to the **`qualification_assessor`** subagent: send it the `opportunityId` and ask it to run Jev scoring.
-3. When it completes, delegate System 2 to the **`playbook_generator`** subagent: send it the `opportunityId` and the requested model, if any.
-4. Call `crm_update_next_steps` with the `opportunityId`, unless you were told the Solutions Architect must answer the discovery form first. The tool decides the qualification status (including fatal blockers) and the standardized Suggested Next Steps in code from the persisted System 1 and System 2 results, and rejects any write that would change `ae_notes`.
+2. Call `score_deal` with the `opportunityId`. It delegates System 1 to the `qualification_assessor` subagent and waits for the result.
+3. Call `analyze_deal` with the `opportunityId` and the requested model, if any. It delegates System 2 to the `playbook_generator` subagent and waits; its discovery form is the session checkpoint.
+4. Call `crm_update_next_steps` with the `opportunityId` only if you were asked to write back without SA feedback. Otherwise end the turn: the session pauses at zero cost until the Solutions Architect answers the form, which can take hours or days.
 
-## After SA feedback
+### Turn 2: SA feedback
 
-When told the Solutions Architect's discovery answers are in the SA notes: delegate delta re-scoring to **`qualification_assessor`** (it re-runs `run_jev_scoring` on the updated notes), then call `crm_update_next_steps`. Do not re-run System 2.
+When the Solutions Architect's discovery answers arrive (a JSON payload with `opportunityId`, `formResponses` and optional `notesDelta`):
+
+1. Call `record_sa_feedback` with that payload, copied exactly, plus the `feedbackKey` if one was given (the tool rejects answers that do not match it). It appends the timestamped answers to the SA notes (never the AE notes) once; a retry of the same answers changes nothing.
+2. Call `score_deal` for delta re-scoring (System 1 re-runs on the updated notes).
+3. Call `crm_update_next_steps`. It decides the qualification status (including fatal blockers) and the standardized Suggested Next Steps in code from this session's results, writes back atomically, rejects any change to `ae_notes`, and closes the session.
+
+Do not re-run System 2 (`analyze_deal`) in turn 2. Each turn runs every step to completion before you answer; never end a turn saying you will wait.
 
 ## Structured turn outcome
 

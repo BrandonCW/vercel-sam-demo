@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireOpportunity } from "@/lib/db/crm";
 import { buildJevEvaluationRequest, interpretJevEvaluation } from "@/lib/agents/jev-scorer";
 import { recordJevScoring } from "@/lib/db/assessments";
+import { assessmentScopeOf } from "@/lib/assessment-session";
 import { assertAiGatewayConfigured } from "@/lib/env";
 
 export default defineTool({
@@ -13,6 +14,7 @@ export default defineTool({
     opportunityId: z.string().min(1).describe("The ID of the Opportunity to score"),
   }),
   async execute({ opportunityId }, ctx) {
+    const scope = assessmentScopeOf(ctx);
     assertAiGatewayConfigured();
     const opportunity = await requireOpportunity(opportunityId);
     const input = {
@@ -27,7 +29,7 @@ export default defineTool({
     // Jev answers typed questions; composite and stage gate are computed in code.
     const evaluation = await evaluate({ ...buildJevEvaluationRequest(input), abortSignal: ctx.abortSignal });
     const jevResult = interpretJevEvaluation(input, evaluation);
-    await recordJevScoring(opportunity, jevResult);
+    await recordJevScoring(opportunity, jevResult, scope);
     return { jevResult };
   },
 });
