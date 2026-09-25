@@ -47,3 +47,11 @@ CREATE INDEX IF NOT EXISTS idx_interactions_opp ON deal_interactions (opportunit
 -- Assessment Session lookups (issue 09): every row is stamped with its root eve session.
 CREATE INDEX IF NOT EXISTS idx_interactions_session
     ON deal_interactions (opportunity_id, (payload->>'assessmentSessionId'), action);
+
+-- Live-run lease (issue 12): serialises `pnpm eval` and the live vitest files on the test branch.
+CREATE TABLE IF NOT EXISTS live_run_lease (
+    name TEXT PRIMARY KEY,
+    holder TEXT NOT NULL,
+    token TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
+);

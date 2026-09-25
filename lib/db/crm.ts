@@ -223,10 +223,11 @@ function upsertBaseline(sql: ReturnType<typeof getSql>, seed: DealScenario['defa
   `;
 }
 
-function resetEvent(sql: ReturnType<typeof getSql>, opportunityId: string, scenarioId: string, now: string) {
+/** The reset audit row, stamped by the database clock (delegation compares against it). */
+function resetEvent(sql: ReturnType<typeof getSql>, opportunityId: string, scenarioId: string) {
   return sql`
-    INSERT INTO deal_interactions (opportunity_id, actor, action, payload, created_at)
-    VALUES (${opportunityId}, 'sa_user', 'reset', ${JSON.stringify({ scenarioId })}::jsonb, ${now});
+    INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
+    VALUES (${opportunityId}, 'sa_user', 'reset', ${JSON.stringify({ scenarioId })}::jsonb);
   `;
 }
 
@@ -246,7 +247,7 @@ export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity
   const [rows] = await sql.transaction([
     upsertBaseline(sql, seed, now),
     sql`DELETE FROM deal_interactions WHERE opportunity_id = ${seed.id};`,
-    resetEvent(sql, seed.id, targetScenarioId, now),
+    resetEvent(sql, seed.id, targetScenarioId),
   ]);
   return mapRowToOpportunity(rows[0]);
 }
@@ -268,7 +269,7 @@ export async function resetAllScenarios(): Promise<Opportunity[]> {
   const [, , ...perScenario] = await sql.transaction([
     sql`DELETE FROM deal_interactions;`,
     sql`DELETE FROM opportunities;`,
-    ...scenarios.flatMap((s) => [upsertBaseline(sql, s.default_data, now), resetEvent(sql, s.default_data.id, s.scenario_id, now)]),
+    ...scenarios.flatMap((s) => [upsertBaseline(sql, s.default_data, now), resetEvent(sql, s.default_data.id, s.scenario_id)]),
   ]);
   // perScenario alternates [upsert rows, reset event] per scenario.
   return scenarios.map((_, i) => mapRowToOpportunity(perScenario[i * 2][0]));
@@ -297,6 +298,12 @@ export async function recordInteraction(
     RETURNING *;
   `;
   return mapRowToInteraction(rows[0]);
+}
+
+/** The database clock, ISO. */
+export async function getDatabaseNow(): Promise<string> {
+  const [{ now }] = await getSql()`SELECT NOW() AS now;`;
+  return new Date(now).toISOString();
 }
 
 export async function getInteractions(opportunityId: string): Promise<DealInteraction[]> {

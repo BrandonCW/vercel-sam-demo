@@ -1,6 +1,6 @@
 import { defineWorkflowTool } from "eve/tools";
 import { z } from "zod";
-import { requireDelegatedResult } from "@/lib/agents/delegation";
+import { delegationStartedAt, requireDelegatedResult } from "@/lib/agents/delegation";
 
 export default defineWorkflowTool({
   description:
@@ -10,17 +10,21 @@ export default defineWorkflowTool({
   }),
   async execute({ opportunityId }, ctx) {
     "use workflow";
+    // A CRM reset after this instant explains a missing result (see requireDelegatedResult).
+    const delegatedAt = await delegationStartedAt();
     const report = await ctx.agent("qualification_assessor", {
       message: `Run run_jev_scoring for opportunityId ${opportunityId} and report the composite score and stage gate exactly as returned, or the tool error verbatim.`,
     });
-    return requireDelegatedResult({
+    const { interaction, report: checkedReport } = await requireDelegatedResult({
       agent: "qualification_assessor",
       tool: "run_jev_scoring",
       action: "initial_scoring",
       opportunityId,
       sessionId: ctx.session.id,
       turnId: ctx.session.turn.id,
+      delegatedAt,
       report: typeof report === "string" ? report : JSON.stringify(report),
     });
+    return { interactionId: interaction.id, report: checkedReport };
   },
 });

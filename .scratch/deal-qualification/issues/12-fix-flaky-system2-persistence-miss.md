@@ -1,6 +1,6 @@
 # 12: Diagnose and fix the flaky System 2 "did not persist" failure
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Type:** task
 
@@ -32,3 +32,27 @@ The DB was full-reset since that run, so the deletion itself cannot be observed 
   - A holder that finds another live lease fails loudly and names the holder. An expired lease can be taken over.
 - [ ] **UI guard.** The workbench's Reset is disabled while an assessment turn is in flight (delivered with 14).
 - [ ] **Regression test.** A test at the `requireDelegatedResult` seam writes the row, resets the Opportunity, and asserts the reset-specific error.
+
+## Answer
+
+**Root cause (best supported):** a CRM reset from outside the agent deleted the Assessment Session's rows between the subagent's write and the root's check.
+- The durable trace proves three things: the tool ran once and succeeded, the lineage stamp was right, and no agent reset anything.
+- Only the reset functions delete `deal_interactions`, and nothing stopped `pnpm test` (live resets) from overlapping `pnpm eval` on the same Neon `test` branch.
+- The deletion itself can't be observed anymore: the DB was full-reset since.
+
+**Fix:**
+- **Loud diagnosis.** `requireDelegatedResult` takes `delegatedAt`, the database time captured by the `delegationStartedAt` workflow step, so a replay reuses it. If a `reset` event is newer than that, the error names the reset and its time instead of blaming the subagent. Reset events are now stamped with DB `NOW()`, so both sides use one clock.
+- **Live-run lease.** `lib/db/live-run-lease.ts` adds a `live_run_lease` table (in `db/schema.sql`), taken atomically with `ON CONFLICT … WHERE expires_at < NOW()`.
+  - The TTL is 5 minutes, renewed every third of it while held.
+  - An expired lease (from a crashed run) can be taken over.
+  - A busy lease fails loudly and names the holder.
+  - `evals/evals.config.ts` setup acquires it and teardown releases it.
+  - `tests/global-setup.ts` holds it for the whole vitest run. It now also fails loudly without `POSTGRES_URL`.
+- **UI guard.** Reset is disabled while a turn is in flight; that ships with issue 14.
+
+**Tests:**
+- `tests/delegation.test.ts` has a reset-mid-turn regression test and a "reset before the delegation is not blamed" test.
+- `tests/live-run-lease.test.ts` covers four cases: a busy lease, re-acquire, crashed takeover, and a late release that doesn't drop the new holder.
+- Verified by hand: `vitest` refuses to start while a probe lease is held.
+
+**Residual:** `pnpm eval` is two eve processes. The lease is released and re-taken between them, so a `pnpm test` that starts in that gap makes the failure eval fail loudly. It does not corrupt anything silently.

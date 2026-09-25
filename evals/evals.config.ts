@@ -1,6 +1,7 @@
 import { defineEvalConfig } from "eve/evals";
 import { assertAiGatewayConfigured, getPostgresUrl } from "@/lib/env";
 import { requireEvalTarget, seedDemoData } from "@/lib/db/seed";
+import { acquireLiveRunLease } from "@/lib/db/live-run-lease";
 
 /**
  * Live evals: real AI Gateway (Jev + System 2 + the agent model) and the real
@@ -15,7 +16,20 @@ export default defineEvalConfig({
     assertAiGatewayConfigured();
     getPostgresUrl();
     await requireEvalTarget();
-    // Full reset: every eval starts from the seeded scenario baselines.
-    await seedDemoData({ fullReset: true });
+    // Hold the test database for the whole run: a concurrent `pnpm test` reset would delete this
+    // run's Assessment Session rows mid-turn (issue 12). Fails loudly if another run holds it.
+    const lease = await acquireLiveRunLease({ holder: `pnpm eval (pid ${process.pid})` });
+    try {
+      // Full reset: every eval starts from the seeded scenario baselines.
+      await seedDemoData({ fullReset: true });
+    } catch (error) {
+      await lease.release();
+      throw error;
+    }
+    return { lease };
+  },
+  async teardown(context) {
+    if (!context) throw new Error("eval setup returned no live-run lease to release");
+    await context.lease.release();
   },
 });

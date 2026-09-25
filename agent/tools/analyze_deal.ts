@@ -1,7 +1,7 @@
 import { defineWorkflowTool } from "eve/tools";
 import { z } from "zod";
 import { System2ModelSchema } from "@/lib/models";
-import { requireDelegatedResult } from "@/lib/agents/delegation";
+import { delegationStartedAt, requireDelegatedResult } from "@/lib/agents/delegation";
 
 export default defineWorkflowTool({
   description:
@@ -12,20 +12,24 @@ export default defineWorkflowTool({
   }),
   async execute({ opportunityId, model }, ctx) {
     "use workflow";
+    // A CRM reset after this instant explains a missing result (see requireDelegatedResult).
+    const delegatedAt = await delegationStartedAt();
     const report = await ctx.agent("playbook_generator", {
       message:
         `Run run_system2_analysis for opportunityId ${opportunityId}` +
         (model ? ` with model ${model}` : "") +
         ". Report what it returned without adding content, or the tool error verbatim.",
     });
-    return requireDelegatedResult({
+    const { interaction, report: checkedReport } = await requireDelegatedResult({
       agent: "playbook_generator",
       tool: "run_system2_analysis",
       action: "questions_generated",
       opportunityId,
       sessionId: ctx.session.id,
       turnId: ctx.session.turn.id,
+      delegatedAt,
       report: typeof report === "string" ? report : JSON.stringify(report),
     });
+    return { interactionId: interaction.id, report: checkedReport };
   },
 });
