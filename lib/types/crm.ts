@@ -53,6 +53,12 @@ export interface Opportunity {
   stage_gate?: StageGateEvaluation;
   created_at: string;
   updated_at: string;
+  /**
+   * When the Opportunity was last reset to its scenario baseline (database time), if
+   * read with it. A reset deletes every Assessment Session's results, so a session
+   * saved before this marker is stale.
+   */
+  last_reset_at?: string | null;
 }
 
 export interface DealScenario {

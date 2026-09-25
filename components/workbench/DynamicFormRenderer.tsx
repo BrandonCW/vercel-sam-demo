@@ -22,6 +22,8 @@ export interface DynamicFormRendererProps {
     notesDelta?: string
   ) => Promise<void> | void;
   isSubmitting?: boolean;
+  /** Submission disabled without the submitting spinner (e.g. while the session resumes). */
+  isLocked?: boolean;
   initialValues?: Record<string, string | string[]>;
   readOnly?: boolean;
   submitButtonText?: string;
@@ -31,6 +33,7 @@ export function DynamicFormRenderer({
   form,
   onSubmit,
   isSubmitting = false,
+  isLocked = false,
   initialValues = {},
   readOnly = false,
   submitButtonText = 'Submit Discovery Findings & Run Delta Re-scoring',
@@ -95,7 +98,7 @@ export function DynamicFormRenderer({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (readOnly || isSubmitting) return;
+    if (readOnly || isSubmitting || isLocked) return;
 
     if (!validateForm()) {
       return;
@@ -382,7 +385,7 @@ export function DynamicFormRenderer({
         <div className="flex justify-end pt-2">
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLocked}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0070f3] hover:bg-[#0060df] disabled:opacity-50 text-white font-semibold text-xs rounded-lg shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
           >
             {isSubmitting ? (

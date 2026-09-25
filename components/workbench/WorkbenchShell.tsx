@@ -11,6 +11,7 @@ import {
 import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results';
 import { assessTurnMessage, feedbackTurnMessage, TURN_OUTCOME_JSON_SCHEMA } from '@/lib/assessment-turns';
 import { saFeedbackKey } from '@/lib/agents/feedback-schema';
+import { clearSavedSession, loadSavedSession, saveSession } from '@/lib/ui/saved-assessment-session';
 import { TopNavBar } from './TopNavBar';
 import { ContextColumn } from './ContextColumn';
 import { ActionStage } from './ActionStage';
@@ -33,6 +34,10 @@ export function WorkbenchShell({ initialOpportunity, initialScenarioId }: Workbe
   const [generation, setGeneration] = useState(0);
   const [isResetting, setIsResetting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // The saved sessions live in this browser's localStorage, so the Assessment Session mounts
+  // only after hydration (the server render has no saved session to resume).
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -62,6 +67,8 @@ export function WorkbenchShell({ initialOpportunity, initialScenarioId }: Workbe
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      // The reset deleted the session's results: forget it, and start the next assessment fresh.
+      clearSavedSession(data.opportunity.id);
       setOpportunity(data.opportunity);
       setGeneration((g) => g + 1);
       showToast('Demo state reset to default unqualified baseline');
@@ -74,17 +81,22 @@ export function WorkbenchShell({ initialOpportunity, initialScenarioId }: Workbe
 
   return (
     <div className="min-h-screen flex flex-col bg-[#09090b] text-[#f4f4f5]">
-      <AssessmentWorkbench
-        key={`${opportunity.id}:${generation}`}
-        baseOpportunity={opportunity}
-        scenarioId={scenarioId}
-        onScenarioChange={handleScenarioChange}
-        selectedModel={selectedModel}
-        onModelChange={setSelectedModel}
-        onReset={handleReset}
-        isResetting={isResetting}
-        showToast={showToast}
-      />
+      {!hydrated && (
+        <main className="flex-1 flex items-center justify-center text-xs text-zinc-500">Loading workbench…</main>
+      )}
+      {hydrated && (
+        <AssessmentWorkbench
+          key={`${opportunity.id}:${generation}`}
+          baseOpportunity={opportunity}
+          scenarioId={scenarioId}
+          onScenarioChange={handleScenarioChange}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          onReset={handleReset}
+          isResetting={isResetting}
+          showToast={showToast}
+        />
+      )}
 
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#18181b] border border-blue-500/50 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
@@ -118,7 +130,24 @@ function AssessmentWorkbench({
   isResetting,
   showToast,
 }: AssessmentWorkbenchProps) {
-  const agent = useEveAgent({ reducer: assessmentReducer });
+  // Read once per mount: the key remounts this component for another Opportunity or after a reset.
+  const [savedSession] = useState(() => loadSavedSession(baseOpportunity));
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const statusRef = useRef<string>(savedSession ? 'resuming' : 'ready');
+  const agent = useEveAgent({
+    reducer: assessmentReducer,
+    initialSession: savedSession,
+    resume: savedSession !== undefined,
+    onSessionChange: (session) =>
+      session ? saveSession(baseOpportunity, session) : clearSavedSession(baseOpportunity.id),
+    onError: (err) => {
+      if (statusRef.current !== 'resuming') return;
+      setResumeError(err.message);
+      // eve no longer has the saved session (expired, retired): forget it. Other errors keep it for a retry.
+      if (isSessionGone(err)) clearSavedSession(baseOpportunity.id);
+    },
+  });
+  statusRef.current = agent.status;
   const view = agent.data;
   const isResuming = agent.status === 'resuming';
   const turnInFlight = agent.status === 'submitted' || agent.status === 'streaming' || isResuming;
@@ -126,8 +155,9 @@ function AssessmentWorkbench({
   const opportunity = view.opportunity ?? baseOpportunity;
   // A send that never reached the stream (network, 401, a turn already running) has no projected failure.
   const [sendError, setSendError] = useState<{ label: string; text: string } | null>(null);
-  const failure =
-    view.phase === 'failed' && view.error
+  const failure = resumeError
+    ? { label: 'Could not resume the saved Assessment Session:', text: resumeError }
+    : view.phase === 'failed' && view.error
       ? { label: failureLabel(view), text: view.error }
       : sendError ??
         (agent.status === 'error' && agent.error ? { label: failureLabel(view), text: agent.error.message } : null);
@@ -148,6 +178,7 @@ function AssessmentWorkbench({
   async function handleStartAssessment() {
     // Every assessment is a new Assessment Session; the previous session stays in eve.
     agent.reset();
+    setResumeError(null);
     showToast('Executing System 1 (Jev) scoring & System 2 deep reasoning...');
     await sendTurn(assessTurnMessage(baseOpportunity.id, selectedModel), ASSESS_FAILED);
   }
@@ -204,6 +235,7 @@ function AssessmentWorkbench({
             isAssessing={stage.isAssessing || turnInFlight}
             onSubmitFeedback={handleSubmitFeedback}
             isSubmittingFeedback={stage.isSubmittingFeedback}
+            isFormLocked={turnInFlight}
           />
         </div>
       </main>
@@ -225,6 +257,12 @@ function toActionStage(view: AssessmentView) {
     isAssessing: view.phase === 'assessing',
     isSubmittingFeedback: view.phase === 'submitting_feedback',
   };
+}
+
+/** eve's answer for a session ID it can no longer serve (unknown, terminal or expired). */
+function isSessionGone(error: Error): boolean {
+  const { code, status } = error as Error & { code?: string; status?: number };
+  return code === 'session_not_active' || code === 'session_not_found' || status === 404 || status === 410;
 }
 
 const ASSESS_FAILED = 'Assessment failed:';

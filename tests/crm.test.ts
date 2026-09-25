@@ -135,3 +135,15 @@ describe('Simulated CRM Persistence & Seeding (live Postgres test branch)', () =
     expect(latest.opportunity_id).toBe('opp_acme_corp_001');
   });
 });
+
+describe('Opportunity reset marker (issue 15)', { timeout: 30_000 }, () => {
+  it('reports when the Opportunity was last reset, and a newer value after every reset', async () => {
+    const first = await resetCrmDatabase('scenario_acme_netlify');
+    const read = (await getOpportunity('opp_acme_corp_001'))!;
+    expect(read.last_reset_at).toEqual(expect.any(String));
+    expect(first.last_reset_at).toBe(read.last_reset_at);
+    await resetCrmDatabase('scenario_acme_netlify');
+    const after = (await getOpportunity('opp_acme_corp_001'))!;
+    expect(Date.parse(after.last_reset_at!)).toBeGreaterThan(Date.parse(read.last_reset_at!));
+  });
+});

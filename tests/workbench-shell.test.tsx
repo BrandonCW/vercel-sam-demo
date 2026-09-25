@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results';
 import { TURN_OUTCOME_JSON_SCHEMA, assessTurnMessage } from '@/lib/assessment-turns';
+import { loadSavedSession, saveSession } from '@/lib/ui/saved-assessment-session';
 import { jev, opportunity, system2 } from './fixtures/qualification';
 
 // The workbench drives the Assessment Session through useEveAgent only. The hook is stubbed at
@@ -32,6 +33,7 @@ describe('WorkbenchShell on useEveAgent', () => {
     hook.state = { data: undefined, status: 'ready', error: undefined, session: undefined };
     hook.send.mockClear();
     hook.reset.mockClear();
+    localStorage.clear();
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('the workbench must not call fetch for assessments'); }));
   });
   afterEach(() => {
@@ -130,5 +132,76 @@ describe('WorkbenchShell on useEveAgent', () => {
     hook.state.status = 'submitted';
     renderShell();
     expect(screen.getByRole('button', { name: /Evaluating Opportunity/ })).toHaveProperty('disabled', true);
+  });
+
+  describe('resume per Opportunity (issue 15)', () => {
+    it('starts without a session when this Opportunity has none saved', () => {
+      renderShell();
+      expect(hook.options.initialSession).toBeUndefined();
+      expect(hook.options.resume).toBe(false);
+    });
+
+    it("reattaches to the Opportunity's saved session and replays it from the start", () => {
+      saveSession(base, { sessionId: 'wrun_SAVED', streamIndex: 17 });
+      saveSession({ id: 'opp_other', last_reset_at: null }, { sessionId: 'wrun_OTHER', streamIndex: 0 });
+      renderShell();
+      expect(hook.options.initialSession).toEqual({ sessionId: 'wrun_SAVED', streamIndex: 0 });
+      expect(hook.options.resume).toBe(true);
+    });
+
+    it('remembers the session as soon as eve creates it, and forgets it when the hook resets', () => {
+      renderShell();
+      act(() => hook.options.onSessionChange({ sessionId: 'wrun_NEW', streamIndex: 1 }));
+      expect(loadSavedSession(base)?.sessionId).toBe('wrun_NEW');
+      act(() => hook.options.onSessionChange(undefined));
+      expect(loadSavedSession(base)).toBeUndefined();
+    });
+
+    it('disables submission while resuming', () => {
+      saveSession(base, { sessionId: 'wrun_SAVED', streamIndex: 0 });
+      hook.state.status = 'resuming';
+      hook.state.data = view({ phase: 'awaiting_feedback', turn: 'assess', jevResult: jev(), system2Result: system2(), opportunity: opportunity() });
+      renderShell();
+      expect(screen.getAllByText('RESUMING').length).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: /Submit Discovery Findings/ })).toHaveProperty('disabled', true);
+    });
+
+    it('surfaces a failed resume (expired or retired session) and forgets the saved session', () => {
+      saveSession(base, { sessionId: 'wrun_GONE', streamIndex: 0 });
+      hook.state.status = 'resuming';
+      renderShell();
+      act(() => hook.options.onError(Object.assign(new Error('The session is no longer active.'), { code: 'session_not_active', status: 409 })));
+      expect(loadSavedSession(base)).toBeUndefined();
+      expect(screen.getByRole('alert').textContent).toMatch(/Could not resume.*The session is no longer active\./);
+    });
+
+    it('forgets the saved session when the demo is reset', async () => {
+      saveSession(base, { sessionId: 'wrun_SAVED', streamIndex: 0 });
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ success: true, opportunity: base }), { status: 200 })));
+      renderShell();
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: /Reset Demo/ })));
+      expect(loadSavedSession(base)).toBeUndefined();
+      expect(hook.options.resume).toBe(false);
+    });
+
+    it('keeps the saved session when the resume fails for another reason (e.g. the network), so a reload can retry', () => {
+      saveSession(base, { sessionId: 'wrun_SAVED', streamIndex: 0 });
+      hook.state.status = 'resuming';
+      renderShell();
+      act(() => hook.options.onError(new Error('Failed to fetch')));
+      expect(loadSavedSession(base)?.sessionId).toBe('wrun_SAVED');
+      expect(screen.getByRole('alert').textContent).toMatch(/Failed to fetch/);
+    });
+
+    it("switching scenario remounts on the other Opportunity's own saved session", async () => {
+      const globex = opportunity({ id: 'opp_globex_fintech_002', name: 'Globex' });
+      saveSession(globex, { sessionId: 'wrun_GLOBEX', streamIndex: 0 });
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(globex), { status: 200 })));
+      renderShell();
+      expect(hook.options.initialSession).toBeUndefined();
+      await act(async () => fireEvent.change(screen.getByLabelText('Select Scenario'), { target: { value: 'scenario_globex_amplify' } }));
+      expect(hook.options.initialSession).toEqual({ sessionId: 'wrun_GLOBEX', streamIndex: 0 });
+      expect(hook.options.resume).toBe(true);
+    });
   });
 });

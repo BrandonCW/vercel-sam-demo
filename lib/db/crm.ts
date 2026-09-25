@@ -20,7 +20,10 @@ function getSql() {
 
 export async function getOpportunity(id: string): Promise<Opportunity | null> {
   const sql = getSql();
-  const rows = await sql`SELECT * FROM opportunities WHERE id = ${id} LIMIT 1;`;
+  const rows = await sql`
+    SELECT o.*,
+      (SELECT MAX(created_at) FROM deal_interactions i WHERE i.opportunity_id = o.id AND i.action = 'reset') AS last_reset_at
+    FROM opportunities o WHERE o.id = ${id} LIMIT 1;`;
   return rows.length > 0 ? mapRowToOpportunity(rows[0]) : null;
 }
 
@@ -244,12 +247,13 @@ export async function resetCrmDatabase(scenarioId?: string): Promise<Opportunity
   const seed = scenario.default_data;
 
   // One transaction: the upsert, telemetry purge and reset event land together or not at all.
-  const [rows] = await sql.transaction([
+  await sql.transaction([
     upsertBaseline(sql, seed, now),
     sql`DELETE FROM deal_interactions WHERE opportunity_id = ${seed.id};`,
     resetEvent(sql, seed.id, targetScenarioId),
   ]);
-  return mapRowToOpportunity(rows[0]);
+  // Re-read so the result carries its new reset marker (last_reset_at).
+  return requireOpportunity(seed.id);
 }
 
 /**
@@ -362,5 +366,8 @@ function mapRowToOpportunity(row: any): Opportunity {
     stage_gate: breakdown?.stageGate,
     created_at: new Date(row.created_at).toISOString(),
     updated_at: new Date(row.updated_at).toISOString(),
+    ...(row.last_reset_at !== undefined
+      ? { last_reset_at: row.last_reset_at === null ? null : new Date(row.last_reset_at).toISOString() }
+      : {}),
   };
 }

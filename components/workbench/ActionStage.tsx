@@ -34,6 +34,8 @@ interface ActionStageProps {
     notesDelta?: string
   ) => Promise<void> | void;
   isSubmittingFeedback?: boolean;
+  /** Disable the discovery form without the evaluating panel (e.g. while a session resumes). */
+  isFormLocked?: boolean;
 }
 
 export function ActionStage({
@@ -45,6 +47,7 @@ export function ActionStage({
   isAssessing = false,
   onSubmitFeedback,
   isSubmittingFeedback = false,
+  isFormLocked = false,
 }: ActionStageProps) {
   const [hasCopied, setHasCopied] = useState(false);
 
@@ -275,6 +278,7 @@ export function ActionStage({
             form={dynamicForm}
             onSubmit={handleFormSubmit}
             isSubmitting={isSubmittingFeedback}
+            isLocked={isFormLocked}
             submitButtonText="Submit Discovery Findings & Run Delta Re-scoring"
           />
         </div>
