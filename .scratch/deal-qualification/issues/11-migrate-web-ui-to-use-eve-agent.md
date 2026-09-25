@@ -1,6 +1,6 @@
 # 11: Migrate web UI to useEveAgent and retire /api/qualification routes
 
-**Status:** needs-triage
+**Status:** resolved (triaged: split into 12–17)
 
 **Blocked by:** 09
 
@@ -24,3 +24,15 @@ That bridge was a deliberate stopgap so 08 could move the agents without a UI ch
 - [ ] `ContextColumn` still shows Jev scores and System 2 evidence/gaps per dimension.
 - [ ] The System 2 model dropdown still selects the model used by `run_system2_analysis`.
 - [ ] `/api/qualification/*` routes and `lib/eve-session.ts` are removed; `pnpm test`, `tsc` and `npx eve info` are clean.
+
+## Comments
+
+Triaged 2026-09-25: split into vertical slices 12–17. This file stays as the umbrella; each acceptance criterion above is owned by one slice:
+
+- workbench on `useEveAgent`, no `/api/qualification/*` callers → 14
+- one session across assess and feedback, surviving reload → 15
+- `ContextColumn` scores and evidence/gaps from stream results → 13 (typed results) + 14 (render)
+- model dropdown selects the System 2 model → 13 (enforced in the agent) + 14 (sent from the UI)
+- bridge routes and `lib/eve-session.ts` removed, checks clean → 16
+
+Added by triage: 12 (flaky System 2 persistence miss from issue 10) and 17 (live UI verification and final `pnpm eval`).
