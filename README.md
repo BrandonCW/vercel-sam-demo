@@ -46,10 +46,10 @@ Runtime resets read the scenarios from `deal_scenarios`, and they fail loudly if
 
 | Eval | Proves |
 |---|---|
-| `acme/assess-then-qualify` | One two-turn session, with `t.toolOrder` and `t.noFailedActions()`. The baseline composite is 50–58, Identify Pain is ≥ 8, Netlify is `high` and Gate 2 is blocked on Economic Buyer. The persisted composite and dimension statuses are consistent, and the form matches the render schema. After SA feedback the composite is ≥ 70, the status is `qualified`, the next step reads `[QUALIFIED] …`, there is exactly one writeback and `ae_notes` is unchanged. Judges grade citations and playbook. |
+| `acme/assess-then-qualify` | One session and one `run_assessment` call, answered through its discovery pause (`requireInputRequest` + `respond`), with `t.toolOrder` and `t.noFailedActions()`. The baseline composite is 50–58, Identify Pain is ≥ 8, Netlify is `high` and Gate 2 is blocked on Economic Buyer. The persisted composite and dimension statuses are consistent, and the form matches the render schema. After SA feedback the composite is ≥ 70, the status is `qualified`, the next step reads `[QUALIFIED] …`, there is exactly one writeback and `ae_notes` is unchanged. Judges grade citations and playbook. |
 | `globex/amplify-in-review` | AWS Amplify is detected, and the writeback is `[IN REVIEW]` in the standard format. |
 | `soylent/q4-freeze-headless` | The headless / Q4-freeze path: no high-threat competitor, no fatal blocker, and a standardized writeback. A judge checks that the Nov 1 freeze is addressed. |
-| `failure/gateway-failure-no-writeback` | An unknown Jev model (`JEV_MODEL_ID`) produces a **failed** `run_jev_scoring` action and no CRM writeback. `t.noFailedActions()` is recorded tracked-only here, and scores 0 in the artifact. |
+| `failure/gateway-failure-no-writeback` | An unknown Jev model (`JEV_MODEL_ID`) produces a **failed** `run_assessment` action and no CRM writeback. `t.noFailedActions()` is recorded tracked-only here, and scores 0 in the artifact. |
 
 `pnpm eval` runs in two passes:
 1. `eve eval --exclude-tag failure`;
@@ -64,12 +64,11 @@ Artifacts are written to `.eve/evals/<timestamp>/`.
 The workbench (`components/workbench/WorkbenchShell.tsx`) talks to the eve agent directly with `useEveAgent` from `eve/react`, on the same origin `withEve` mounts (`/eve/v1/*`). There is no server-side bridge.
 
 - **Auth.** The browser sends the app's `deal_qual_session` cookie, which `agent/channels/eve.ts` accepts. The middleware also guards `/eve/v1` with it.
-- **Turns.** Each Assessment Session is one durable eve session:
-  - turn 1 sends `assessTurnMessage` with the selected System 2 model;
-  - turn 2 sends `feedbackTurnMessage` with the SA answers and their `feedbackKey`.
-  - Both request the structured `{ outcome, error }` result.
-- **What the UI renders.** `lib/assessment-results.ts` projects the stream into the view: the typed root tool results (`run_jev_scoring`, `run_system2_analysis`, `record_sa_feedback`, `crm_update_next_steps`) and the outcome. Failures show verbatim.
-- **Progressive results.** The two assessment tools are async generators, and eve streams each earlier `yield` as an `action.partial` event. `run_jev_scoring` yields the Jev scores before its CRM write, so the rubric fills in while Postgres is still writing. `run_system2_analysis` streams its structured output (`streamText` + `Output.object`) and yields throttled drafts, so citations and a read-only preview of the discovery form fill in while the model writes. The final `action.result` is the persisted result; a failed write still fails the action and the view.
+- **One tool, sequenced in code.** Each Assessment Session is one durable eve session and one call to the `run_assessment` workflow tool (`agent/tools/run_assessment.ts`, `"use workflow"`). Its `"use step"` functions (`agent/lib/assessment-steps.ts`) score with Jev, run System 2, record the SA answers, re-score and write back. The root model only starts it (`assessTurnMessage`, with the structured `{ outcome, error }` result) and reports the outcome.
+- **The SA pause.** After System 2, the tool calls `ctx.ask`, which parks the run durably at zero compute (`input.requested`). The workbench renders the discovery form from the System 2 result the tool already yielded, and answers the question with `agent.respond([{ requestId, text }])`. The text is `saAnswerText`: the answers plus their `feedbackKey`, which the tool checks. A malformed or altered answer fails the action, and the session ends.
+- **What the UI renders.** `lib/assessment-results.ts` projects the stream into the view. The tool's yields arrive as `action.partial` events: the Jev scores before their CRM write, then each persisted result. `action.result` carries the writeback. Failures show verbatim.
+- **No System 2 streaming.** A workflow step returns one value, and only the workflow body's yields reach `useEveAgent`, so System 2 cannot stream drafts (issue 19). The "System 2 analysis running…" indicator shows until the validated result arrives with its form.
+- **Old sessions.** A session started by the per-step tools of issue 18, or by a deployment without its workflow, cannot resume. The workbench says so, forgets the saved session and offers a new assessment.
 - **Reloads.** The session ID is saved per Opportunity in `localStorage` and resumed with `resume: true`, so a reload reattaches to a paused or running session. A session saved before the Opportunity was reset is dropped.
 - **Data routes.** `/api/crm/reset` and `/api/crm/opportunity` stay as plain Next.js data routes. They call no model: they are the deterministic demo reset and a CRM read. The agent keeps its own `reset_crm_data` tool.
 

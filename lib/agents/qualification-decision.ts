@@ -1,5 +1,5 @@
 import type { JevScoringResult } from './jev-schema';
-import type { System2AnalysisResult, System2Draft } from './system2';
+import type { System2AnalysisResult } from './system2';
 import type { MEDDPICCBreakdown, Opportunity, QualificationStatus } from '@/lib/types/crm';
 
 /**
@@ -100,14 +100,4 @@ export function withJevScores(opportunity: Opportunity, jev: JevScoringResult): 
     ...jevOpportunityFields(jev),
     qualification_status: opportunity.qualification_status === 'unqualified' ? 'in_review' : opportunity.qualification_status,
   };
-}
-
-/** The breakdown with a streaming System 2 draft's citations and gaps on the dimensions already scored. Pure. */
-export function withDraftFindings(breakdown: MEDDPICCBreakdown, draft: System2Draft): MEDDPICCBreakdown {
-  const next = { ...breakdown };
-  for (const [key, finding] of Object.entries(draft.dimensionFindings) as [keyof System2Draft['dimensionFindings'], NonNullable<System2Draft['dimensionFindings'][keyof System2Draft['dimensionFindings']]>][]) {
-    const dimension = next[key];
-    if (dimension) next[key] = { ...dimension, evidence: finding.citations, gaps: finding.gaps };
-  }
-  return next;
 }

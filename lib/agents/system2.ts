@@ -164,61 +164,6 @@ function toRenderSection(section: ModelFormSection): JsonRenderSection {
   };
 }
 
-/** What the workbench can show of System 2 while it is still streaming. */
-export interface System2Draft {
-  /** Per-dimension citations and gaps written so far (strings may still be growing). */
-  dimensionFindings: Partial<Record<DimensionTarget, DimensionFinding>>;
-  /** Discovery form preview: only the sections and fields that are already renderable; null until one is. */
-  form: JsonRenderForm | null;
-}
-
-const ModelFieldDraftSchema = ModelFormFieldSchema.extend({ options: ModelFormFieldSchema.shape.options.default([]) });
-
-/**
- * Projects a partial System 2 object (a structured-output stream snapshot) onto a display-only
- * draft. Anything not yet well-formed is left out rather than guessed; the persisted result is
- * still validated in full by toSystem2AnalysisResult. Pure and lenient by design: a draft is
- * never written anywhere, and the final result replaces it.
- */
-export function toSystem2Draft(partial: unknown, opportunityId: string): System2Draft {
-  const p = (partial ?? {}) as { dimensionFindings?: Record<string, unknown>; phase3Form?: Record<string, unknown> };
-  const dimensionFindings: System2Draft['dimensionFindings'] = {};
-  for (const key of DimensionTargetSchema.options) {
-    const raw = p.dimensionFindings?.[key] as { citations?: unknown; gaps?: unknown } | undefined;
-    if (!raw) continue;
-    const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0) : []);
-    dimensionFindings[key] = { citations: strings(raw.citations), gaps: strings(raw.gaps) };
-  }
-
-  const sections: JsonRenderSection[] = [];
-  const rawSections = Array.isArray(p.phase3Form?.sections) ? p.phase3Form.sections : [];
-  for (const rawSection of rawSections as Record<string, unknown>[]) {
-    const fields: FormField[] = [];
-    for (const rawField of Array.isArray(rawSection?.fields) ? rawSection.fields : []) {
-      const parsed = ModelFieldDraftSchema.safeParse(rawField);
-      if (!parsed.success) continue;
-      // A choice field is shown once it has at least one complete option.
-      const options = parsed.data.options.filter((o) => o.label && o.value);
-      if (CHOICE_TYPES.has(parsed.data.type) && options.length === 0) continue;
-      fields.push(toRenderField({ ...parsed.data, options }));
-    }
-    const section = JsonRenderSectionSchema.safeParse({
-      id: rawSection?.id,
-      title: rawSection?.title,
-      description: typeof rawSection?.description === 'string' ? rawSection.description : undefined,
-      fields,
-    });
-    if (section.success) sections.push(section.data);
-  }
-  const form = JsonRenderFormSchema.safeParse({
-    opportunityId,
-    title: p.phase3Form?.title,
-    summary: p.phase3Form?.summary,
-    sections,
-  });
-  return { dimensionFindings, form: form.success ? form.data : null };
-}
-
 /**
  * Validates raw model output and maps it onto the persisted System 2 result and
  * render form. Throws on anything the renderer cannot show; nothing is defaulted.

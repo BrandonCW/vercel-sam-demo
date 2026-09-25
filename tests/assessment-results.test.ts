@@ -1,21 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results';
-import { assessTurnMessage, feedbackTurnMessage } from '@/lib/assessment-turns';
+import { assessmentReducer, LEGACY_SESSION_ERROR, type AssessmentView } from '@/lib/assessment-results';
+import { assessTurnMessage } from '@/lib/assessment-turns';
 import { jev, opportunity, system2 } from './fixtures/qualification';
 
-// The workbench view is a projection of the root session's eve stream: typed tool results
-// (action.result), the structured turn outcome (result.completed) and turn lifecycle events.
-// Event shapes follow the eve 0.64 stream captured in .eve/evals (issue 10).
+// The workbench view is a projection of the root session's eve stream. One Assessment Session is
+// one `run_assessment` call: its yields (action.partial), its discovery pause (input.requested /
+// input.resolved), its result (action.result), the structured turn outcome (result.completed)
+// and turn lifecycle events. Event shapes follow the eve 0.64 stream.
 
 let seq = 0;
 const ev = (type: string, data: Record<string, unknown>) => ({ type, data: { turnId: 'turn_0', sequence: 0, ...data }, meta: { id: `evt_${seq++}` } }) as any;
-const submitted = (message = 'Assess opportunity opp_acme_corp_001') =>
-  ({ type: 'client.message.submitted', data: { createdAt: 0, message, submissionId: 's1' } }) as any;
+const ASSESS = assessTurnMessage('opp_acme_corp_001', 'anthropic/claude-sonnet-5');
+const submitted = (message = ASSESS) => ({ type: 'client.message.submitted', data: { createdAt: 0, message, submissionId: 's1' } }) as any;
 const requested = (toolName: string) => ev('actions.requested', { actions: [{ callId: `c_${toolName}`, kind: 'tool-call', toolName, input: {} }], stepIndex: 0 });
 const ok = (toolName: string, output: unknown) =>
   ev('action.result', { status: 'completed', stepIndex: 0, result: { callId: `c_${toolName}`, kind: 'tool-result', toolName, output } });
-const partial = (toolName: string, output: unknown) =>
-  ev('action.partial', { stepIndex: 0, result: { callId: `c_${toolName}`, kind: 'tool-result', toolName, output } });
+const progress = (output: unknown) =>
+  ev('action.partial', { stepIndex: 0, result: { callId: 'c_run_assessment', kind: 'tool-result', toolName: 'run_assessment', output } });
 const failed = (toolName: string, message: string) =>
   ev('action.result', {
     status: 'failed',
@@ -23,102 +24,165 @@ const failed = (toolName: string, message: string) =>
     error: { code: 'ACTION_RESULT_FAILED', message },
     result: { callId: `c_${toolName}`, kind: 'tool-result', toolName, isError: true, output: message },
   });
+const question = (requestId = 'req_1') =>
+  ev('input.requested', {
+    stepIndex: 0,
+    requests: [
+      {
+        requestId,
+        kind: 'question',
+        prompt: 'Answer the System 2 discovery form.',
+        display: 'text',
+        allowFreeform: true,
+        action: { callId: 'c_run_assessment', input: {}, kind: 'tool-call', toolName: 'run_assessment' },
+      },
+    ],
+  });
+const responded = (text: string, requestId = 'req_1') => ({ type: 'client.input.responded', data: { createdAt: 0, responses: [{ requestId, text }] } }) as any;
+const resolved = (outcome = 'answered', requestId = 'req_1') =>
+  ev('input.resolved', { stepIndex: 0, resolutions: [{ requestId, kind: 'question', outcome }] });
 const outcome = (value: unknown) => ev('result.completed', { stepIndex: 1, result: value });
 const turnCompleted = () => ev('turn.completed', {});
 
 const run = (events: any[], from: AssessmentView = assessmentReducer.initial()) => events.reduce(assessmentReducer.reduce, from);
 
-const assessTurn = [
+const NEXT_STEPS = '[QUALIFIED] Run POC | Owner: AE | Focus: x | Watch: y';
+const answer = JSON.stringify({ formResponses: { eb: 'CFO signs' }, feedbackKey: 'k1' });
+const toPause = [
   submitted(),
   ev('turn.started', {}),
-  ok('crm_read_deal', { opportunity: opportunity({ meddpicc_score: null }) }),
-  requested('run_jev_scoring'),
-  ok('run_jev_scoring', { interactionId: 'i1', jevResult: jev({ overallScore: 56 }), opportunity: opportunity({ meddpicc_score: 56 }) }),
-  requested('run_system2_analysis'),
-  ok('run_system2_analysis', { interactionId: 'i2', system2Result: system2(), opportunity: opportunity({ meddpicc_score: 56 }) }),
+  requested('run_assessment'),
+  progress({ stage: 'jev_scored', round: 'baseline', jevResult: jev({ overallScore: 56 }) }),
+  progress({ stage: 'jev_saved', round: 'baseline', jevResult: jev({ overallScore: 56 }), opportunity: opportunity({ meddpicc_score: 56 }) }),
+  progress({ stage: 'system2_saved', system2Result: system2(), opportunity: opportunity({ meddpicc_score: 56 }) }),
+  question(),
+];
+const toClosed = [
+  responded(answer),
+  resolved(),
+  progress({ stage: 'feedback_recorded', feedback: { recorded: true, feedbackKey: 'k1' } }),
+  progress({ stage: 'jev_scored', round: 'rescore', jevResult: jev({ overallScore: 89 }) }),
+  progress({ stage: 'jev_saved', round: 'rescore', jevResult: jev({ overallScore: 89 }), opportunity: opportunity({ meddpicc_score: 89 }) }),
+  ok('run_assessment', {
+    stage: 'closed',
+    writeback: { suggestedNextSteps: NEXT_STEPS, deltaScore: 33, qualificationStatus: 'qualified' },
+    opportunity: opportunity({ meddpicc_score: 89, qualification_status: 'qualified', suggested_next_steps: NEXT_STEPS }),
+  }),
   outcome({ outcome: 'completed', error: null }),
   turnCompleted(),
 ];
 
-describe('assessmentReducer (workbench view from the eve stream)', () => {
+describe('assessmentReducer (workbench view from the run_assessment stream)', () => {
   it('starts ready with nothing assessed', () => {
-    expect(assessmentReducer.initial()).toMatchObject({ phase: 'ready', jevResult: null, system2Result: null, error: null });
+    expect(assessmentReducer.initial()).toMatchObject({ phase: 'ready', jevResult: null, system2Result: null, pendingInput: null, error: null });
   });
 
-  it('shows the assessment running, and which step, as soon as turn 1 is submitted', () => {
+  it('shows the assessment running as soon as it is submitted', () => {
     expect(run([submitted()]).phase).toBe('assessing');
-    expect(run(assessTurn.slice(0, 4))).toMatchObject({ phase: 'assessing', runningTool: 'run_jev_scoring' });
+    expect(run(toPause.slice(0, 3))).toMatchObject({ phase: 'assessing', runningTool: 'run_assessment' });
   });
 
-  it('pauses awaiting SA feedback with scores, form, model and Opportunity once turn 1 completes', () => {
-    const view = run(assessTurn);
-    expect(view.phase).toBe('awaiting_feedback');
-    expect(view.runningTool).toBeNull();
+  it('renders the Jev scores in the rubric as soon as Jev answers, before the write and before System 2', () => {
+    const view = run(toPause.slice(0, 4));
+    expect(view.phase).toBe('assessing');
     expect(view.jevResult?.overallScore).toBe(56);
-    expect(view.system2Result?.modelUsed).toBe('anthropic/claude-sonnet-5');
+    expect(view.opportunity).toBeNull(); // no Opportunity from the stream yet: the page's copy stays
+    const withBase = run(toPause.slice(0, 4), { ...assessmentReducer.initial(), opportunity: opportunity({ meddpicc_score: null }) });
+    expect(withBase.opportunity?.meddpicc_score).toBe(56);
+    expect(withBase.opportunity?.qualification_status).toBe('in_review');
+  });
+
+  it('shows System 2 running between the saved Jev scores and the System 2 result', () => {
+    expect(run(toPause.slice(0, 5)).system2Running).toBe(true);
+    expect(run(toPause.slice(0, 6)).system2Running).toBe(false);
+  });
+
+  it('pauses awaiting SA feedback with scores, form and the pending question once the tool asks', () => {
+    const view = run(toPause);
+    expect(view).toMatchObject({ phase: 'awaiting_feedback', pendingInput: { requestId: 'req_1' }, error: null });
     expect(view.system2Result?.phase3Form.sections[0].fields[0].id).toBe('eb');
     expect(view.opportunity?.meddpicc_score).toBe(56);
   });
 
-  it('runs turn 2 to a closed session with the writeback and the updated Opportunity', () => {
-    const paused = run(assessTurn);
-    expect(run([submitted('The Solutions Architect submitted …')], paused).phase).toBe('submitting_feedback');
-    const closed = run(
-      [
-        submitted('The Solutions Architect submitted …'),
-        ev('turn.started', { sequence: 1, turnId: 'turn_1' }),
-        ok('record_sa_feedback', { recorded: true, feedbackKey: 'k1' }),
-        ok('run_jev_scoring', { interactionId: 'i3', jevResult: jev({ overallScore: 89 }), opportunity: opportunity({ meddpicc_score: 89 }) }),
-        ok('crm_update_next_steps', {
-          success: true,
-          suggestedNextSteps: '[QUALIFIED] Run POC | Owner: AE | Focus: x | Watch: y',
-          deltaScore: 33,
-          sessionState: 'closed',
-          opportunity: opportunity({ meddpicc_score: 89, qualification_status: 'qualified', suggested_next_steps: '[QUALIFIED] Run POC | Owner: AE | Focus: x | Watch: y' }),
-        }),
-        outcome({ outcome: 'completed', error: null }),
-        turnCompleted(),
-      ],
-      paused
-    );
+  it('runs to a closed session: answer, re-score, writeback', () => {
+    const answering = run([responded(answer)], run(toPause));
+    expect(answering).toMatchObject({ phase: 'submitting_feedback' });
+    const closed = run(toClosed, run(toPause));
     expect(closed).toMatchObject({
       phase: 'closed',
+      pendingInput: null,
       feedback: { recorded: true, feedbackKey: 'k1' },
-      writeback: { deltaScore: 33 },
+      writeback: { deltaScore: 33, suggestedNextSteps: NEXT_STEPS },
+      outcome: { outcome: 'completed', error: null },
       error: null,
     });
     expect(closed.opportunity?.qualification_status).toBe('qualified');
-    expect(closed.system2Result?.modelUsed).toBe('anthropic/claude-sonnet-5'); // the form's session context survives
+    expect(closed.jevResult?.overallScore).toBe(89);
+    expect(closed.system2Result?.modelUsed).toBe('anthropic/claude-sonnet-5');
   });
 
-  it('fails loudly with the tool error, verbatim, when a step fails', () => {
+  it('closes without a pause when the writeback without SA feedback was requested', () => {
     const view = run([
-      submitted(),
-      ev('turn.started', {}),
-      failed('run_jev_scoring', 'Jev 402 payment required'),
-      outcome({ outcome: 'failed', error: 'Jev 402 payment required' }),
+      submitted(assessTurnMessage('opp_globex_fintech_002', 'anthropic/claude-sonnet-5', { writeback: true })),
+      ...toPause.slice(1, 6),
+      ok('run_assessment', {
+        stage: 'closed',
+        writeback: { suggestedNextSteps: '[IN REVIEW] x | Owner: AE | Focus: y | Watch: z', deltaScore: 0, qualificationStatus: 'in_review' },
+        opportunity: opportunity(),
+      }),
+      outcome({ outcome: 'completed', error: null }),
       turnCompleted(),
     ]);
-    expect(view).toMatchObject({ phase: 'failed', error: 'Jev 402 payment required' });
+    expect(view.phase).toBe('closed');
+  });
+
+  it('rebuilds a paused session from a replayed stream (resume after reload)', () => {
+    expect(run(toPause)).toEqual(run(toPause));
+    expect(run(toPause).phase).toBe('awaiting_feedback');
+  });
+
+  it('fails loudly with the tool error, verbatim, when run_assessment fails', () => {
+    const view = run([...toPause.slice(0, 4), failed('run_assessment', 'Jev 503 Service temporarily unavailable'), outcome({ outcome: 'failed', error: 'Jev 503' }), turnCompleted()]);
+    expect(view).toMatchObject({ phase: 'failed', error: 'Jev 503 Service temporarily unavailable', system2Running: false });
+  });
+
+  it('fails when the answer is rejected (malformed or mismatched) and the session ends', () => {
+    const view = run([responded('not json'), resolved(), failed('run_assessment', 'The SA discovery answer is not JSON')], run(toPause));
+    expect(view).toMatchObject({ phase: 'failed', pendingInput: null, error: 'The SA discovery answer is not JSON' });
+  });
+
+  it('fails when eve does not accept the answer', () => {
+    expect(run([responded(answer), resolved('invalid')], run(toPause))).toMatchObject({ phase: 'failed', error: expect.stringMatching(/not accepted \(invalid\)/) });
+  });
+
+  it('fails when the tool recorded different SA answers than the workbench sent (feedbackKey mismatch)', () => {
+    const view = run([responded(answer), resolved(), progress({ stage: 'feedback_recorded', feedback: { recorded: true, feedbackKey: 'other' } })], run(toPause));
+    expect(view.phase).toBe('failed');
+    expect(view.error).toMatch(/recorded different SA answers/);
   });
 
   it('fails when the agent reports a failed outcome even without a failed action', () => {
-    expect(run([submitted(), outcome({ outcome: 'failed', error: 'run_system2_analysis was not called' }), turnCompleted()])).toMatchObject({
+    expect(run([submitted(), outcome({ outcome: 'failed', error: 'run_assessment was not called' }), turnCompleted()])).toMatchObject({
       phase: 'failed',
-      error: 'run_system2_analysis was not called',
+      error: 'run_assessment was not called',
     });
   });
 
-  it('fails when turn 1 claims success but produced no discovery form', () => {
-    const view = run([submitted(), ok('run_jev_scoring', { interactionId: 'i1', jevResult: jev(), opportunity: opportunity() }), outcome({ outcome: 'completed', error: null }), turnCompleted()]);
+  it('fails when the turn ends without a writeback', () => {
+    const view = run([...toPause.slice(0, 6), outcome({ outcome: 'completed', error: null }), turnCompleted()]);
     expect(view.phase).toBe('failed');
-    expect(view.error).toMatch(/without a System 2 discovery form/);
+    expect(view.error).toMatch(/without a CRM writeback/);
   });
 
-  it('fails on a tool result it cannot read instead of rendering partial data', () => {
-    const view = run([submitted(), ok('run_system2_analysis', { system2Result: { nope: true }, opportunity: opportunity() })]);
+  it('fails on a snapshot or result it cannot read instead of rendering partial data', () => {
+    expect(run([submitted(), progress({ stage: 'jev_scored', round: 'baseline', jevResult: { nope: true } })]).error).toMatch(/Unreadable run_assessment progress/);
+    expect(run([submitted(), ok('run_assessment', { stage: 'closed' })]).error).toMatch(/Unreadable run_assessment result/);
+  });
+
+  it('fails when System 2 ran with a model other than the one the turn asked for', () => {
+    const view = run([submitted(assessTurnMessage('opp_acme_corp_001', 'openai/gpt-5.5')), ...toPause.slice(1, 6)]);
     expect(view.phase).toBe('failed');
-    expect(view.error).toMatch(/Unreadable run_system2_analysis result/);
+    expect(view.error).toMatch(/System 2 ran with anthropic\/claude-sonnet-5, not the requested model openai\/gpt-5.5/);
   });
 
   it('fails on turn.failed, session.failed and a failed submission', () => {
@@ -129,122 +193,19 @@ describe('assessmentReducer (workbench view from the eve stream)', () => {
     ).toMatchObject({ phase: 'failed', error: '401 Unauthorized' });
   });
 
-  describe('progressive results (action.partial), before the CRM writes land', () => {
-    const readDeal = [submitted(), ev('turn.started', {}), ok('crm_read_deal', { opportunity: opportunity({ meddpicc_score: null, competitive_flags: [] }) })];
-
-    it('renders the Jev scores in the rubric as soon as Jev answers, before the write and before System 2', () => {
-      const view = run([...readDeal, requested('run_jev_scoring'), partial('run_jev_scoring', { jevResult: jev({ overallScore: 56 }) })]);
-      expect(view.phase).toBe('assessing');
-      expect(view.jevResult?.overallScore).toBe(56);
-      expect(view.opportunity?.meddpicc_score).toBe(56);
-      expect(view.opportunity?.meddpicc_breakdown.economicBuyer).toMatchObject({ score: 3 });
-      expect(view.opportunity?.meddpicc_breakdown.stageGate).toMatchObject({ gateReady: false });
-      expect(view.opportunity?.competitive_flags).toEqual(['Cloudflare Pages', 'Netlify']);
-      expect(view.opportunity?.qualification_status).toBe('in_review');
-    });
-
-    it('fails loudly when the write after the preliminary scores fails', () => {
-      const view = run([
-        ...readDeal,
-        partial('run_jev_scoring', { jevResult: jev({ overallScore: 56 }) }),
-        failed('run_jev_scoring', 'Postgres: connection terminated'),
-      ]);
-      expect(view).toMatchObject({ phase: 'failed', error: 'Postgres: connection terminated' });
-    });
-
-    it('fills in System 2 citations and a read-only form preview while System 2 streams', () => {
-      const form = system2().phase3Form;
-      const view = run([
-        ...readDeal,
-        ok('run_jev_scoring', {
-          interactionId: 'i1',
-          jevResult: jev(),
-          opportunity: opportunity({ meddpicc_score: 54, meddpicc_breakdown: { economicBuyer: jev().dimensions.economicBuyer } }),
-        }),
-        partial('run_system2_analysis', {
-          draft: { dimensionFindings: { economicBuyer: { citations: ['VP of E-Commerce mentioned budget'], gaps: [] } }, form: null },
-        }),
-        partial('run_system2_analysis', {
-          draft: { dimensionFindings: { economicBuyer: { citations: ['VP of E-Commerce mentioned budget'], gaps: ['No sign-off'] } }, form },
-        }),
-      ]);
-      expect(view.phase).toBe('assessing');
-      expect(view.system2Result).toBeNull();
-      expect(view.system2Draft?.form?.sections[0].fields[0].id).toBe('eb');
-      expect(view.opportunity?.meddpicc_breakdown.economicBuyer).toMatchObject({
-        score: 3,
-        evidence: ['VP of E-Commerce mentioned budget'],
-        gaps: ['No sign-off'],
-      });
-    });
-
-    it('replaces the draft with the persisted System 2 result', () => {
-      const view = run([
-        ...readDeal,
-        partial('run_system2_analysis', { draft: { dimensionFindings: {}, form: system2().phase3Form } }),
-        ok('run_system2_analysis', { interactionId: 'i2', system2Result: system2(), opportunity: opportunity({ meddpicc_score: 54 }) }),
-      ]);
-      expect(view.system2Draft).toBeNull();
-      expect(view.system2Result?.phase3Form.sections[0].fields[0].id).toBe('eb');
-    });
-
-    it('skips a System 2 draft it cannot read (display-only) and keeps the last good one', () => {
-      const good = run([...readDeal, partial('run_system2_analysis', { draft: { dimensionFindings: {}, form: system2().phase3Form } })]);
-      const view = run([partial('run_system2_analysis', { draft: { dimensionFindings: {}, form: { sections: [{}] } } })], good);
-      expect(view.phase).toBe('assessing');
-      expect(view.system2Draft?.form?.sections[0].fields[0].id).toBe('eb');
-    });
-
-    it('fails on a Jev snapshot it cannot read instead of rendering it', () => {
-      const view = run([...readDeal, partial('run_jev_scoring', { jevResult: { nope: true } })]);
-      expect(view.phase).toBe('failed');
-      expect(view.error).toMatch(/Unreadable run_jev_scoring snapshot/);
-    });
-  });
-
-  it('ignores events it does not project (text, reasoning, other runtime events)', () => {
-    const paused = run(assessTurn);
-    expect(run([ev('message.appended', { messageDelta: 'hi' }), ev('subagent.called', {})], paused)).toEqual(paused);
-  });
-
-  it('records the structured outcome of the last turn', () => {
-    expect(run(assessTurn).outcome).toEqual({ outcome: 'completed', error: null });
-  });
-
-  it('fails when the feedback turn ends without a writeback', () => {
-    const paused = run(assessTurn);
-    const view = run([submitted('The Solutions Architect submitted …'), ok('record_sa_feedback', { recorded: true, feedbackKey: 'k1' }), outcome({ outcome: 'completed', error: null }), turnCompleted()], paused);
-    expect(view.phase).toBe('failed');
-    expect(view.error).toMatch(/without a CRM writeback/);
-  });
-
   it('fails when a closed Assessment Session receives another turn (a new assessment needs a new session)', () => {
-    const closedView: AssessmentView = { ...run(assessTurn), phase: 'closed', writeback: { suggestedNextSteps: 's', deltaScore: 1 } };
-    const view = run([submitted('again')], closedView);
+    const view = run([submitted('again')], run(toClosed, run(toPause)));
     expect(view.phase).toBe('failed');
     expect(view.error).toMatch(/already closed/);
   });
 
-  it('fails on a completed action result that names no tool', () => {
-    const view = run([submitted(), ev('action.result', { status: 'completed', stepIndex: 0, result: { callId: 'c', kind: 'tool-result', output: {} } })]);
-    expect(view.phase).toBe('failed');
-    expect(view.error).toMatch(/names no tool/);
+  it('marks a session from an older deployment (per-step tools) as legacy, so the workbench can start fresh', () => {
+    const view = run([submitted('Assess opportunity opp_acme_corp_001: call crm_read_deal, then run_jev_scoring'), requested('run_jev_scoring')]);
+    expect(view).toMatchObject({ phase: 'failed', legacySession: true, error: LEGACY_SESSION_ERROR });
   });
 
-  it('fails when System 2 ran with a model other than the one the turn asked for', () => {
-    const view = run([
-      submitted(assessTurnMessage('opp_acme_corp_001', 'openai/gpt-5.5')),
-      ok('run_system2_analysis', { interactionId: 'i2', system2Result: system2({ modelUsed: 'anthropic/claude-sonnet-5' }), opportunity: opportunity() }),
-    ]);
-    expect(view.phase).toBe('failed');
-    expect(view.error).toMatch(/System 2 ran with anthropic\/claude-sonnet-5, not the requested model openai\/gpt-5.5/);
-  });
-
-  it('fails when the agent recorded different SA answers than the workbench sent (feedbackKey mismatch)', () => {
-    const paused = run(assessTurn);
-    const message = feedbackTurnMessage({ opportunityId: 'opp_acme_corp_001', formResponses: { eb: 'x' } }, 'sent-key');
-    const view = run([submitted(message), ok('record_sa_feedback', { recorded: true, feedbackKey: 'other-key' })], paused);
-    expect(view.phase).toBe('failed');
-    expect(view.error).toMatch(/recorded different SA answers/);
+  it('ignores events it does not project (text, reasoning, other runtime events)', () => {
+    const paused = run(toPause);
+    expect(run([ev('message.appended', { messageDelta: 'hi' }), ev('session.waiting', {})], paused)).toEqual(paused);
   });
 });

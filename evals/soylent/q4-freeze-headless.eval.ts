@@ -15,7 +15,9 @@ export default defineEval({
   async test(t) {
     const turn = await t.send(assessTurnMessage(SOYLENT, DEFAULT_SYSTEM2_MODEL, { writeback: true }), TURN);
     await t.require(turn.data, completedOutcome);
-    t.toolOrder(["crm_read_deal", "run_jev_scoring", "run_system2_analysis", "crm_update_next_steps"]);
+    t.toolOrder(["run_assessment"]);
+    turn.notCalledTool("run_jev_scoring");
+    t.check(turn.inputRequests.length, equals(0)).label("no SA pause when writing back without feedback");
     t.noFailedActions();
     t.succeeded();
 

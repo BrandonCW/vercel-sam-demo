@@ -1,32 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { assessTurnMessage, feedbackTurnMessage, parseTurnRequest } from '@/lib/assessment-turns';
+import { assessTurnMessage, parseTurnRequest, saAnswerText } from '@/lib/assessment-turns';
+import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 
-// The routes and the live evals send these exact turn messages.
-describe('Assessment Session turn messages', () => {
-  it('turn 1 asks for crm_read_deal, run_jev_scoring, run_system2_analysis with the model, and no writeback', () => {
+describe('Assessment Session turn contract', () => {
+  it('asks the root agent for one run_assessment call with the opportunity and model', () => {
     const message = assessTurnMessage('opp_acme_corp_001', 'anthropic/claude-sonnet-5');
-    expect(message).toMatch(/opp_acme_corp_001: call crm_read_deal, then run_jev_scoring, then run_system2_analysis with model anthropic\/claude-sonnet-5/);
-    expect(message).toMatch(/Do not write back to the CRM yet/);
+    expect(message).toMatch(/call run_assessment with opportunityId opp_acme_corp_001 and model anthropic\/claude-sonnet-5/);
+    expect(message).not.toMatch(/writebackWithoutFeedback/);
   });
 
-  it('turn 1 can ask for a writeback without SA feedback', () => {
-    const message = assessTurnMessage('opp_globex_fintech_002', 'anthropic/claude-sonnet-5', { writeback: true });
-    expect(message).toMatch(/then call crm_update_next_steps for opp_globex_fintech_002 without waiting for SA feedback/);
-    expect(message).not.toMatch(/Do not write back/);
+  it('asks for the writeback without SA feedback only when requested', () => {
+    expect(assessTurnMessage('opp_globex_fintech_002', 'google/gemini-3.8-flash', { writeback: true })).toMatch(
+      /writebackWithoutFeedback true/
+    );
   });
 
-  it('turn 2 carries the verbatim payload and its feedbackKey', () => {
-    const payload = { opportunityId: 'opp_acme_corp_001', formResponses: { eb: 'CFO signs' }, notesDelta: 'n' };
-    const message = feedbackTurnMessage(payload, 'abc123');
-    expect(message).toContain('feedbackKey abc123');
-    expect(message).toContain(JSON.stringify(payload));
-    expect(message).toMatch(/record_sa_feedback.*run_jev_scoring.*crm_update_next_steps/s);
-  });
-
-  it('reads back what a turn message asked for, so the workbench can check the results against it', () => {
-    expect(parseTurnRequest(assessTurnMessage('opp_acme_corp_001', 'openai/gpt-5.5'))).toEqual({ turn: 'assess', model: 'openai/gpt-5.5' });
-    const payload = { opportunityId: 'opp_acme_corp_001', formResponses: { eb: 'CFO signs' } };
-    expect(parseTurnRequest(feedbackTurnMessage(payload, 'abc123'))).toEqual({ turn: 'feedback', feedbackKey: 'abc123' });
+  it('reads the requested model and writeback mode back from the message', () => {
+    expect(parseTurnRequest(assessTurnMessage('opp_acme_corp_001', 'openai/gpt-5.5'))).toEqual({ model: 'openai/gpt-5.5', writeback: false });
+    expect(parseTurnRequest(assessTurnMessage('opp_x', 'google/gemini-3.8-flash', { writeback: true }))).toEqual({
+      model: 'google/gemini-3.8-flash',
+      writeback: true,
+    });
     expect(parseTurnRequest('hello')).toBeNull();
+  });
+
+  it('encodes the SA answers as the JSON text run_assessment expects, keyed so tampering is detected', async () => {
+    const text = await saAnswerText({ eb: 'CFO signs' }, 'Budget approved.');
+    expect(JSON.parse(text)).toEqual({
+      formResponses: { eb: 'CFO signs' },
+      notesDelta: 'Budget approved.',
+      feedbackKey: await saFeedbackKey({ eb: 'CFO signs' }, 'Budget approved.'),
+    });
+    expect(JSON.parse(await saAnswerText({ eb: 'CFO signs' }))).not.toHaveProperty('notesDelta');
   });
 });

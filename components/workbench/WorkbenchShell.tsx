@@ -9,8 +9,7 @@ import {
   AssessmentSessionState,
 } from '@/lib/types/crm';
 import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results';
-import { assessTurnMessage, feedbackTurnMessage, TURN_OUTCOME_JSON_SCHEMA } from '@/lib/assessment-turns';
-import { saFeedbackKey } from '@/lib/agents/feedback-schema';
+import { assessTurnMessage, saAnswerText, TURN_OUTCOME_JSON_SCHEMA } from '@/lib/assessment-turns';
 import { clearSavedSession, loadSavedSession, saveSession } from '@/lib/ui/saved-assessment-session';
 import { TopNavBar } from './TopNavBar';
 import { ContextColumn } from './ContextColumn';
@@ -150,7 +149,9 @@ function AssessmentWorkbench({
   statusRef.current = agent.status;
   const view = agent.data;
   const isResuming = agent.status === 'resuming';
-  const turnInFlight = agent.status === 'submitted' || agent.status === 'streaming' || isResuming;
+  // A session parked on the discovery question is waiting for the SA, not busy.
+  const turnInFlight =
+    ((agent.status === 'submitted' || agent.status === 'streaming') && view.phase !== 'awaiting_feedback') || isResuming;
   // Stream results win over the page-load / reset snapshot of the Opportunity.
   const opportunity = view.opportunity ?? baseOpportunity;
   // A send that never reached the stream (network, 401, a turn already running) has no projected failure.
@@ -164,10 +165,15 @@ function AssessmentWorkbench({
 
   useToastOnPhaseChange(view, isResuming, showToast);
 
-  async function sendTurn(message: string, label: string) {
+  // A session from an older deployment cannot continue: forget it, so a reload starts clean.
+  useEffect(() => {
+    if (view.legacySession) clearSavedSession(baseOpportunity.id);
+  }, [view.legacySession, baseOpportunity.id]);
+
+  async function sendTurn(label: string, submit: () => Promise<void>) {
     setSendError(null);
     try {
-      await agent.send(message, { outputSchema: TURN_OUTCOME_JSON_SCHEMA });
+      await submit();
     } catch (err) {
       const text = err instanceof Error ? err.message : String(err);
       setSendError({ label, text });
@@ -180,13 +186,23 @@ function AssessmentWorkbench({
     agent.reset();
     setResumeError(null);
     showToast('Executing System 1 (Jev) scoring & System 2 deep reasoning...');
-    await sendTurn(assessTurnMessage(baseOpportunity.id, selectedModel), ASSESS_FAILED);
+    await sendTurn(ASSESS_FAILED, () =>
+      agent.send(assessTurnMessage(baseOpportunity.id, selectedModel), { outputSchema: TURN_OUTCOME_JSON_SCHEMA })
+    );
   }
 
   async function handleSubmitFeedback(formResponses: Record<string, string | string[]>, notesDelta?: string) {
-    const payload = { opportunityId: baseOpportunity.id, formResponses, ...(notesDelta ? { notesDelta } : {}) };
+    // The answers go to run_assessment's paused discovery question, as JSON text it validates.
+    const pending = view.pendingInput;
+    if (!pending) {
+      setSendError({ label: WRITEBACK_FAILED, text: 'This Assessment Session is not waiting for SA answers.' });
+      return;
+    }
     showToast('Submitting discovery findings...');
-    await sendTurn(feedbackTurnMessage(payload, await saFeedbackKey(formResponses, notesDelta)), WRITEBACK_FAILED);
+    const text = await saAnswerText(formResponses, notesDelta);
+    await sendTurn(WRITEBACK_FAILED, () =>
+      agent.respond([{ requestId: pending.requestId, text }], { outputSchema: TURN_OUTCOME_JSON_SCHEMA })
+    );
   }
 
   const stage = toActionStage(view);
@@ -231,8 +247,7 @@ function AssessmentWorkbench({
             selectedModel={view.system2Result?.modelUsed ?? selectedModel}
             sessionState={stage.sessionState}
             dynamicForm={stage.form}
-            draftForm={view.system2Draft?.form ?? null}
-            isSystem2Running={view.phase === 'assessing' && Boolean(view.jevResult) && !view.system2Result}
+            isSystem2Running={view.system2Running}
             onStartAssessment={handleStartAssessment}
             isAssessing={stage.isAssessing || turnInFlight}
             onSubmitFeedback={handleSubmitFeedback}
@@ -248,11 +263,13 @@ function AssessmentWorkbench({
 /** Maps the projected Assessment Session onto the ActionStage stages. */
 function toActionStage(view: AssessmentView) {
   const form = view.system2Result?.phase3Form ?? null;
-  // A failed feedback turn keeps the paused form so the SA can resubmit to the same session.
-  const paused =
-    view.phase === 'awaiting_feedback' || (view.phase === 'failed' && view.turn === 'feedback' && !view.writeback);
+  // A failed run ends the session (run_assessment withdraws its question): start a new assessment.
   const sessionState: AssessmentSessionState =
-    view.phase === 'closed' ? 'closed' : paused || view.phase === 'submitting_feedback' ? 'pending_feedback' : 'initiated';
+    view.phase === 'closed'
+      ? 'closed'
+      : view.phase === 'awaiting_feedback' || view.phase === 'submitting_feedback'
+        ? 'pending_feedback'
+        : 'initiated';
   return {
     sessionState,
     form: sessionState === 'pending_feedback' ? form : null,
@@ -264,15 +281,23 @@ function toActionStage(view: AssessmentView) {
 /** eve's answer for a session ID it can no longer serve (unknown, terminal or expired). */
 function isSessionGone(error: Error): boolean {
   const { code, status } = error as Error & { code?: string; status?: number };
-  return code === 'session_not_active' || code === 'session_not_found' || status === 404 || status === 410;
+  return (
+    code === 'session_not_active' ||
+    code === 'session_not_found' ||
+    status === 404 ||
+    status === 410 ||
+    // A paused run from an older deployment whose workflow tool no longer exists (issue 19).
+    /is not registered as a workflow in this deployment/.test(error.message)
+  );
 }
 
 const ASSESS_FAILED = 'Assessment failed:';
 const WRITEBACK_FAILED = 'Writeback failed:';
 
-/** Failure heading for the turn that failed. */
+/** Failure heading for the part of the session that failed. */
 function failureLabel(view: AssessmentView): string {
-  return view.turn === 'feedback' ? WRITEBACK_FAILED : ASSESS_FAILED;
+  if (view.legacySession) return 'Saved Assessment Session unavailable:';
+  return view.feedback || view.sentFeedbackKey !== null ? WRITEBACK_FAILED : ASSESS_FAILED;
 }
 
 /** Toasts for live phase changes (not while a resumed session replays its history). */

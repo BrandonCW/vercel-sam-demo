@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import runJevScoringTool from '@/agent/tools/run_jev_scoring';
-import runSystem2AnalysisTool from '@/agent/tools/run_system2_analysis';
-import crmUpdateNextStepsTool from '@/agent/tools/crm_update_next_steps';
+import runAssessmentTool from '@/agent/tools/run_assessment';
 import { getOpportunity, resetCrmDatabase } from '@/lib/db/crm';
-import { rootCtx, runTool } from './fixtures/eve-session';
+import { rootCtx } from './fixtures/eve-session';
 
 // Billed: one real typesafe-ai/jev call and one System 2 model call through AI Gateway,
 // against the Postgres test branch. Opt in with JEV_LIVE=1.
@@ -11,15 +9,21 @@ const live = process.env.JEV_LIVE === '1' && !!process.env.AI_GATEWAY_API_KEY;
 const ACME = 'opp_acme_corp_001';
 const ctx = rootCtx(`wrun_live_tools_${Date.now()}`, 'turn_1');
 
-describe.skipIf(!live)('eve tools - live Acme assessment through writeback', () => {
+describe.skipIf(!live)('run_assessment - live Acme assessment through writeback (no SA pause)', () => {
   it('scores with Jev, cites with System 2, and writes back a code-decided next step', async () => {
     const baseline = await resetCrmDatabase('scenario_acme_netlify');
 
-    const { jevResult } = (await runTool(runJevScoringTool, { opportunityId: ACME }, ctx)).result;
+    const yields: any[] = [];
+    const body = (runAssessmentTool.execute as any)({ opportunityId: ACME, writebackWithoutFeedback: true }, ctx);
+    let step = await body.next();
+    for (; !step.done; step = await body.next()) yields.push(step.value);
+    const result = step.value;
+
+    const { jevResult } = yields.find((y) => y.stage === 'jev_saved');
     expect(jevResult.stageGate.gateReady).toBe(false);
     expect(jevResult.stageGate.blockingDimensions).toContain('economicBuyer');
 
-    const { system2Result } = (await runTool(runSystem2AnalysisTool, { opportunityId: ACME }, ctx)).result;
+    const { system2Result } = yields.find((y) => y.stage === 'system2_saved');
     console.log('SYSTEM2_FINDINGS', JSON.stringify({
       findings: system2Result.dimensionFindings,
       fatalBlocker: system2Result.fatalBlocker,
@@ -34,9 +38,8 @@ describe.skipIf(!live)('eve tools - live Acme assessment through writeback', () 
     const verbatim = citations.filter((c) => notes.includes(c.trim()));
     console.log('CITATIONS_VERBATIM', `${verbatim.length}/${citations.length}`);
 
-    const result = (await crmUpdateNextStepsTool.execute({ opportunityId: ACME }, ctx)) as any;
     expect(result.opportunity.qualification_status).toBe('in_review');
-    expect(result.suggestedNextSteps).toMatch(
+    expect(result.writeback.suggestedNextSteps).toMatch(
       /^\[IN REVIEW\] Hold at Stage 2 - Discovery\. [^|]+ \| Owner: AE \| Focus: [^|]+ \| Watch: Netlify \(high threat\)$/
     );
 

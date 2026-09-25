@@ -83,7 +83,7 @@ async function sessionPayloads(
 export async function loadLatestJevResult(opportunityId: string, sessionId: string): Promise<JevScoringResult> {
   const [payload] = await sessionPayloads(opportunityId, sessionId, 'initial_scoring');
   if (!payload) {
-    throw new Error(`No System 1 result for ${opportunityId} in Assessment Session ${sessionId}. Run run_jev_scoring first.`);
+    throw new Error(`No System 1 result for ${opportunityId} in Assessment Session ${sessionId}. run_assessment scores it first.`);
   }
   return JevScoringResultSchema.parse(payload.jevResult);
 }
@@ -93,7 +93,7 @@ export async function loadBaselineJevResult(opportunityId: string, sessionId: st
   const payloads = await sessionPayloads(opportunityId, sessionId, 'initial_scoring');
   const payload = payloads[payloads.length - 1];
   if (!payload) {
-    throw new Error(`No System 1 result for ${opportunityId} in Assessment Session ${sessionId}. Run run_jev_scoring first.`);
+    throw new Error(`No System 1 result for ${opportunityId} in Assessment Session ${sessionId}. run_assessment scores it first.`);
   }
   return JevScoringResultSchema.parse(payload.jevResult);
 }
@@ -102,7 +102,7 @@ export async function loadLatestSystem2Result(opportunityId: string, sessionId: 
   const [payload] = await sessionPayloads(opportunityId, sessionId, 'questions_generated');
   if (!payload) {
     throw new Error(
-      `No System 2 result for ${opportunityId} in Assessment Session ${sessionId}. Run run_system2_analysis first.`
+      `No System 2 result for ${opportunityId} in Assessment Session ${sessionId}: run_assessment analyzes it first.`
     );
   }
   return System2AnalysisResultSchema.parse(payload.system2Result);

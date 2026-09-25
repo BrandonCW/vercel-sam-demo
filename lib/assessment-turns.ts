@@ -1,40 +1,38 @@
 import { z } from 'zod';
-import type { SaFeedbackPayload } from '@/lib/agents/feedback-schema';
+import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 
 /**
- * The messages that drive the two Assessment Session turns, and the structured
- * turn outcome each turn requests. The workbench and the live evals send exactly
- * these, so the evals exercise the same agent contract as the UI.
+ * The Assessment Session contract shared by the workbench and the live evals: the one message
+ * that starts a session (the root agent calls `run_assessment`, which sequences everything in
+ * code), the SA answer the workbench sends to the tool's discovery pause, and the structured
+ * turn outcome the turn requests.
  */
 
-/** Turn 1: read, score (System 1) and analyze (System 2). Writeback only when asked (no SA feedback). */
+/** The one assess message: call run_assessment. Writeback without SA feedback only when asked. */
 export function assessTurnMessage(opportunityId: string, model: string, options: { writeback?: boolean } = {}): string {
-  const base = `Assess opportunity ${opportunityId}: call crm_read_deal, then run_jev_scoring, then run_system2_analysis with model ${model}`;
-  return options.writeback
-    ? `${base}, then call crm_update_next_steps for ${opportunityId} without waiting for SA feedback.`
-    : `${base}. Do not write back to the CRM yet: the Solutions Architect answers the discovery form first.`;
+  const call = `Assess opportunity ${opportunityId}: call run_assessment with opportunityId ${opportunityId} and model ${model}`;
+  return options.writeback ? `${call} and writebackWithoutFeedback true.` : `${call}.`;
 }
 
-/** Turn 2: record the SA answers, delta re-score, write back. */
-export function feedbackTurnMessage(payload: SaFeedbackPayload, feedbackKey: string): string {
-  return (
-    `The Solutions Architect submitted the discovery form for opportunity ${payload.opportunityId}. ` +
-    `Call record_sa_feedback with exactly this payload and feedbackKey ${feedbackKey}, then call run_jev_scoring for delta re-scoring, ` +
-    `then call crm_update_next_steps for ${payload.opportunityId}. Do not re-run System 2.\n\n` +
-    `SA feedback payload (JSON):\n${JSON.stringify(payload)}`
-  );
+/** What an assess message asked for; null for any other message. */
+export interface TurnRequest {
+  model: string;
+  writeback: boolean;
 }
 
-/** What a turn message asked for: turn 1's System 2 model, or turn 2's feedbackKey. */
-export type TurnRequest = { turn: 'assess'; model: string } | { turn: 'feedback'; feedbackKey: string };
-
-/** Reads a turn message built by assessTurnMessage / feedbackTurnMessage back; null for any other message. */
+/** Reads a message built by assessTurnMessage back. */
 export function parseTurnRequest(message: string): TurnRequest | null {
-  const assess = /^Assess opportunity \S+: call crm_read_deal, then run_jev_scoring, then run_system2_analysis with model (\S+?)(?:\. Do not|, then)/.exec(message);
-  if (assess) return { turn: 'assess', model: assess[1] };
-  const feedback = /record_sa_feedback with exactly this payload and feedbackKey ([0-9a-zA-Z_-]+),/.exec(message);
-  if (feedback) return { turn: 'feedback', feedbackKey: feedback[1] };
-  return null;
+  const match = /^Assess opportunity \S+: call run_assessment with opportunityId \S+ and model (\S+?)(\.| and writebackWithoutFeedback true\.)$/.exec(message);
+  return match ? { model: match[1], writeback: match[2] !== '.' } : null;
+}
+
+/**
+ * The SA's discovery answers as the JSON text run_assessment parses from its `ctx.ask` pause.
+ * The feedbackKey lets the tool reject answers that were altered on the way.
+ */
+export async function saAnswerText(formResponses: Record<string, string | string[]>, notesDelta?: string): Promise<string> {
+  const feedbackKey = await saFeedbackKey(formResponses, notesDelta);
+  return JSON.stringify({ formResponses, ...(notesDelta ? { notesDelta } : {}), feedbackKey });
 }
 
 /** Structured result every Assessment Session turn requests (`outputSchema`). */

@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import crmUpdateNextStepsTool from '@/agent/tools/crm_update_next_steps';
-import recordSaFeedbackTool from '@/agent/tools/record_sa_feedback';
-import runSystem2AnalysisTool from '@/agent/tools/run_system2_analysis';
+import runAssessmentTool from '@/agent/tools/run_assessment';
+import { recordFeedback, writeBack } from '@/agent/lib/assessment-steps';
 import { getInteractions, getOpportunity, resetCrmDatabase } from '@/lib/db/crm';
-import { recordJevScoring, recordSystem2Analysis } from '@/lib/db/assessments';
-import { rootCtx, runTool, scope } from './fixtures/eve-session';
+import { loadLatestJevResult, recordJevScoring, recordSystem2Analysis } from '@/lib/db/assessments';
+import { scope } from './fixtures/eve-session';
 import { jev, system2 } from './fixtures/qualification';
 import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 
@@ -16,51 +15,38 @@ async function assessIn(sessionId: string, overrides: Parameters<typeof system2>
   await recordSystem2Analysis(opp, jev({ overallScore: score }), system2(overrides), scope(sessionId, 'turn_1'));
 }
 
-describe('Assessment Session: tools are scoped to the root eve session', { timeout: 30_000 }, () => {
+describe('Assessment Session: run_assessment steps are scoped to the root eve session', { timeout: 30_000 }, () => {
   beforeEach(async () => {
     await resetCrmDatabase('scenario_acme_netlify');
   });
 
-  it('crm_update_next_steps uses its own session results even when another session assessed the same deal later', async () => {
+  it('the writeback uses its own session results even when another session assessed the same deal later', async () => {
     await assessIn('wrun_A', { valueFocus: 'Session A focus' });
     await assessIn('wrun_B', { valueFocus: 'Session B focus' });
 
-    const result = (await crmUpdateNextStepsTool.execute({ opportunityId: ACME }, rootCtx('wrun_A', 'turn_2'))) as any;
+    const result = await writeBack(ACME, scope('wrun_A', 'turn_2'));
 
     expect(result.suggestedNextSteps).toContain('Focus: Session A focus');
   });
 
-  it('run_system2_analysis reads only its own Assessment Session', async () => {
+  it('System 2 and the writeback read only their own Assessment Session', async () => {
     await assessIn('wrun_A');
-    const saved = process.env.AI_GATEWAY_API_KEY;
-    delete process.env.AI_GATEWAY_API_KEY;
-    try {
-      // Finds wrun_A's System 1 result, then stops at the (missing) Gateway key.
-      await expect(runTool(runSystem2AnalysisTool, { opportunityId: ACME }, rootCtx('wrun_A', 'turn_1'))).rejects.toThrow(
-        /AI_GATEWAY_API_KEY/
-      );
-    } finally {
-      if (saved !== undefined) process.env.AI_GATEWAY_API_KEY = saved;
-    }
-    // No System 1 result exists for another session.
-    await expect(runTool(runSystem2AnalysisTool, { opportunityId: ACME }, rootCtx('wrun_Z', 'turn_1'))).rejects.toThrow(
-      /run_jev_scoring/
-    );
+    expect((await loadLatestJevResult(ACME, 'wrun_A')).overallScore).toBe(54);
+    await expect(loadLatestJevResult(ACME, 'wrun_Z')).rejects.toThrow(/No System 1 result/);
+    await expect(writeBack(ACME, scope('wrun_Z', 'turn_1'))).rejects.toThrow(/No System 1 result/);
   });
 
-  it('tools fail loudly outside an eve session', async () => {
-    await assessIn('wrun_A');
-    await expect(
-      Promise.resolve(crmUpdateNextStepsTool.execute({ opportunityId: ACME }, {} as any))
-    ).rejects.toThrow(/eve session/);
+  it('run_assessment fails loudly outside an eve session', async () => {
+    const body = (runAssessmentTool.execute as any)({ opportunityId: ACME }, {});
+    await expect(body.next()).rejects.toThrow(/eve session/);
   });
 
-  it('crm_update_next_steps writes exactly one writeback audit row carrying the session telemetry', async () => {
+  it('the writeback writes exactly one writeback audit row carrying the session telemetry', async () => {
     await assessIn('wrun_A', {}, 54);
     const opp = (await getOpportunity(ACME))!;
     await recordJevScoring(opp, jev({ overallScore: 61 }), scope('wrun_A', 'turn_2'));
 
-    const result = (await crmUpdateNextStepsTool.execute({ opportunityId: ACME }, rootCtx('wrun_A', 'turn_2'))) as any;
+    const result = await writeBack(ACME, scope('wrun_A', 'turn_2'));
 
     const writebacks = (await getInteractions(ACME)).filter((i) => i.action === 'writeback');
     expect(writebacks).toHaveLength(1);
@@ -77,18 +63,15 @@ describe('Assessment Session: tools are scoped to the root eve session', { timeo
     expect(result.deltaScore).toBe(7);
   });
 
-  it('record_sa_feedback appends timestamped SA notes once per payload, leaving ae_notes alone', async () => {
+  it('recording SA feedback appends timestamped SA notes once per payload, leaving ae_notes alone', async () => {
     await assessIn('wrun_A');
     const baseline = (await getOpportunity(ACME))!;
-    const input = {
-      opportunityId: ACME,
-      formResponses: { eb_authority: 'Verified sign-off authority.' },
-      notesDelta: 'CFO joins next call.',
-    };
+    const formResponses = { eb_authority: 'Verified sign-off authority.' };
+    const input = { formResponses, notesDelta: 'CFO joins next call.', feedbackKey: await saFeedbackKey(formResponses, 'CFO joins next call.') };
 
-    const first = (await recordSaFeedbackTool.execute(input, rootCtx('wrun_A', 'turn_2'))) as any;
-    // A retried turn with the same answers must not append them again.
-    const retry = (await recordSaFeedbackTool.execute(input, rootCtx('wrun_A', 'turn_3'))) as any;
+    const first = await recordFeedback(ACME, input, scope('wrun_A', 'turn_2'));
+    // A replayed or retried step with the same answers must not append them again.
+    const retry = await recordFeedback(ACME, input, scope('wrun_A', 'turn_3'));
 
     expect(first).toMatchObject({ recorded: true });
     expect(retry).toMatchObject({ recorded: false, feedbackKey: first.feedbackKey });
@@ -108,37 +91,28 @@ describe('Assessment Session: tools are scoped to the root eve session', { timeo
     });
   });
 
-  it('crm_update_next_steps closes the session once: a second writeback in the same session is rejected', async () => {
+  it('the writeback closes the session once: a second writeback in the same session is rejected', async () => {
     await assessIn('wrun_A');
-    await crmUpdateNextStepsTool.execute({ opportunityId: ACME }, rootCtx('wrun_A', 'turn_2'));
-    await expect(
-      Promise.resolve(crmUpdateNextStepsTool.execute({ opportunityId: ACME }, rootCtx('wrun_A', 'turn_2')))
-    ).rejects.toThrow(/already closed/);
+    await writeBack(ACME, scope('wrun_A', 'turn_2'));
+    await expect(writeBack(ACME, scope('wrun_A', 'turn_2'))).rejects.toThrow(/already closed/);
     expect((await getInteractions(ACME)).filter((i) => i.action === 'writeback')).toHaveLength(1);
   });
 
-  it('record_sa_feedback rejects answers that do not match the submitted feedbackKey and writes nothing', async () => {
+  it('recording SA feedback rejects answers that do not match the submitted feedbackKey and writes nothing', async () => {
     await assessIn('wrun_A');
     const before = (await getOpportunity(ACME))!;
     const submitted = await saFeedbackKey({ q: 'Verified sign-off authority.' });
     await expect(
-      Promise.resolve(
-        recordSaFeedbackTool.execute(
-          { opportunityId: ACME, formResponses: { q: 'Sign-off verified.' }, feedbackKey: submitted },
-          rootCtx('wrun_A', 'turn_2')
-        )
-      )
+      recordFeedback(ACME, { formResponses: { q: 'Sign-off verified.' }, feedbackKey: submitted }, scope('wrun_A', 'turn_2'))
     ).rejects.toThrow(/feedbackKey/);
     expect((await getOpportunity(ACME))!.sa_notes).toBe(before.sa_notes);
     expect((await getInteractions(ACME)).some((i) => i.action === 'sa_feedback')).toBe(false);
   });
 
-  it('record_sa_feedback refuses feedback for a session with no discovery form', async () => {
+  it('recording SA feedback is refused for a session with no discovery form', async () => {
     await expect(
-      Promise.resolve(
-        recordSaFeedbackTool.execute({ opportunityId: ACME, formResponses: { q: 'a' } }, rootCtx('wrun_none', 'turn_2'))
-      )
-    ).rejects.toThrow(/run_system2_analysis/);
+      recordFeedback(ACME, { formResponses: { q: 'a' }, feedbackKey: await saFeedbackKey({ q: 'a' }) }, scope('wrun_none', 'turn_2'))
+    ).rejects.toThrow(/No System 2 result/);
     expect((await getInteractions(ACME)).some((i) => i.action === 'sa_feedback')).toBe(false);
   });
 });

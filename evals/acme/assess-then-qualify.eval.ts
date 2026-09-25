@@ -3,26 +3,23 @@ import { equals, includes, matches, satisfies } from "eve/evals/expect";
 import { getOpportunity } from "@/lib/db/crm";
 import { loadLatestJevResult, loadLatestSystem2Result, loadSessionWriteback } from "@/lib/db/assessments";
 import { computeCompositeScore, getDimensionStatus } from "@/lib/agents/jev-scorer";
-import { saFeedbackKey } from "@/lib/agents/feedback-schema";
 import { JsonRenderFormSchema } from "@/lib/ui/json-render-schema";
 import { DEFAULT_SYSTEM2_MODEL } from "@/lib/models";
-import { assessTurnMessage, feedbackTurnMessage } from "@/lib/assessment-turns";
+import { assessTurnMessage, saAnswerText } from "@/lib/assessment-turns";
 import { TURN, NEXT_STEPS_FORMAT, completedOutcome, sessionActions } from "../shared";
 
 const ACME = "opp_acme_corp_001";
 
 export default defineEval({
   description:
-    "Acme / Netlify: one Assessment Session. Turn 1 baseline (composite 50-58, Netlify high, Gate 2 blocked on Economic Buyer); turn 2 SA feedback re-scores to >= 70 and writes back [QUALIFIED].",
+    "Acme / Netlify: one Assessment Session, one run_assessment call. Baseline (composite 50-58, Netlify high, Gate 2 blocked on Economic Buyer); the SA answers its discovery pause; the re-score is >= 70 and writes back [QUALIFIED].",
   tags: ["live"],
   async test(t) {
     const baseline = (await getOpportunity(ACME))!;
 
-    // Turn 1: assess.
+    // Assess: run_assessment scores, analyzes, then parks on its discovery question.
     const first = await t.send(assessTurnMessage(ACME, DEFAULT_SYSTEM2_MODEL), TURN);
-    await t.require(first.data, completedOutcome);
-    first.toolOrder(["crm_read_deal", "run_jev_scoring", "run_system2_analysis"]);
-    first.notCalledTool("crm_update_next_steps");
+    const pause = first.session.requireInputRequest({ toolName: "run_assessment", display: "text" });
     const sessionId = first.sessionId;
 
     const jev = await loadLatestJevResult(ACME, sessionId);
@@ -67,10 +64,9 @@ export default defineEval({
       }
     );
 
-    // Turn 2: SA feedback that verifies the Economic Buyer and fills the discovery gaps.
+    // SA answers to the pause: verify the Economic Buyer and fill the discovery gaps.
     const fieldIds = system2.phase3Form.sections.flatMap((s) => s.fields.map((f) => f.id));
     const payload = {
-      opportunityId: ACME,
       formResponses: {
         [fieldIds[0]]:
           "Met CFO Mark Ellis with Priya on the discovery call. He confirmed he is the economic buyer, signs this decision, and approved a $180k FY27 budget line for the switch, contingent on the POC.",
@@ -82,12 +78,14 @@ export default defineEval({
         "Success metric: p95 build time from 45 to under 5 minutes and zero launch-day deploy queueing. " +
         "Paper process mapped: legal owns MSA redlines, security review uses our SOC2 report, procurement runs a standard 30-day cycle.",
     };
-    const second = await first.session.send(feedbackTurnMessage(payload, await saFeedbackKey(payload.formResponses, payload.notesDelta)), TURN);
+    const second = await first.session.respond(
+      [{ requestId: pause.requestId, text: await saAnswerText(payload.formResponses, payload.notesDelta) }],
+      TURN
+    );
     await t.require(second.data, completedOutcome);
-    second.toolOrder(["record_sa_feedback", "run_jev_scoring", "crm_update_next_steps"]);
-    second.notCalledTool("run_system2_analysis");
 
-    t.toolOrder(["crm_read_deal", "run_jev_scoring", "run_system2_analysis", "record_sa_feedback", "run_jev_scoring", "crm_update_next_steps"]);
+    t.toolOrder(["run_assessment"]);
+    t.calledTool("run_assessment", { count: 1 });
     t.noFailedActions();
     t.succeeded();
 

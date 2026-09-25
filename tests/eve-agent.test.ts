@@ -2,10 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import crmReadDealTool from '@/agent/tools/crm_read_deal';
-import crmUpdateNextStepsTool from '@/agent/tools/crm_update_next_steps';
 import resetCrmDataTool from '@/agent/tools/reset_crm_data';
-import runJevScoringTool from '@/agent/tools/run_jev_scoring';
-import runSystem2AnalysisTool from '@/agent/tools/run_system2_analysis';
+import runAssessmentTool from '@/agent/tools/run_assessment';
+import { analyzeWithSystem2, scoreWithJev, writeBack } from '@/agent/lib/assessment-steps';
 import {
   getInteractions,
   getOpportunity,
@@ -14,7 +13,7 @@ import {
 } from '@/lib/db/crm';
 import { recordJevScoring, recordSystem2Analysis } from '@/lib/db/assessments';
 import { jev, system2 } from './fixtures/qualification';
-import { rootCtx, runTool, scope } from './fixtures/eve-session';
+import { rootCtx, scope } from './fixtures/eve-session';
 
 const ACME = 'opp_acme_corp_001';
 const ctx = rootCtx('wrun_test', 'turn_1');
@@ -50,23 +49,24 @@ describe('eve agent tools', () => {
     expect(result.opportunity.name).toBe('Acme Corp - Next.js Migration');
   });
 
-  it('scoring and analysis tools take only an opportunityId (plus model choice), never retyped deal data', () => {
-    expect(Object.keys((runJevScoringTool.inputSchema as any).shape)).toEqual(['opportunityId']);
-    expect(Object.keys((runSystem2AnalysisTool.inputSchema as any).shape)).toEqual(['opportunityId', 'model']);
-    expect(Object.keys((crmUpdateNextStepsTool.inputSchema as any).shape)).toEqual(['opportunityId']);
+  it('the Assessment Session is one run_assessment workflow tool; the per-step root tools are gone', () => {
+    expect(fs.existsSync('agent/tools/run_assessment.ts')).toBe(true);
+    for (const retired of ['run_jev_scoring', 'run_system2_analysis', 'record_sa_feedback', 'crm_update_next_steps', 'score_deal', 'analyze_deal']) {
+      expect(fs.existsSync(`agent/tools/${retired}.ts`)).toBe(false);
+    }
+    expect(fs.existsSync('agent/subagents')).toBe(false);
+    expect(fs.readFileSync('agent/tools/run_assessment.ts', 'utf8')).toMatch(/"use workflow"/);
   });
 
-  it('run_system2_analysis accepts current Gateway model IDs only', () => {
-    const schema = runSystem2AnalysisTool.inputSchema as any;
+  it('run_assessment takes only an opportunityId, the System 2 model and the writeback mode, never retyped deal data', () => {
+    expect(Object.keys((runAssessmentTool.inputSchema as any).shape)).toEqual(['opportunityId', 'model', 'writebackWithoutFeedback']);
+  });
+
+  it('run_assessment accepts current Gateway model IDs only', () => {
+    const schema = runAssessmentTool.inputSchema as any;
     expect(schema.safeParse({ opportunityId: ACME, model: 'anthropic/claude-haiku-4.5' }).success).toBe(true);
-    expect(schema.safeParse({ opportunityId: ACME, model: 'anthropic/claude-sonnet-5' }).success).toBe(true);
+    expect(schema.safeParse({ opportunityId: ACME, model: 'google/gemini-3.8-flash' }).success).toBe(true);
     expect(schema.safeParse({ opportunityId: ACME, model: 'claude-3-5-sonnet' }).success).toBe(false);
-  });
-
-  it('run_system2_analysis refuses to run before System 1 has scored the deal', async () => {
-    await expect(
-      runTool(runSystem2AnalysisTool, { opportunityId: ACME }, ctx)
-    ).rejects.toThrow(/run_jev_scoring/);
   });
 
   describe('without AI_GATEWAY_API_KEY', () => {
@@ -79,27 +79,24 @@ describe('eve agent tools', () => {
       if (saved !== undefined) process.env.AI_GATEWAY_API_KEY = saved;
     });
 
-    it('run_jev_scoring fails the tool action instead of returning a fallback score', async () => {
-      await expect(
-        runTool(runJevScoringTool, { opportunityId: ACME }, ctx)
-      ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
+    it('the Jev step fails instead of returning a fallback score', async () => {
+      await expect(scoreWithJev(ACME)).rejects.toThrow(/AI_GATEWAY_API_KEY/);
     });
 
-    it('run_system2_analysis fails the tool action instead of returning canned output', async () => {
+    it('the System 2 step fails instead of returning canned output, and persists nothing', async () => {
       const opp = (await getOpportunity(ACME))!;
       await recordJevScoring(opp, jev(), S);
-      await expect(
-        runTool(runSystem2AnalysisTool, { opportunityId: ACME }, ctx)
-      ).rejects.toThrow(/AI_GATEWAY_API_KEY/);
+      await expect(analyzeWithSystem2(opp, jev(), 'google/gemini-3.8-flash', S)).rejects.toThrow(/AI_GATEWAY_API_KEY/);
+      expect((await getInteractions(ACME)).some((i) => i.action === 'questions_generated')).toBe(false);
     });
   });
 
-  it('crm_update_next_steps decides status and next steps in code from the latest System 1 and System 2 results', async () => {
+  it('the writeback decides status and next steps in code from the latest System 1 and System 2 results', async () => {
     const opp = (await getOpportunity(ACME))!;
     await recordJevScoring(opp, jev(), S);
     await recordSystem2Analysis(opp, jev(), system2(), S);
 
-    const result = (await crmUpdateNextStepsTool.execute({ opportunityId: ACME }, ctx)) as any;
+    const result = await writeBack(ACME, S);
 
     expect(result.opportunity.qualification_status).toBe('in_review');
     expect(result.opportunity.suggested_next_steps).toMatch(
@@ -114,10 +111,8 @@ describe('eve agent tools', () => {
     expect(refreshed.ae_notes).toBe(opp.ae_notes);
   });
 
-  it('crm_update_next_steps fails loudly when no assessment has run', async () => {
-    await expect(
-      Promise.resolve(crmUpdateNextStepsTool.execute({ opportunityId: ACME }, ctx))
-    ).rejects.toThrow(/run_jev_scoring/);
+  it('the writeback fails loudly when no assessment has run', async () => {
+    await expect(writeBack(ACME, S)).rejects.toThrow(/No System 1 result/);
   });
 
   it('writeback rejects the write when ae_notes changed since the record was read', async () => {
