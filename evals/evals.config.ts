@@ -9,7 +9,7 @@ import { acquireLiveRunLease } from "@/lib/db/live-run-lease";
  */
 export default defineEvalConfig({
   judge: { model: "typesafe-ai/jev" },
-  // Two-turn sessions with delegated subagents take minutes, not seconds.
+  // Two-turn sessions with live Gateway calls take minutes, not seconds.
   timeoutMs: 900_000,
   async setup() {
     // Fail fast on missing credentials, then refuse any database but the marked test branch.

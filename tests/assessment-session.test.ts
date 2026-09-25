@@ -39,13 +39,13 @@ describe('Assessment Session: tools are scoped to the root eve session', { timeo
       await expect(runTool(runSystem2AnalysisTool, { opportunityId: ACME }, rootCtx('wrun_A', 'turn_1'))).rejects.toThrow(
         /AI_GATEWAY_API_KEY/
       );
-      // No System 1 result exists for another session.
-      await expect(runTool(runSystem2AnalysisTool, { opportunityId: ACME }, rootCtx('wrun_Z', 'turn_1'))).rejects.toThrow(
-        /run_jev_scoring/
-      );
     } finally {
       if (saved !== undefined) process.env.AI_GATEWAY_API_KEY = saved;
     }
+    // No System 1 result exists for another session.
+    await expect(runTool(runSystem2AnalysisTool, { opportunityId: ACME }, rootCtx('wrun_Z', 'turn_1'))).rejects.toThrow(
+      /run_jev_scoring/
+    );
   });
 
   it('tools fail loudly outside an eve session', async () => {

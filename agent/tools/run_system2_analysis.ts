@@ -69,11 +69,11 @@ export default defineTool({
   },
   async *execute({ opportunityId, model: requested }, ctx): AsyncGenerator<System2Drafting | System2Persisted> {
     const scope = assessmentScopeOf(ctx);
+    assertAiGatewayConfigured();
     const [opportunity, jevResult] = await Promise.all([
       requireOpportunity(opportunityId),
       loadLatestJevResult(opportunityId, scope.sessionId),
     ]);
-    assertAiGatewayConfigured();
     const model = requested ?? resolveAgentModel();
     const timeout = AbortSignal.timeout(TIMEOUT_MS);
     const abortSignal = ctx.abortSignal ? AbortSignal.any([ctx.abortSignal, timeout]) : timeout;
