@@ -145,7 +145,7 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
       ok('run_assessment', verdict({ qualificationStatus: 'in_review', feedback: 'skipped', delta: 0 })),
       turnCompleted(),
     ]);
-    expect(view).toMatchObject({ phase: 'closed', request: { model: 'anthropic/claude-sonnet-5', writeback: true } });
+    expect(view).toMatchObject({ phase: 'closed', request: { model: 'anthropic/claude-sonnet-5', writebackWithoutFeedback: true } });
   });
 
   it('a reload after the SA answered replays to submitting, not back to an open form', () => {
@@ -180,7 +180,7 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
 
   it('reads the requested model and writeback flag from the run_assessment input, not the message text', () => {
     const view = run([submitted('please assess acme'), requested('run_assessment', { opportunityId: 'x', model: 'openai/gpt-5.5' })]);
-    expect(view.request).toEqual({ model: 'openai/gpt-5.5', writeback: false });
+    expect(view.request).toEqual({ model: 'openai/gpt-5.5', writebackWithoutFeedback: false });
   });
 
   it('fails when run_assessment was called without a System 2 model', () => {

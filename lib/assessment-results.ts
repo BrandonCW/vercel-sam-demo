@@ -16,8 +16,9 @@ import type { Opportunity } from '@/lib/types/crm';
  * error verbatim. Nothing the root model says is read. A resumed session replays the same stream,
  * so the view rebuilds itself, including a pending pause.
  *
- * Client-safe (no server imports). Fails loudly: a failed action, a failed outcome or anything
- * that does not parse puts the view in `failed` with the error verbatim; nothing is defaulted.
+ * Client-safe (no server imports). Fails loudly: a failed run_assessment action, a second call,
+ * a missing or mismatched System 2 model, or anything that does not parse puts the view in
+ * `failed` with the error verbatim; nothing is defaulted.
  */
 
 export type AssessmentPhase = 'ready' | 'assessing' | 'awaiting_feedback' | 'submitting_feedback' | 'closed' | 'failed';
@@ -48,7 +49,7 @@ export interface AssessmentView {
 /** The run_assessment call, read from its action input in the stream. */
 export interface AssessmentRequest {
   model: string;
-  writeback: boolean;
+  writebackWithoutFeedback: boolean;
 }
 
 export const LEGACY_SESSION_ERROR =
@@ -135,7 +136,7 @@ function applyCall(view: AssessmentView, input: unknown): AssessmentView {
   return {
     ...view,
     runningTool: TOOL,
-    request: { model: parsed.data.model, writeback: parsed.data.writebackWithoutFeedback === true },
+    request: { model: parsed.data.model, writebackWithoutFeedback: parsed.data.writebackWithoutFeedback === true },
   };
 }
 
