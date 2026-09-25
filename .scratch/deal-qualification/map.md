@@ -30,6 +30,8 @@ A complete MVP build specification (`.scratch/deal-qualification/spec.md`) for t
 
 - [Web UI on useEveAgent (issues 11–17)](file:///Users/brandonwarwick/Documents/Workspace/vercel-sam-demo/.scratch/deal-qualification/issues/11-migrate-web-ui-to-use-eve-agent.md): The workbench drives the Assessment Session directly with `useEveAgent` (same-origin `/eve/v1`, cookie auth). Its view is projected from typed root tool results in the eve stream, and the session is resumed per Opportunity from `localStorage`. The `/api/qualification` bridges, `EVE_AGENT_ORIGIN` and the deployment-protection bypass are retired. `/api/crm/*` stay as model-free data routes. The flaky System 2 "did not persist" failure was a concurrent CRM reset. It is fixed with a reset-aware delegation error and a Postgres live-run lease between `pnpm test` and `pnpm eval`.
 
+- [Direct root tools, UI before DB, fast System 2 (issue 18)](.scratch/deal-qualification/issues/18-direct-root-tools-progressive-results-haiku.md): Subagents are removed, and the root calls Jev and System 2 directly. Scores and System 2 drafts stream to the UI through eve `action.partial` before the atomic CRM write. System 2 defaults to Gemini 3.8 Flash. The root stays on Sonnet 5, because Haiku 4.5 failed structured output through the Gateway.
+
 ## Not yet specified
 
 - **Production Salesforce Integration**: Real OAuth2/REST API sync with Salesforce standard/custom objects once validated beyond the mock stage.
