@@ -35,7 +35,7 @@ Runtime resets read the scenarios from `deal_scenarios`, and they fail loudly if
 
 ## Tests
 
-**Tier 1, `pnpm test` (vitest).** Unit tests of pure logic may use fixtures, but only from `tests/fixtures/`. `tests/fixture-boundary.test.ts` fails if `lib/`, `agent/`, `app/`, `components/` or `evals/` imports them. Database tests run live against the Neon `test` branch. Billed live tests are opt-in with `JEV_LIVE=1`. The two-turn Assessment Session is covered live by `pnpm eval` (acme) and by driving the workbench. A run holds a live-run lease on the test database, so `pnpm test` and `pnpm eval` cannot reset each other's data mid-run.
+**Tier 1, `pnpm test` (vitest).** Unit tests of pure logic may use fixtures, but only from `tests/fixtures/`. `tests/fixture-boundary.test.ts` fails if `lib/`, `agent/`, `app/`, `components/` or `evals/` imports them. Database tests run live against the Neon `test` branch. Billed live tests are opt-in with `JEV_LIVE=1`. The two-turn Assessment Session is covered live by `pnpm eval` (acme) and by driving the workbench. A run holds a live-run lease on the test database, so `pnpm test` and `pnpm eval` cannot reset each other's data mid-run. Like `pnpm eval`, every `pnpm test` run starts with a full reset of the seeded scenarios (`tests/global-setup.ts`), which refuses any branch not marked as the eval target.
 
 **Tier 2, `pnpm eval` (`eve eval`, no mocks).** The suite is billed. It runs against the real AI Gateway and the Neon `test` branch, loading `.env.test.local` itself.
 
