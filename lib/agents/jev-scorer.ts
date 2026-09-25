@@ -2,13 +2,11 @@ import {
   JevScoringInput,
   JevScoringResult,
   JevScoringResultSchema,
-  DimensionResult,
+  CompetitiveThreatLevelSchema,
   DimensionStatus,
-  CompetitiveMention,
-  CompetitiveThreatLevel,
   StageGateEvaluation,
 } from './jev-schema';
-import { gateway, generateText } from 'ai';
+import type { Experimental_EvaluationQuestion as EvaluationQuestion } from 'ai';
 
 export interface DimensionConfig {
   key: keyof JevScoringResult['dimensions'];
@@ -26,6 +24,8 @@ export const CANONICAL_DIMENSIONS: Record<keyof JevScoringResult['dimensions'], 
   competition: { key: 'competition', label: 'Competition', weight: 0.1 },
   paperProcess: { key: 'paperProcess', label: 'Paper Process', weight: 0.05 },
 };
+
+type DimensionKey = keyof JevScoringResult['dimensions'];
 
 export function getDimensionStatus(score: number): DimensionStatus {
   if (score >= 8) return 'verified';
@@ -48,139 +48,6 @@ export function computeCompositeScore(
 }
 
 /**
- * Split text into individual sentences for fine-grained citation extraction.
- */
-function extractSentences(text: string): string[] {
-  if (!text) return [];
-  return text
-    .split(/(?<=[.!?])\s+|\n+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-}
-
-function findMatchingSentences(sentences: string[], regex: RegExp): string[] {
-  return sentences.filter((s) => regex.test(s));
-}
-
-/**
- * Enterprise Competitive Scanner
- * Detects mentions of: Netlify, AWS Amplify, Cloudflare Pages, Akamai/Fastly, DIY Kubernetes / AWS ECS.
- */
-export function scanCompetitiveMentions(notesA: string, notesB: string = ''): CompetitiveMention[] {
-  const combinedNotes = notesB ? `${notesA} ${notesB}` : notesA;
-  const mentions: CompetitiveMention[] = [];
-  const sentences = extractSentences(combinedNotes);
-
-  // 1. Netlify
-  if (/\bnetlify\b/i.test(combinedNotes)) {
-    const matchedSentences = findMatchingSentences(sentences, /\bnetlify\b/i);
-    const evidence = matchedSentences[0] || 'Netlify mentioned in opportunity notes.';
-    let threatLevel: CompetitiveThreatLevel = 'medium';
-    let contextSummary = 'Active frontend cloud evaluation / bake-off.';
-
-    if (/(discount|renew|contract expires|30%|incumbent|multi-year)/i.test(combinedNotes)) {
-      threatLevel = 'high';
-      contextSummary = 'Incumbent contract renewal with discounting pressure.';
-    } else if (/(legacy|replac|migrat)/i.test(combinedNotes)) {
-      threatLevel = 'low';
-      contextSummary = 'Legacy deployment tool targeted for Next.js migration.';
-    }
-
-    mentions.push({
-      name: 'Netlify',
-      threatLevel,
-      evidence,
-      contextSummary,
-    });
-  }
-
-  // 2. AWS Amplify
-  if (/\b(aws amplify|amplify)\b/i.test(combinedNotes)) {
-    const matchedSentences = findMatchingSentences(sentences, /\b(aws amplify|amplify)\b/i);
-    const evidence = matchedSentences[0] || 'AWS Amplify mentioned in notes.';
-    let threatLevel: CompetitiveThreatLevel = 'medium';
-    let contextSummary = 'Hyperscaler native alternative evaluated against Vercel.';
-
-    if (/(credit|edp|commit|pushing|enterprise agreement)/i.test(combinedNotes)) {
-      threatLevel = 'high';
-      contextSummary = 'AWS account team pushing Amplify with enterprise credits and EDP commits.';
-    }
-
-    mentions.push({
-      name: 'AWS Amplify',
-      threatLevel,
-      evidence,
-      contextSummary,
-    });
-  }
-
-  // 3. Cloudflare Pages
-  if (/\b(cloudflare(\s+pages)?)\b/i.test(combinedNotes)) {
-    const matchedSentences = findMatchingSentences(sentences, /\b(cloudflare(\s+pages)?)\b/i);
-    const evidence = matchedSentences[0] || 'Cloudflare Pages mentioned in notes.';
-    let threatLevel: CompetitiveThreatLevel = 'low';
-    let contextSummary = 'Edge / CDN solution under consideration.';
-
-    if (/(zero-egress|egress|dns|waf|incumbent)/i.test(combinedNotes)) {
-      threatLevel = 'medium';
-      contextSummary = 'Incumbent DNS/WAF footprint with zero-egress cost claims.';
-    }
-
-    mentions.push({
-      name: 'Cloudflare Pages',
-      threatLevel,
-      evidence,
-      contextSummary,
-    });
-  }
-
-  // 4. Akamai/Fastly
-  if (/\b(akamai|fastly)\b/i.test(combinedNotes)) {
-    const matchedSentences = findMatchingSentences(sentences, /\b(akamai|fastly)\b/i);
-    const evidence = matchedSentences[0] || 'Akamai/Fastly mentioned in notes.';
-    let threatLevel: CompetitiveThreatLevel = 'low';
-    let contextSummary = 'Traditional CDN vendor under consideration.';
-
-    if (/(incumbent|contract|edge caching)/i.test(combinedNotes)) {
-      threatLevel = 'medium';
-      contextSummary = 'Legacy CDN incumbent with existing caching contracts.';
-    }
-
-    mentions.push({
-      name: 'Akamai/Fastly',
-      threatLevel,
-      evidence,
-      contextSummary,
-    });
-  }
-
-  // 5. DIY Kubernetes / AWS ECS
-  if (/\b(kubernetes|k8s|ecs|diy|in-house)\b/i.test(combinedNotes)) {
-    const matchedSentences = findMatchingSentences(
-      sentences,
-      /\b(kubernetes|k8s|ecs|diy|in-house)\b/i
-    );
-    const evidence = matchedSentences[0] || 'In-house container infrastructure mentioned.';
-    let threatLevel: CompetitiveThreatLevel = 'medium';
-    let contextSummary = 'In-house container stack under consideration.';
-
-    if (/(defend|platform team|bespoke|custom|resistan)/i.test(combinedNotes)) {
-      threatLevel = 'high';
-      contextSummary = 'Internal platform engineering team defending custom Kubernetes/ECS stack.';
-    }
-
-    mentions.push({
-      name: 'DIY Kubernetes / AWS ECS',
-      threatLevel,
-      evidence,
-      contextSummary,
-    });
-  }
-
-  return mentions;
-}
-
-/**
  * Stage Gate Evaluation
  * Evaluates readiness for:
  * - Gate 2: Discovery -> Technical Validation (Stage 2 -> Stage 3)
@@ -196,11 +63,13 @@ export function evaluateStageGate(
 
   if (isStage2) {
     const blockers: string[] = [];
+    const blocking: DimensionKey[] = [];
     const targetStage = 'Stage 3 - Technical Validation';
 
     // Gate 2 Rules:
     // Identify Pain >= 6
     if (dimensions.identifyPain.score < 6) {
+      blocking.push('identifyPain');
       blockers.push(
         `Identify Pain score is ${dimensions.identifyPain.score}/10 (minimum 6/10 required with validated business pain)`
       );
@@ -208,6 +77,7 @@ export function evaluateStageGate(
 
     // Champion >= 5
     if (dimensions.champion.score < 5) {
+      blocking.push('champion');
       blockers.push(
         `Champion score is ${dimensions.champion.score}/10 (minimum 5/10 required with identified advocate)`
       );
@@ -215,6 +85,7 @@ export function evaluateStageGate(
 
     // Metrics >= 4
     if (dimensions.metrics.score < 4) {
+      blocking.push('metrics');
       blockers.push(
         `Metrics score is ${dimensions.metrics.score}/10 (minimum 4/10 required with preliminary measurable targets)`
       );
@@ -222,6 +93,7 @@ export function evaluateStageGate(
 
     // Economic Buyer >= 4 (Blocked on Acme Corp baseline where EB = 3)
     if (dimensions.economicBuyer.score < 4) {
+      blocking.push('economicBuyer');
       blockers.push(
         `Economic Buyer is not verified in discovery notes (score: ${dimensions.economicBuyer.score}/10, minimum 4/10 required)`
       );
@@ -239,16 +111,19 @@ export function evaluateStageGate(
       currentStage: stageName,
       targetStage,
       gateBlockers: blockers,
+      blockingDimensions: blocking,
     };
   }
 
   if (isStage3) {
     const blockers: string[] = [];
+    const blocking: DimensionKey[] = [];
     const targetStage = 'Stage 4 - Proposal';
 
     // Gate 3 Rules:
     // Decision Criteria >= 7
     if (dimensions.decisionCriteria.score < 7) {
+      blocking.push('decisionCriteria');
       blockers.push(
         `Decision Criteria score is ${dimensions.decisionCriteria.score}/10 (minimum 7/10 required with locked technical benchmarks)`
       );
@@ -256,6 +131,7 @@ export function evaluateStageGate(
 
     // Economic Buyer >= 6
     if (dimensions.economicBuyer.score < 6) {
+      blocking.push('economicBuyer');
       blockers.push(
         `Economic Buyer score is ${dimensions.economicBuyer.score}/10 (minimum 6/10 required with direct sponsor sign-off)`
       );
@@ -263,6 +139,7 @@ export function evaluateStageGate(
 
     // Decision Process >= 5
     if (dimensions.decisionProcess.score < 5) {
+      blocking.push('decisionProcess');
       blockers.push(
         `Decision Process score is ${dimensions.decisionProcess.score}/10 (minimum 5/10 required with formal evaluation steps mapped)`
       );
@@ -270,6 +147,7 @@ export function evaluateStageGate(
 
     // Identify Pain >= 7
     if (dimensions.identifyPain.score < 7) {
+      blocking.push('identifyPain');
       blockers.push(
         `Identify Pain score is ${dimensions.identifyPain.score}/10 (minimum 7/10 required for commercial proposal)`
       );
@@ -277,6 +155,7 @@ export function evaluateStageGate(
 
     // Champion >= 7
     if (dimensions.champion.score < 7) {
+      blocking.push('champion');
       blockers.push(
         `Champion score is ${dimensions.champion.score}/10 (minimum 7/10 required with executive access)`
       );
@@ -294,6 +173,7 @@ export function evaluateStageGate(
       currentStage: stageName,
       targetStage,
       gateBlockers: blockers,
+      blockingDimensions: blocking,
     };
   }
 
@@ -303,475 +183,174 @@ export function evaluateStageGate(
     currentStage: stageName,
     targetStage: stageName,
     gateBlockers: [],
+    blockingDimensions: [],
   };
 }
 
 /**
- * Deterministic Jev Scoring Engine (System 1)
+ * Rubric wording, copied verbatim from docs/meddpicc-rubric.md (the single source
+ * of truth). tests/jev.test.ts fails if this text drifts from the document.
  */
-export function scoreOpportunityWithJev(input: JevScoringInput): JevScoringResult {
-  const aeNotes = input.aeNotes || '';
-  const saNotes = input.saNotes || '';
-  const combined = `${aeNotes}\n${saNotes}`;
-  const sentences = extractSentences(combined);
+export const RUBRIC_TEXT = {
+  bands: {
+    unaddressed:
+      'No mention in AE or SA notes, or only speculative assumptions without customer corroboration.',
+    partial:
+      'Qualitative mention or intent expressed, but lacks quantitative metrics, formal signoff, or stakeholder verification.',
+    verified:
+      'Explicitly verified with documented evidence, stakeholder confirmation, or completed technical validation.',
+  },
+  focus: {
+    identifyPain:
+      'Deploy queue bottlenecks, slow build times (30–60m), outage risk during product launches, CDN cache invalidation limits, multi-zone latency issues.',
+    champion:
+      'Technical leaders (Head of Platform, VP Eng, Staff Architect) actively advocating for Next.js/Vercel and selling internally on Vercel\'s behalf.',
+    economicBuyer:
+      'Verified executive sponsor (CTO, VP of E-Commerce, Chief Digital Officer, CFO) with sign-off authority and confirmed budget allocation.',
+    decisionCriteria:
+      'Explicit technical requirements: Next.js App Router/Turborepo native support, Edge Middleware latency, SOC2 Type II, 99.99% SLA, and zero-downtime cutover.',
+    decisionProcess:
+      'Formal POC benchmarks, architecture review board signoff, security review milestones, and scheduled committee dates.',
+    metrics:
+      'Core Web Vitals (LCP < 1.5s, INP < 200ms), developer build-time reduction (e.g. 45m → 5m), infrastructure cost savings, conversion uplift.',
+    competition:
+      'Vendor positioning against Netlify, AWS Amplify, Cloudflare Pages, Fastly/Akamai, or in-house DIY Kubernetes/ECS deployments.',
+    paperProcess:
+      'Vendor onboarding timeline, standard MSA review, custom SLA terms, data processing addendum (DPA), and procurement approvals.',
+  } satisfies Record<DimensionKey, string>,
+  threat: {
+    low: 'Casual mention or legacy tool being replaced with full alignment on Vercel.',
+    medium:
+      'Competing solution is under active evaluation in a bake-off; evaluation criteria not yet locked.',
+    high: 'Competitor is incumbent with multi-year pricing discounts, or executive sponsor prefers incumbent vendor.',
+  },
+} as const;
 
-  // 1. Identify Pain (20%)
-  const painEvidence = findMatchingSentences(
-    sentences,
-    /(build\s*time|deploy|bottleneck|outage|queue|flash\s*sale|timeout|cache invalidation|latency|frustrated|downtime)/i
-  );
-  let painScore = 0;
-  const painGaps: string[] = [];
+/** Competitors Jev screens for; question ids are `competitor_<key>`. */
+export const COMPETITOR_TAXONOMY = {
+  netlify: 'Netlify',
+  awsAmplify: 'AWS Amplify',
+  cloudflarePages: 'Cloudflare Pages',
+  akamaiFastly: 'Akamai/Fastly',
+  diyKubernetes: 'DIY Kubernetes/ECS',
+} as const;
 
-  if (
-    (/(build\s*times?|deploy).*?(bottleneck|queue|slow|45-minute|45m|lack of isr)/i.test(combined) ||
-      /frustrated with build times/i.test(combined)) &&
-    /(timeout|outage|frustrated|cache invalidation|latency|lack of isr)/i.test(combined)
-  ) {
-    painScore = 8;
-  } else if (
-    /(build\s*time|deploy|frustrated|timeout|bottleneck|egress|peak\s*freeze)/i.test(combined)
-  ) {
-    painScore = 6;
-  } else if (painEvidence.length > 0) {
-    painScore = 4;
-  } else {
-    painScore = 1;
-    painGaps.push('Operational and business impact unquantified in discovery notes');
-  }
+const THREAT_CRITERIA = {
+  absent: 'The competitor is not mentioned or considered anywhere in the notes.',
+  low: RUBRIC_TEXT.threat.low,
+  medium: RUBRIC_TEXT.threat.medium,
+  high: RUBRIC_TEXT.threat.high,
+};
 
-  if (painScore < 8) {
-    painGaps.push('Customer has not quantified dollar cost of deploy queue bottlenecks or downtime');
-  }
+/**
+ * Jev accepts at most 10 levels per score question. Level p (0..9) stands for
+ * round(p * 10 / 9) on the rubric's 0-10 scale, worded with that value's rubric band.
+ * Jev returns a fractional level position, scaled the same way.
+ */
+const SCORE_LEVELS = 10;
+const SCORE_RUNGS = Array.from({ length: SCORE_LEVELS }, (_, p) => {
+  const value = Math.round((p * 10) / (SCORE_LEVELS - 1));
+  const status = getDimensionStatus(value);
+  return `${value}/10 (${status}): ${RUBRIC_TEXT.bands[status]}`;
+});
 
-  const identifyPain: DimensionResult = {
-    key: 'identifyPain',
-    label: CANONICAL_DIMENSIONS.identifyPain.label,
-    weight: CANONICAL_DIMENSIONS.identifyPain.weight,
-    score: painScore,
-    status: getDimensionStatus(painScore),
-    confidence: painEvidence.length >= 2 ? 0.9 : painEvidence.length === 1 ? 0.75 : 0.2,
-    evidence: painEvidence,
-    gaps: painGaps,
+function toTenPointScore(position: number): number {
+  const scaled = (position * 10) / (SCORE_LEVELS - 1);
+  return Math.max(0, Math.min(10, Math.round(scaled)));
+}
+
+export function buildJevEvaluationRequest(input: JevScoringInput) {
+  const dimensionQuestions = Object.fromEntries(
+    (Object.keys(CANONICAL_DIMENSIONS) as DimensionKey[]).map((key) => [
+      key,
+      {
+        type: 'score' as const,
+        instructions: `Score the MEDDPICC dimension "${CANONICAL_DIMENSIONS[key].label}" from the AE and SA notes. Vercel Enterprise evaluation focus: ${RUBRIC_TEXT.focus[key]}`,
+        criteria: SCORE_RUNGS,
+      },
+    ])
+  ) as Record<DimensionKey, { type: 'score'; instructions: string; criteria: string[] }>;
+
+  const competitorQuestions = Object.fromEntries(
+    Object.entries(COMPETITOR_TAXONOMY).map(([key, name]) => [
+      `competitor_${key}`,
+      {
+        type: 'choice' as const,
+        instructions: `Classify the competitive threat from ${name} in this opportunity.`,
+        criteria: THREAT_CRITERIA,
+      },
+    ])
+  ) as Record<string, { type: 'choice'; instructions: string; criteria: typeof THREAT_CRITERIA }>;
+
+  return {
+    state: {
+      stageName: input.stageName,
+      amount: input.amount ?? null,
+      aeNotes: input.aeNotes,
+      saNotes: input.saNotes,
+    },
+    questions: { ...dimensionQuestions, ...competitorQuestions } as Record<string, EvaluationQuestion>,
   };
+}
 
-  // 2. Champion (15%)
-  const championEvidence = findMatchingSentences(
-    sentences,
-    /(head of platform|head of engineering|vp eng|vp of engineering|tech lead|architect|advocate|champion|decision rests with)/i
-  );
-  let champScore = 0;
-  const champGaps: string[] = [];
+/** The subset of an AI SDK evaluation result that System 1 reads. */
+export interface JevEvaluation {
+  answers: Record<string, { type: string; score?: number; choice?: string } | undefined>;
+  providerMetadata?: Record<string, unknown> | undefined;
+}
 
-  if (
-    /(technical decision rests with|driving vercel|actively advocating)/i.test(combined) &&
-    /(head of platform|vp eng|staff architect)/i.test(combined)
-  ) {
-    champScore = 7;
-  } else if (/(head of engineering|head of platform|vp eng|tech lead)/i.test(combined)) {
-    champScore = 6;
-  } else if (championEvidence.length > 0) {
-    champScore = 4;
-  } else {
-    champScore = 2;
-    champGaps.push('No technical advocate or internal champion identified');
+function confidenceFor(metadata: JevEvaluation['providerMetadata'], key: DimensionKey): number {
+  const raw = (metadata?.typesafe as { confidence?: unknown } | undefined)?.confidence;
+  const value =
+    typeof raw === 'number' ? raw : raw && typeof raw === 'object' ? (raw as Record<string, unknown>)[key] : undefined;
+  if (typeof value !== 'number' || value < 0 || value > 1) {
+    throw new Error(`Jev returned no usable providerMetadata.typesafe.confidence for "${key}"`);
+  }
+  return value;
+}
+
+/** Pure mapping from Jev's typed answers to the System 1 result. Throws on any missing answer. */
+export function interpretJevEvaluation(
+  input: JevScoringInput,
+  evaluation: JevEvaluation
+): JevScoringResult {
+  const dimensions = {} as JevScoringResult['dimensions'];
+  const scores = {} as Record<DimensionKey, number>;
+  for (const [key, config] of Object.entries(CANONICAL_DIMENSIONS) as [DimensionKey, DimensionConfig][]) {
+    const answer = evaluation.answers[key];
+    if (answer?.type !== 'score' || typeof answer.score !== 'number') {
+      throw new Error(`Jev returned no score answer for "${key}"`);
+    }
+    const score = toTenPointScore(answer.score);
+    scores[key] = score;
+    dimensions[key] = {
+      key,
+      label: config.label,
+      weight: config.weight,
+      score,
+      status: getDimensionStatus(score),
+      confidence: confidenceFor(evaluation.providerMetadata, key),
+    };
   }
 
-  if (champScore < 8) {
-    champGaps.push('Internal advocate has not been tested for influence or direct access to Economic Buyer');
-  }
-
-  const champion: DimensionResult = {
-    key: 'champion',
-    label: CANONICAL_DIMENSIONS.champion.label,
-    weight: CANONICAL_DIMENSIONS.champion.weight,
-    score: champScore,
-    status: getDimensionStatus(champScore),
-    confidence: championEvidence.length >= 1 ? 0.8 : 0.2,
-    evidence: championEvidence,
-    gaps: champGaps,
-  };
-
-  // 3. Economic Buyer (15%)
-  const ebEvidence = findMatchingSentences(
-    sentences,
-    /(vp of e-commerce|cto|cfo|ceo|cmo|budget allocated|\$\d+|acv|signoff|sign-off|unilateral)/i
-  );
-  let ebScore = 0;
-  const ebGaps: string[] = [];
-
-  // Check if verified unilateral sign-off authority confirmed
-  if (/(unilateral|verified signoff|signoff authority up to|cto approval co-signed)/i.test(combined)) {
-    ebScore = 8;
-  } else if (
-    /(ceo and cmo sponsor|budget signed off|authorized executive)/i.test(combined)
-  ) {
-    ebScore = 6;
-  } else if (
-    /(met with vp of e-commerce|budget allocated|\$\d+k acv)/i.test(combined)
-  ) {
-    // In Acme Corp baseline, met with VP of E-Commerce and budget mentioned, but signoff authority unconfirmed
-    ebScore = 3;
-    ebGaps.push('Discretionary budget sign-off authority not verified; need to confirm whether VP holds unilateral signoff');
-  } else if (/(cto|cfo|ceo)/i.test(combined)) {
-    ebScore = 2;
-    ebGaps.push('Executive sponsor mentioned casually without budget allocation confirmation');
-  } else {
-    ebScore = 1;
-    ebGaps.push('Economic Buyer unaddressed; no budget authority identified');
-  }
-
-  const economicBuyer: DimensionResult = {
-    key: 'economicBuyer',
-    label: CANONICAL_DIMENSIONS.economicBuyer.label,
-    weight: CANONICAL_DIMENSIONS.economicBuyer.weight,
-    score: ebScore,
-    status: getDimensionStatus(ebScore),
-    confidence: ebEvidence.length >= 1 ? 0.75 : 0.2,
-    evidence: ebEvidence,
-    gaps: ebGaps,
-  };
-
-  // 4. Decision Criteria (15%)
-  const dcEvidence = findMatchingSentences(
-    sentences,
-    /(app router|turborepo|next\.js|isr|cache invalidation|edge middleware|latency|zero-downtime|soc2|vpc|sso|egress|core web vitals|lcp|sanity)/i
-  );
-  let dcScore = 0;
-  const dcGaps: string[] = [];
-
-  if (
-    /(app router|turborepo)/i.test(combined) &&
-    /(cache invalidation|edge middleware|zero-downtime|isr)/i.test(combined)
-  ) {
-    dcScore = 7;
-  } else if (
-    /(soc2|vpc|egress|sso|core web vitals|preview branches)/i.test(combined)
-  ) {
-    dcScore = 6;
-  } else if (dcEvidence.length > 0) {
-    dcScore = 4;
-  } else {
-    dcScore = 2;
-    dcGaps.push('Technical criteria and architectural benchmarks undefined');
-  }
-
-  if (dcScore < 8) {
-    dcGaps.push('Formal quantitative edge latency SLAs and technical acceptance benchmarks not locked in writing');
-  }
-
-  const decisionCriteria: DimensionResult = {
-    key: 'decisionCriteria',
-    label: CANONICAL_DIMENSIONS.decisionCriteria.label,
-    weight: CANONICAL_DIMENSIONS.decisionCriteria.weight,
-    score: dcScore,
-    status: getDimensionStatus(dcScore),
-    confidence: dcEvidence.length >= 2 ? 0.85 : dcEvidence.length === 1 ? 0.7 : 0.2,
-    evidence: dcEvidence,
-    gaps: dcGaps,
-  };
-
-  // 5. Decision Process (10%)
-  const dpEvidence = findMatchingSentences(
-    sentences,
-    /(contract expires|90 days|q4 peak freeze|nov 1|timeline|milestone|poc|review|schedule)/i
-  );
-  let dpScore = 0;
-  const dpGaps: string[] = [];
-
-  if (/(launch before|peak freeze|nov 1)/i.test(combined)) {
-    dpScore = 5;
-  } else if (/(contract expires in 90 days|expires in \d+ days)/i.test(combined)) {
-    dpScore = 4;
-  } else if (dpEvidence.length > 0) {
-    dpScore = 3;
-  } else {
-    dpScore = 2;
-    dpGaps.push('Evaluation workflow, milestone dates, and decision schedule undefined');
-  }
-
-  if (dpScore < 8) {
-    dpGaps.push('Formal evaluation committee dates, architecture review board milestones, and security review schedule undefined');
-  }
-
-  const decisionProcess: DimensionResult = {
-    key: 'decisionProcess',
-    label: CANONICAL_DIMENSIONS.decisionProcess.label,
-    weight: CANONICAL_DIMENSIONS.decisionProcess.weight,
-    score: dpScore,
-    status: getDimensionStatus(dpScore),
-    confidence: dpEvidence.length >= 1 ? 0.7 : 0.2,
-    evidence: dpEvidence,
-    gaps: dpGaps,
-  };
-
-  // 6. Metrics (10%)
-  const metricsEvidence = findMatchingSentences(
-    sentences,
-    /(core web vitals|lcp\s*<\s*1\.5s|lcp|inp|45-minute|45m|build times|\$\d+k acv)/i
-  );
-  let metricsScore = 0;
-  const metricsGaps: string[] = [];
-
-  if (/(core web vitals|lcp\s*<\s*1\.5s)/i.test(combined)) {
-    metricsScore = 6;
-  } else if (/(45-minute|45m|build times)/i.test(combined) && /\$\d+/i.test(combined)) {
-    metricsScore = 5;
-  } else if (metricsEvidence.length > 0) {
-    metricsScore = 3;
-  } else {
-    metricsScore = 2;
-    metricsGaps.push('No quantitative KPIs or performance targets defined');
-  }
-
-  if (metricsScore < 8) {
-    metricsGaps.push('Quantifiable business ROI, conversion targets, and build-time reduction metrics not fully specified');
-  }
-
-  const metrics: DimensionResult = {
-    key: 'metrics',
-    label: CANONICAL_DIMENSIONS.metrics.label,
-    weight: CANONICAL_DIMENSIONS.metrics.weight,
-    score: metricsScore,
-    status: getDimensionStatus(metricsScore),
-    confidence: metricsEvidence.length >= 1 ? 0.75 : 0.2,
-    evidence: metricsEvidence,
-    gaps: metricsGaps,
-  };
-
-  // 7. Competition (10%)
-  const competitiveFlags = scanCompetitiveMentions(combined);
-  const compEvidence = findMatchingSentences(
-    sentences,
-    /(netlify|amplify|cloudflare|akamai|fastly|kubernetes|k8s|ecs|competitor|discount)/i
-  );
-  let compScore = 0;
-  const compGaps: string[] = [];
-
-  if (competitiveFlags.length === 0) {
-    // No competitors detected
-    compScore = 6;
-  } else {
-    const hasHighThreat = competitiveFlags.some((c) => c.threatLevel === 'high');
-    if (hasHighThreat) {
-      compScore = 4;
-      compGaps.push('Incumbent competitor offering aggressive renewal discount; counter-positioning required');
-    } else {
-      compScore = 5;
-      compGaps.push('Competitor under active evaluation; Vercel enterprise differentiators need to be demonstrated');
+  const competitiveFlags: JevScoringResult['competitiveFlags'] = [];
+  for (const [key, name] of Object.entries(COMPETITOR_TAXONOMY)) {
+    const answer = evaluation.answers[`competitor_${key}`];
+    if (answer?.type !== 'choice' || !answer.choice) {
+      throw new Error(`Jev returned no choice answer for "competitor_${key}"`);
+    }
+    if (answer.choice !== 'absent') {
+      competitiveFlags.push({ name, threatLevel: CompetitiveThreatLevelSchema.parse(answer.choice) });
     }
   }
 
-  const competition: DimensionResult = {
-    key: 'competition',
-    label: CANONICAL_DIMENSIONS.competition.label,
-    weight: CANONICAL_DIMENSIONS.competition.weight,
-    score: compScore,
-    status: getDimensionStatus(compScore),
-    confidence: competitiveFlags.length > 0 ? 0.85 : 0.5,
-    evidence: compEvidence,
-    gaps: compGaps,
-  };
-
-  // 8. Paper Process (5%)
-  const ppEvidence = findMatchingSentences(
-    sentences,
-    /(procurement|legal|msa|dpa|security team|vendor onboarding)/i
-  );
-  let ppScore = 0;
-  const ppGaps: string[] = [];
-
-  if (/(soc2|security team)/i.test(combined)) {
-    ppScore = 3;
-  } else if (ppEvidence.length > 0) {
-    ppScore = 3;
-  } else {
-    ppScore = 2;
-  }
-  ppGaps.push('Procurement onboarding timeline, standard Enterprise MSA terms, and legal/security review path undefined');
-
-  const paperProcess: DimensionResult = {
-    key: 'paperProcess',
-    label: CANONICAL_DIMENSIONS.paperProcess.label,
-    weight: CANONICAL_DIMENSIONS.paperProcess.weight,
-    score: ppScore,
-    status: getDimensionStatus(ppScore),
-    confidence: ppEvidence.length > 0 ? 0.6 : 0.2,
-    evidence: ppEvidence,
-    gaps: ppGaps,
-  };
-
-  const dimensions = {
-    identifyPain,
-    champion,
-    economicBuyer,
-    decisionCriteria,
-    decisionProcess,
-    metrics,
-    competition,
-    paperProcess,
-  };
-
-  const overallScore = computeCompositeScore({
-    identifyPain: identifyPain.score,
-    champion: champion.score,
-    economicBuyer: economicBuyer.score,
-    decisionCriteria: decisionCriteria.score,
-    decisionProcess: decisionProcess.score,
-    metrics: metrics.score,
-    competition: competition.score,
-    paperProcess: paperProcess.score,
-  });
-
-  const stageGate = evaluateStageGate(input.stageName, dimensions, overallScore);
-
-  const rawResult: JevScoringResult = {
-    opportunityId: input.opportunityId || input.dealId || '',
+  const overallScore = computeCompositeScore(scores);
+  return JevScoringResultSchema.parse({
+    opportunityId: input.opportunityId,
     overallScore,
     dimensions,
     competitiveFlags,
-    stageGate,
+    stageGate: evaluateStageGate(input.stageName, dimensions, overallScore),
     evaluatedAt: new Date().toISOString(),
-  };
-
-  // Strict validation against Zod schema
-  return JevScoringResultSchema.parse(rawResult);
-}
-
-export function hasAiGatewayCredentials(): boolean {
-  if (process.env.NODE_ENV === 'test') {
-    return false;
-  }
-  return Boolean(
-    process.env.AI_GATEWAY_API_KEY ||
-      process.env.AI_GATEWAY_TOKEN ||
-      process.env.VERCEL_OIDC_TOKEN
-  );
-}
-
-const JEV_SYSTEM_PROMPT = `You are Jev, the Vercel Enterprise Deal Qualification & MEDDPICC Evaluation Engine (System 1).
-Your task is to analyze Enterprise Opportunity notes (AE notes and SA discovery notes) and evaluate MEDDPICC qualification and Stage Gate readiness.
-
-You MUST score the 8 canonical MEDDPICC dimensions (each score 0-10, status: 'unaddressed' | 'partial' | 'verified', confidence: 0.0-1.0, evidence: array of text citations, gaps: array of unaddressed items):
-1. identifyPain (weight 0.20): Core operational/business pain, cost of inaction, timeline urgency
-2. champion (weight 0.15): Tested internal advocate with influence and access to economic buyer
-3. economicBuyer (weight 0.15): Discretionary budget sign-off authority confirmed
-4. decisionCriteria (weight 0.15): Technical benchmarks, architecture requirements, compliance
-5. decisionProcess (weight 0.10): Formal milestone timeline, technical evaluation steps
-6. metrics (weight 0.10): Quantifiable ROI, performance metrics, conversion impact
-7. competition (weight 0.10): Threat level and positioning against Netlify, AWS Amplify, Cloudflare, Akamai, DIY Kubernetes
-8. paperProcess (weight 0.05): Legal review, infosec questionnaire, MSA and procurement path
-
-Also detect competitive mentions with threatLevel ('low' | 'medium' | 'high'), evidence, and contextSummary.
-Evaluate Stage Gate blockers for advancing past the current stage.
-
-Return ONLY a valid JSON object matching:
-{
-  "opportunityId": string,
-  "dimensions": {
-    "identifyPain": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "champion": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "economicBuyer": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "decisionCriteria": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "decisionProcess": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "metrics": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "competition": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] },
-    "paperProcess": { "score": number, "status": "unaddressed"|"partial"|"verified", "confidence": number, "evidence": string[], "gaps": string[] }
-  },
-  "competitiveFlags": [
-    { "name": string, "threatLevel": "low"|"medium"|"high", "evidence": string, "contextSummary": string }
-  ],
-  "stageGate": {
-    "gateReady": boolean,
-    "currentStage": string,
-    "targetStage": string,
-    "gateBlockers": string[]
-  }
-}`;
-
-/**
- * Score an Opportunity using Jev AI model dispatched through Vercel AI Gateway (via Vercel AI SDK).
- * Falls back safely to deterministic baseline when offline or in test environments.
- */
-export async function scoreOpportunityWithJevAI(
-  input: JevScoringInput,
-  timeoutMs: number = 15000
-): Promise<JevScoringResult> {
-  if (!hasAiGatewayCredentials()) {
-    return scoreOpportunityWithJev(input);
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const { text: jsonText } = await generateText({
-      model: gateway('openai/gpt-4o-mini'),
-      system: JEV_SYSTEM_PROMPT,
-      prompt: JSON.stringify({
-        opportunityId: input.opportunityId || input.dealId,
-        name: input.name,
-        accountName: input.accountName,
-        stageName: input.stageName,
-        amount: input.amount,
-        aeNotes: input.aeNotes,
-        saNotes: input.saNotes,
-      }),
-      abortSignal: controller.signal,
-    });
-
-    if (!jsonText) {
-      throw new Error('No JSON output returned from Jev AI on Vercel AI Gateway');
-    }
-
-    const cleaned = jsonText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    const parsed = JSON.parse(cleaned);
-
-    const dims = parsed.dimensions;
-    const overallScore = computeCompositeScore({
-      identifyPain: Number(dims?.identifyPain?.score ?? 0),
-      champion: Number(dims?.champion?.score ?? 0),
-      economicBuyer: Number(dims?.economicBuyer?.score ?? 0),
-      decisionCriteria: Number(dims?.decisionCriteria?.score ?? 0),
-      decisionProcess: Number(dims?.decisionProcess?.score ?? 0),
-      metrics: Number(dims?.metrics?.score ?? 0),
-      competition: Number(dims?.competition?.score ?? 0),
-      paperProcess: Number(dims?.paperProcess?.score ?? 0),
-    });
-
-    // Populate metadata labels & weights on dimensions
-    for (const [key, config] of Object.entries(CANONICAL_DIMENSIONS) as [
-      keyof JevScoringResult['dimensions'],
-      DimensionConfig,
-    ][]) {
-      if (dims[key]) {
-        dims[key].key = key;
-        dims[key].label = config.label;
-        dims[key].weight = config.weight;
-        dims[key].score = Math.max(0, Math.min(10, Math.round(Number(dims[key].score || 0))));
-        dims[key].status = getDimensionStatus(dims[key].score);
-        dims[key].evidence = Array.isArray(dims[key].evidence) ? dims[key].evidence : [];
-        dims[key].gaps = Array.isArray(dims[key].gaps) ? dims[key].gaps : [];
-        dims[key].confidence = Number(dims[key].confidence || 0.8);
-      }
-    }
-
-    const stageGate = evaluateStageGate(input.stageName, dims, overallScore);
-
-    const result: JevScoringResult = {
-      opportunityId: input.opportunityId || input.dealId || '',
-      overallScore,
-      dimensions: dims,
-      competitiveFlags: Array.isArray(parsed.competitiveFlags) ? parsed.competitiveFlags : [],
-      stageGate: parsed.stageGate?.gateBlockers ? parsed.stageGate : stageGate,
-      evaluatedAt: new Date().toISOString(),
-    };
-
-    return JevScoringResultSchema.parse(result);
-  } catch (err) {
-    console.warn('Jev AI Gateway evaluation failed, falling back to deterministic baseline:', err);
-    return scoreOpportunityWithJev(input);
-  } finally {
-    clearTimeout(timer);
-  }
+  });
 }

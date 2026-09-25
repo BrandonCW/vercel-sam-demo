@@ -1,3 +1,7 @@
+---
+description: Describes the canonical demo scenarios (Acme/Netlify, Globex/AWS Amplify, Soylent/Headless) to pick a scenarioId for reset_crm_data.
+---
+
 # Scenario Seeder Skill
 
 This skill defines the canonical demo scenarios and seed datasets used to simulate enterprise CRM opportunities:

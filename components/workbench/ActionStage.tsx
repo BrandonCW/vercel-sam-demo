@@ -20,7 +20,6 @@ import {
   CheckCircle2,
   Copy,
   Check,
-  AlertTriangle,
 } from 'lucide-react';
 
 interface ActionStageProps {
@@ -28,8 +27,8 @@ interface ActionStageProps {
   selectedModel: System2ModelOption;
   sessionState: AssessmentSessionState;
   dynamicForm: JsonRenderForm | null;
-  executionMode?: 'live_model' | 'deterministic_fallback' | null;
-  fallbackReason?: string | null;
+  /** Jev has scored and System 2 is still running: show the running indicator. */
+  isSystem2Running?: boolean;
   onStartAssessment?: () => void;
   isAssessing?: boolean;
   onSubmitFeedback?: (
@@ -37,6 +36,8 @@ interface ActionStageProps {
     notesDelta?: string
   ) => Promise<void> | void;
   isSubmittingFeedback?: boolean;
+  /** Disable the discovery form without the evaluating panel (e.g. while a session resumes). */
+  isFormLocked?: boolean;
 }
 
 export function ActionStage({
@@ -44,12 +45,12 @@ export function ActionStage({
   selectedModel,
   sessionState,
   dynamicForm,
-  executionMode,
-  fallbackReason,
+  isSystem2Running = false,
   onStartAssessment,
   isAssessing = false,
   onSubmitFeedback,
   isSubmittingFeedback = false,
+  isFormLocked = false,
 }: ActionStageProps) {
   const [hasCopied, setHasCopied] = useState(false);
 
@@ -259,44 +260,6 @@ export function ActionStage({
               </div>
             </div>
 
-            {/* Execution Pathway Indicator (Clear distinction between Live Model vs Deterministic Fallback) */}
-            {executionMode === 'deterministic_fallback' ? (
-              <div className="mt-4 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
-                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 flex-shrink-0 mt-0.5">
-                  <AlertTriangle className="w-4 h-4" />
-                </div>
-                <div className="text-xs space-y-0.5">
-                  <div className="font-bold text-amber-300 flex items-center gap-2">
-                    <span>Deterministic Scenario Fallback Pathway</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                      OFFLINE / FALLBACK
-                    </span>
-                  </div>
-                  <p className="text-zinc-300 text-[11px] leading-relaxed">
-                    {fallbackReason ||
-                      `No live API key detected for ${selectedModel}. System 2 executed the high-fidelity deterministic scenario pipeline.`}
-                  </p>
-                </div>
-              </div>
-            ) : executionMode === 'live_model' ? (
-              <div className="mt-4 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-3">
-                <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 flex-shrink-0 mt-0.5">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="text-xs space-y-0.5">
-                  <div className="font-bold text-emerald-300 flex items-center gap-2">
-                    <span>Live AI Model Execution Active</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                      LIVE MODEL
-                    </span>
-                  </div>
-                  <p className="text-zinc-300 text-[11px] leading-relaxed">
-                    Live inference performed by <strong>{selectedModel}</strong>. Dynamic discovery questions and battlecards were synthesized in real time.
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
             {/* Prominent Amber Zero-Cost Paused Banner */}
             <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-amber-950/20 border-2 border-amber-500/40 shadow-lg shadow-amber-950/30 flex items-start gap-3.5">
               <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/40 flex-shrink-0">
@@ -318,6 +281,7 @@ export function ActionStage({
             form={dynamicForm}
             onSubmit={handleFormSubmit}
             isSubmitting={isSubmittingFeedback}
+            isLocked={isFormLocked}
             submitButtonText="Submit Discovery Findings & Run Delta Re-scoring"
           />
         </div>
@@ -362,7 +326,7 @@ export function ActionStage({
                 1. System 1 (Jev)
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
-                Deterministic 8-dimension scoring, evidence extraction, and competitor detection in &lt;1.5s.
+                8-dimension MEDDPICC scoring through Vercel AI Gateway.
               </p>
             </div>
 
@@ -433,6 +397,17 @@ export function ActionStage({
               </button>
             </div>
           </div>
+
+          {isSystem2Running && (
+            <div
+              role="status"
+              className="mt-5 flex items-center gap-2 p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 text-xs text-purple-200"
+            >
+              <span className="inline-block w-3.5 h-3.5 border-2 border-purple-300/30 border-t-purple-300 rounded-full animate-spin" />
+              <span className="font-semibold">System 2 analysis running&hellip;</span>
+              <span className="text-zinc-400">Jev scores are in; citations and the discovery form appear when System 2 finishes.</span>
+            </div>
+          )}
 
           {/* Zero-Cost Banner Preview */}
           <div className="mt-5 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">

@@ -37,7 +37,7 @@ A deterministic, pre-canned enterprise customer profile used to seed the simulat
 _Avoid_: Mock deal, fixture, test case
 
 **System 1**:
-The fast, deterministic rubric evaluation layer (powered by Jev) that extracts structured MEDDPICC dimensions, detects competitors, and computes stage gate thresholds without deep reasoning overhead.
+The fast rubric evaluation layer (powered by Jev via Vercel AI Gateway) that extracts structured MEDDPICC dimensions, detects competitors, and computes stage gate thresholds without deep reasoning overhead.
 _Avoid_: Heuristic model, classifier, fast LLM
 
 **Stage Gate**:
@@ -45,7 +45,7 @@ The formal criteria threshold required before an Opportunity can advance from it
 _Avoid_: Stage exit criteria, deal milestone gate
 
 **System 2**:
-The deep-reasoning LLM analysis layer that synthesizes qualification gaps, constructs targeted competitive playbooks, and formulates interactive questions for the Solutions Architect.
+The deep-reasoning LLM analysis layer that synthesizes qualification gaps, constructs targeted competitive playbooks, and formulates interactive questions for the Solutions Architect. Like System 1, it runs as a durable step of the `run_assessment` workflow tool; neither runs in a subagent.
 _Avoid_: Reasoning engine, slow LLM, deep model
 
 **JSON Render**:
@@ -61,5 +61,5 @@ The rapid secondary evaluation executed by System 1 after an SA submits response
 _Avoid_: Re-evaluation, secondary grading, score update
 
 **Assessment Session**:
-The stateful, discrete evaluation lifecycle bounded between an initial assessment trigger and final CRM write-back, which pauses at zero compute cost while awaiting SA feedback.
+The stateful, discrete evaluation lifecycle bounded between an initial assessment trigger and final CRM write-back, which pauses at zero compute cost while awaiting SA feedback. It is one durable eve session and one `run_assessment` workflow call, sequenced in code; the call's result (or its failure) is the session's verdict, decided in code.
 _Avoid_: Evaluation run, qualification job, agent thread

@@ -17,7 +17,7 @@ $$\text{Composite Score} = \sum_{i=1}^{8} \left( \text{Dimension Score}_i \times
 | **Economic Buyer** | `economicBuyer` | **15%** | Individual with unilateral discretionary power to authorize budget. | Verified executive sponsor (CTO, VP of E-Commerce, Chief Digital Officer, CFO) with sign-off authority and confirmed budget allocation. |
 | **Decision Criteria** | `decisionCriteria` | **15%** | Technical and commercial standards used to judge solutions. | Explicit technical requirements: Next.js App Router/Turborepo native support, Edge Middleware latency, SOC2 Type II, 99.99% SLA, and zero-downtime cutover. |
 | **Decision Process** | `decisionProcess` | **10%** | Step-by-step workflow and timeline to reach a buying decision. | Formal POC benchmarks, architecture review board signoff, security review milestones, and scheduled committee dates. |
-| **Metrics** | `metrics` | **10%** | Quantifiable economic and operational targets. | Core Web Vitals (LCP < 1.5s, INP < 200ms), developer build-time reduction (e.g. 45m $\rightarrow$ 5m), infrastructure cost savings, conversion uplift. |
+| **Metrics** | `metrics` | **10%** | Quantifiable economic and operational targets. | Core Web Vitals (LCP < 1.5s, INP < 200ms), developer build-time reduction (e.g. 45m → 5m), infrastructure cost savings, conversion uplift. |
 | **Competition** | `competition` | **10%** | Incumbent or competing vendors under active consideration. | Vendor positioning against Netlify, AWS Amplify, Cloudflare Pages, Fastly/Akamai, or in-house DIY Kubernetes/ECS deployments. |
 | **Paper Process** | `paperProcess` | **5%** | Legal, procurement, and contracting procedures required to close. | Vendor onboarding timeline, standard MSA review, custom SLA terms, data processing addendum (DPA), and procurement approvals. |
 
@@ -48,6 +48,7 @@ An Opportunity cannot advance to subsequent pipeline stages without passing the 
 - **Identify Pain**: $\ge 6 / 10$ (`partial` or higher with clear technical/business blocker)
 - **Champion**: $\ge 5 / 10$ (Identified advocate with internal credibility)
 - **Metrics**: $\ge 4 / 10$ (Preliminary measurable targets identified)
+- **Economic Buyer**: $\ge 4 / 10$ (Budget sponsor at least identified in discovery)
 - **Overall Composite Score**: $\ge 50 / 100$
 - **Gate Failure Output**: Flagged as blocked with specific missing criteria (e.g., `"Cannot advance to Technical Validation: No internal Champion identified"`).
 

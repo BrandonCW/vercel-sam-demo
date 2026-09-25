@@ -10,8 +10,6 @@ export const DimensionResultSchema = z.object({
   score: z.number().int().min(0).max(10),
   status: DimensionStatusSchema,
   confidence: z.number().min(0).max(1),
-  evidence: z.array(z.string()),
-  gaps: z.array(z.string()),
 });
 export type DimensionResult = z.infer<typeof DimensionResultSchema>;
 
@@ -21,8 +19,6 @@ export type CompetitiveThreatLevel = z.infer<typeof CompetitiveThreatLevelSchema
 export const CompetitiveMentionSchema = z.object({
   name: z.string(),
   threatLevel: CompetitiveThreatLevelSchema,
-  evidence: z.string(),
-  contextSummary: z.string(),
 });
 export type CompetitiveMention = z.infer<typeof CompetitiveMentionSchema>;
 
@@ -31,6 +27,8 @@ export const StageGateEvaluationSchema = z.object({
   currentStage: z.string(),
   targetStage: z.string(),
   gateBlockers: z.array(z.string()),
+  /** Dimension keys whose score is below the gate threshold (structured form of gateBlockers). */
+  blockingDimensions: z.array(z.string()).default([]),
 });
 export type StageGateEvaluation = z.infer<typeof StageGateEvaluationSchema>;
 

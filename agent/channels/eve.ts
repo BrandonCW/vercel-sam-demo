@@ -1,6 +1,6 @@
 import { eveChannel } from "eve/channels/eve";
-import { localDev, vercelOidc, none } from "eve/channels/auth";
+import { EVE_CHANNEL_AUTH } from "@/lib/eve-auth";
 
 export default eveChannel({
-  auth: [localDev(), vercelOidc(), none()],
+  auth: EVE_CHANNEL_AUTH,
 });

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthEnv } from '@/lib/env';
 import { COOKIE_NAME, SESSION_MAX_AGE, createSessionToken } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -6,23 +7,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { password } = body;
 
-    const expectedPassword = process.env.APP_PASSWORD;
-
-    if (!expectedPassword) {
-      // If no APP_PASSWORD is configured, allow login or create dev session
-      const token = await createSessionToken('dev');
-      const response = NextResponse.json({ success: true, message: 'Auth bypassed (no APP_PASSWORD)' });
-      response.cookies.set({
-        name: COOKIE_NAME,
-        value: token,
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: SESSION_MAX_AGE,
-      });
-      return response;
-    }
+    const { appPassword: expectedPassword } = getAuthEnv();
 
     if (!password || password !== expectedPassword) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
@@ -43,7 +28,7 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
+      { error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

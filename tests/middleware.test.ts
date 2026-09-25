@@ -49,7 +49,7 @@ describe('Middleware Security Gate (tests/middleware.test.ts)', () => {
       expect(pageRes.headers.get('location')).toBeNull();
 
       // Protected API route without session cookie
-      const apiReq = createRequest('http://localhost:3000/api/qualification/assess');
+      const apiReq = createRequest('http://localhost:3000/api/crm/reset');
       const apiRes = await middleware(apiReq);
       expect(apiRes.status).toBe(200);
       expect(apiRes.headers.get('location')).toBeNull();
@@ -70,8 +70,14 @@ describe('Middleware Security Gate (tests/middleware.test.ts)', () => {
       expect(location).toContain('/login?redirect=%2Fworkbench');
     });
 
+    it('returns 401 JSON, not a login redirect, for unauthenticated eve agent requests (useEveAgent fetches)', async () => {
+      const res = await middleware(createRequest('http://localhost:3000/eve/v1/session'));
+      expect(res.status).toBe(401);
+      expect(res.headers.get('location')).toBeNull();
+    });
+
     it('returns 401 JSON for unauthenticated API requests', async () => {
-      const req = createRequest('http://localhost:3000/api/qualification/assess');
+      const req = createRequest('http://localhost:3000/api/crm/reset');
       const res = await middleware(req);
 
       expect(res.status).toBe(401);
@@ -137,7 +143,7 @@ describe('Middleware Security Gate (tests/middleware.test.ts)', () => {
       expect(pageRes.status).toBe(200);
       expect(pageRes.headers.get('location')).toBeNull();
 
-      const apiReq = createRequest('http://localhost:3000/api/qualification/assess', {
+      const apiReq = createRequest('http://localhost:3000/api/crm/reset', {
         cookies: { [COOKIE_NAME]: validToken },
       });
       const apiRes = await middleware(apiReq);
@@ -155,7 +161,7 @@ describe('Middleware Security Gate (tests/middleware.test.ts)', () => {
       expect(pageRes.status).toBe(307);
       expect(pageRes.headers.get('location')).toContain('/login?redirect=%2Fopportunities');
 
-      const apiReq = createRequest('http://localhost:3000/api/qualification/feedback', {
+      const apiReq = createRequest('http://localhost:3000/eve/v1/session', {
         cookies: { [COOKIE_NAME]: invalidToken },
       });
       const apiRes = await middleware(apiReq);

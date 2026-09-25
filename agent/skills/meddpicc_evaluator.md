@@ -1,3 +1,7 @@
+---
+description: Reference for MEDDPICC dimensions and Gate 2/3 exit criteria when explaining a Jev score or stage gate result. The rules are applied in code; docs/meddpicc-rubric.md is the source of truth.
+---
+
 # MEDDPICC Rubric Evaluator Skill
 
 This skill provides the standard evaluation rules, formulas, and weights for enterprise deal qualification:
