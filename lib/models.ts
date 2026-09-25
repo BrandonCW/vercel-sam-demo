@@ -20,13 +20,16 @@ export interface ModelConfig {
   badge: string;
 }
 
-/** Root agent (orchestration only: it calls the tools and reports one line). */
-export const DEFAULT_AGENT_MODEL: System2ModelOption = 'anthropic/claude-haiku-4.5';
-
-/**
- * System 2 default. Not Haiku 4.5: through the Gateway it returns only the first property of
- * the System 2 object and stops, so the call fails schema validation (issue 18).
+/*
+ * Defaults are Sonnet 5, not Haiku 4.5 (issue 18). Through the Gateway, Haiku 4.5 did not produce
+ * structured output: the root's turn outcome failed (OUTPUT_SCHEMA_NOT_FULFILLED) in 4/4 live
+ * sessions, and the System 2 object stopped after its first property in 5/5 calls.
  */
+
+/** Root agent (orchestration only: it calls the tools and reports one line). */
+export const DEFAULT_AGENT_MODEL: System2ModelOption = 'anthropic/claude-sonnet-5';
+
+/** System 2 when a turn names no model. */
 export const DEFAULT_SYSTEM2_MODEL: System2ModelOption = 'anthropic/claude-sonnet-5';
 
 export const System2ModelSchema = z.enum(

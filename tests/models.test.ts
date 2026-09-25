@@ -29,15 +29,16 @@ describe('System 2 model configuration', () => {
     ]);
   });
 
-  it('runs the root agent on Claude Haiku 4.5 unless AGENT_MODEL_ID overrides it', () => {
-    expect(DEFAULT_AGENT_MODEL).toBe('anthropic/claude-haiku-4.5');
-    expect(resolveAgentModel({})).toBe('anthropic/claude-haiku-4.5');
-    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('anthropic/claude-haiku-4.5');
-    expect(resolveAgentModel({ AGENT_MODEL_ID: 'anthropic/claude-sonnet-5' })).toBe('anthropic/claude-sonnet-5');
+  // Through the Gateway, Haiku 4.5 did not produce structured output: the root's turn outcome
+  // failed in 4/4 live sessions, and the System 2 object in 5/5 calls (issue 18). Both keep
+  // Sonnet 5 as the default until that is resolved; Haiku stays selectable.
+  it('runs the root agent on Claude Sonnet 5 unless AGENT_MODEL_ID overrides it', () => {
+    expect(DEFAULT_AGENT_MODEL).toBe('anthropic/claude-sonnet-5');
+    expect(resolveAgentModel({})).toBe('anthropic/claude-sonnet-5');
+    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('anthropic/claude-sonnet-5');
+    expect(resolveAgentModel({ AGENT_MODEL_ID: 'anthropic/claude-haiku-4.5' })).toBe('anthropic/claude-haiku-4.5');
   });
 
-  // Haiku 4.5 cannot produce the System 2 object through the Gateway (it stops after the first
-  // property; issue 18), so System 2 keeps Sonnet 5 as its default.
   it('defaults System 2 to Claude Sonnet 5 unless SYSTEM2_MODEL_ID overrides it', () => {
     expect(DEFAULT_SYSTEM2_MODEL).toBe('anthropic/claude-sonnet-5');
     expect(resolveSystem2Model({})).toBe('anthropic/claude-sonnet-5');
