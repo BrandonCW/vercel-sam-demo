@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { EveAgentReducer, EveAgentReducerEvent } from 'eve/react';
-import { JevScoringResultSchema, type JevScoringResult } from '@/lib/agents/jev-schema';
-import { System2AnalysisResultSchema, type System2AnalysisResult } from '@/lib/agents/system2';
+import type { JevScoringResult } from '@/lib/agents/jev-schema';
+import type { System2AnalysisResult } from '@/lib/agents/system2';
+import { AssessmentClosedSchema, AssessmentProgressSchema } from '@/lib/assessment-progress';
 import { withJevScores } from '@/lib/agents/qualification-decision';
 import { parseTurnRequest, TurnOutcomeSchema, type TurnOutcome, type TurnRequest } from '@/lib/assessment-turns';
 import type { Opportunity } from '@/lib/types/crm';
@@ -53,31 +54,6 @@ const LEGACY_TOOLS = new Set(['run_jev_scoring', 'run_system2_analysis', 'record
 const MISSING_WORKFLOW = /is not registered as a workflow in this deployment/;
 const TOOL = 'run_assessment';
 
-// The Opportunity is a CRM row read from Postgres; check the fields the workbench relies on.
-const OpportunitySchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    meddpicc_score: z.number().nullable(),
-    qualification_status: z.enum(['unqualified', 'in_review', 'qualified', 'disqualified']),
-    suggested_next_steps: z.string().nullable(),
-    meddpicc_breakdown: z.record(z.unknown()),
-  })
-  .passthrough()
-  .transform((o) => o as unknown as Opportunity);
-
-const Round = z.enum(['baseline', 'rescore']);
-const ProgressSchema = z.discriminatedUnion('stage', [
-  z.object({ stage: z.literal('jev_scored'), round: Round, jevResult: JevScoringResultSchema }),
-  z.object({ stage: z.literal('jev_saved'), round: Round, jevResult: JevScoringResultSchema, opportunity: OpportunitySchema }),
-  z.object({ stage: z.literal('system2_saved'), system2Result: System2AnalysisResultSchema, opportunity: OpportunitySchema }),
-  z.object({ stage: z.literal('feedback_recorded'), feedback: z.object({ recorded: z.boolean(), feedbackKey: z.string() }) }),
-]);
-const ClosedSchema = z.object({
-  stage: z.literal('closed'),
-  writeback: z.object({ suggestedNextSteps: z.string().min(1), deltaScore: z.number(), qualificationStatus: z.string() }),
-  opportunity: OpportunitySchema,
-});
 const SentAnswerSchema = z.object({ feedbackKey: z.string() });
 
 const INITIAL: AssessmentView = {
@@ -108,12 +84,13 @@ const fail = (view: AssessmentView, error: string): AssessmentView => ({
   error: view.error ?? error,
 });
 
-const legacy = (view: AssessmentView): AssessmentView => fail({ ...view, legacySession: true }, LEGACY_SESSION_ERROR);
+// The legacy message replaces any earlier error: it is what the user must act on.
+const legacy = (view: AssessmentView): AssessmentView => fail({ ...view, legacySession: true, error: null }, LEGACY_SESSION_ERROR);
 
 const issues = (error: z.ZodError) => error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
 
 function applyProgress(view: AssessmentView, output: unknown): AssessmentView {
-  const parsed = ProgressSchema.safeParse(output);
+  const parsed = AssessmentProgressSchema.safeParse(output);
   if (!parsed.success) return fail(view, `Unreadable ${TOOL} progress: ${issues(parsed.error)}`);
   const p = parsed.data;
   switch (p.stage) {
@@ -137,7 +114,7 @@ function applyProgress(view: AssessmentView, output: unknown): AssessmentView {
 }
 
 function applyResult(view: AssessmentView, output: unknown): AssessmentView {
-  const parsed = ClosedSchema.safeParse(output);
+  const parsed = AssessmentClosedSchema.safeParse(output);
   if (!parsed.success) return fail(view, `Unreadable ${TOOL} result: ${issues(parsed.error)}`);
   const { writeback, opportunity } = parsed.data;
   return {

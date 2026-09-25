@@ -30,12 +30,12 @@ describe('System 2 model configuration', () => {
     expect(SYSTEM2_MODELS.find((m) => m.id === DEFAULT_SYSTEM2_MODEL)?.badge).toBe('Default');
   });
 
-  // Through the Gateway, Haiku 4.5 did not return the structured turn outcome (it ended the turn
-  // with prose) in 6/6 live sessions (issue 18), so the root stays on Sonnet 5.
-  it('runs the root agent on Claude Sonnet 5 unless AGENT_MODEL_ID overrides it', () => {
-    expect(DEFAULT_AGENT_MODEL).toBe('anthropic/claude-sonnet-5');
-    expect(resolveAgentModel({})).toBe('anthropic/claude-sonnet-5');
-    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('anthropic/claude-sonnet-5');
+  // With run_assessment sequencing the session in code, Gemini 3.8 Flash called it and returned the
+  // structured outcome in 5/5 live sessions (issue 19).
+  it('runs the root agent on Gemini 3.8 Flash unless AGENT_MODEL_ID overrides it (issue 19)', () => {
+    expect(DEFAULT_AGENT_MODEL).toBe('google/gemini-3.8-flash');
+    expect(resolveAgentModel({})).toBe('google/gemini-3.8-flash');
+    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('google/gemini-3.8-flash');
     expect(resolveAgentModel({ AGENT_MODEL_ID: 'anthropic/claude-haiku-4.5' })).toBe('anthropic/claude-haiku-4.5');
   });
 

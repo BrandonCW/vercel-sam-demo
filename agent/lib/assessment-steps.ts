@@ -76,15 +76,14 @@ const SYSTEM2_TIMEOUT_MS = 180_000;
 /**
  * System 2: one structured-output call on `model`, validated in full, then persisted with its
  * `questions_generated` checkpoint row. Not streamed: a step returns one value, and only the
- * workflow body's yields reach the workbench (issue 19). The token usage is returned so the
- * run's recorded step output carries it.
+ * workflow body's yields reach the workbench (issue 19).
  */
 export async function analyzeWithSystem2(
   opportunity: Opportunity,
   jevResult: JevScoringResult,
   model: System2ModelOption,
   scope: AssessmentScope
-): Promise<{ system2Result: System2AnalysisResult; opportunity: Opportunity; usage: { inputTokens: number | null; outputTokens: number | null } }> {
+): Promise<{ system2Result: System2AnalysisResult; opportunity: Opportunity }> {
   "use step";
   assertAiGatewayConfigured();
   const prompt = JSON.stringify({
@@ -118,11 +117,7 @@ export async function analyzeWithSystem2(
   if (!result.output) throw new Error(`System 2 model ${model} returned no structured output`);
   const system2Result = toSystem2AnalysisResult(result.output, { opportunityId: opportunity.id, model });
   const { opportunity: updated } = await recordSystem2Analysis(opportunity, jevResult, system2Result, scope);
-  return {
-    system2Result,
-    opportunity: updated,
-    usage: { inputTokens: result.usage?.inputTokens ?? null, outputTokens: result.usage?.outputTokens ?? null },
-  };
+  return { system2Result, opportunity: updated };
 }
 analyzeWithSystem2.maxRetries = 0;
 

@@ -213,6 +213,16 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
     expect(view).toMatchObject({ phase: 'failed', legacySession: true, error: LEGACY_SESSION_ERROR });
   });
 
+  it('says the session is legacy even when an earlier error was already shown', () => {
+    const view = run([submitted('x'), ev('turn.failed', { message: 'boom' }), requested('run_jev_scoring')]);
+    expect(view).toMatchObject({ legacySession: true, error: LEGACY_SESSION_ERROR });
+  });
+
+  it('rejects a closed result whose qualification status is not a CRM status', () => {
+    const view = run([submitted(), ok('run_assessment', { stage: 'closed', writeback: { suggestedNextSteps: 's', deltaScore: 1, qualificationStatus: 'great' }, opportunity: opportunity() })]);
+    expect(view.error).toMatch(/Unreadable run_assessment result/);
+  });
+
   it('ignores events it does not project (text, reasoning, other runtime events)', () => {
     const paused = run(toPause);
     expect(run([ev('message.appended', { messageDelta: 'hi' }), ev('session.waiting', {})], paused)).toEqual(paused);
