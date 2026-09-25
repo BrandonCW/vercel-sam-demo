@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getOpportunity, getSessionInteractions, resetCrmDatabase } from '@/lib/db/crm';
 import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 import { rootCtx } from './fixtures/eve-session';
+import { AssessmentResultSchema } from '@/lib/assessment-progress';
 import type { System2ModelOutput } from '@/lib/agents/system2';
 
 // Transport-level stand-ins for the Gateway calls; everything else (Postgres test branch) is real.
@@ -148,11 +149,19 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     expect(partials[5].jevResult.overallScore).toBeGreaterThan(56);
 
     // Pass or fail and the next steps are decided in code; the session closes with one writeback.
-    expect(result).toMatchObject({
-      stage: 'closed',
-      writeback: { qualificationStatus: 'qualified', deltaScore: partials[5].jevResult.overallScore - 56 },
+    const finalScore = partials[5].jevResult.overallScore;
+    const [writebackRow] = (await getSessionInteractions(ACME, 'wrun_A')).filter((i) => i.action === 'writeback');
+    expect(AssessmentResultSchema.parse(result)).toMatchObject({
+      status: 'written_back',
+      opportunityId: ACME,
+      qualificationStatus: 'qualified',
+      baselineScore: 56,
+      finalScore,
+      delta: finalScore - 56,
+      writebackId: writebackRow.id,
+      feedback: 'recorded',
     });
-    expect(result.writeback.suggestedNextSteps).toMatch(/^\[QUALIFIED\] /);
+    expect(result.nextSteps).toMatch(/^\[QUALIFIED\] /);
     expect(result.opportunity.qualification_status).toBe('qualified');
     expect(await actions()).toEqual(['initial_scoring', 'questions_generated', 'sa_feedback', 'initial_scoring', 'writeback']);
     const after = (await getOpportunity(ACME))!;
@@ -165,8 +174,8 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     gatewayCalls.generateText.mockResolvedValue({ output: modelOutput });
     const { result, asks } = await drive({ opportunityId: ACME, writebackWithoutFeedback: true }, async () => ({}));
     expect(asks).toEqual([]);
-    expect(result.writeback).toMatchObject({ qualificationStatus: 'in_review', deltaScore: 0 });
-    expect(result.writeback.suggestedNextSteps).toMatch(/^\[IN REVIEW\] /);
+    expect(result).toMatchObject({ status: 'written_back', qualificationStatus: 'in_review', delta: 0, feedback: 'skipped' });
+    expect(result.nextSteps).toMatch(/^\[IN REVIEW\] /);
     expect(await actions()).toEqual(['initial_scoring', 'questions_generated', 'writeback']);
   });
 

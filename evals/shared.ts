@@ -1,23 +1,38 @@
 import { satisfies } from "eve/evals/expect";
-import type { EveEvalTurn } from "eve/evals";
-import { TurnOutcomeSchema, TURN_OUTCOME_JSON_SCHEMA } from "@/lib/assessment-turns";
+import { AssessmentResultSchema, type AssessmentResult } from "@/lib/assessment-progress";
 import { getSessionInteractions } from "@/lib/db/crm";
-
-/** Send options every eval turn uses: the same structured outcome the workbench requests. */
-export const TURN = { outputSchema: TURN_OUTCOME_JSON_SCHEMA };
 
 /** Standardized Suggested Next Steps (agent/instructions.md). */
 export const NEXT_STEPS_FORMAT =
   /^\[(QUALIFIED|IN REVIEW|DISQUALIFIED)\] [^|]+ \| Owner: (AE|SA \(Lead\) \+ AE|AE \(Lead\) \+ SA) \| Focus: [^|]+ \| Watch: [^|]+$/;
 
-export function outcomeOf(turn: EveEvalTurn) {
-  return TurnOutcomeSchema.safeParse(turn.data);
+/** How the run_assessment action settled in a session's stream: the pass/fail source of truth. */
+export interface AssessmentAction {
+  status: string;
+  /** The code-built verdict when the action completed and its output parses; otherwise null. */
+  result: AssessmentResult | null;
+  /** eve's error message when the action failed. */
+  error: string | null;
 }
 
-/** Gate: the turn's structured outcome is `completed` (the routes' success contract). */
-export const completedOutcome = satisfies(
-  (data: unknown) => TurnOutcomeSchema.safeParse(data).data?.outcome === "completed",
-  "turn outcome is completed"
+/** Reads the run_assessment `action.result` from a session's events (the same event the workbench reads). */
+export function assessmentAction(events: readonly unknown[]): AssessmentAction | null {
+  for (const event of events as { type: string; data: any }[]) {
+    if (event.type !== "action.result" || event.data?.result?.toolName !== "run_assessment") continue;
+    const parsed = AssessmentResultSchema.safeParse(event.data.result.output);
+    return {
+      status: event.data.status,
+      result: event.data.status === "completed" && parsed.success ? parsed.data : null,
+      error: event.data.error?.message ?? null,
+    };
+  }
+  return null;
+}
+
+/** Gate: run_assessment completed and returned a result that parses (the workbench's success rule). */
+export const assessmentWrittenBack = satisfies(
+  (action: AssessmentAction | null) => action?.status === "completed" && action.result?.status === "written_back",
+  "run_assessment completed with a written_back result"
 );
 
 /** Actions persisted in one Assessment Session, oldest first. */

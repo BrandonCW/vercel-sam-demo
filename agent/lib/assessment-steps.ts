@@ -14,7 +14,8 @@ import { resolveJevModel, type System2ModelOption } from "@/lib/models";
 import { System2ModelOutputSchema, toSystem2AnalysisResult, type System2AnalysisResult } from "@/lib/agents/system2";
 import type { AssessmentScope } from "@/lib/assessment-session";
 import type { JevScoringResult } from "@/lib/agents/jev-schema";
-import type { Opportunity, QualificationStatus } from "@/lib/types/crm";
+import type { Opportunity } from "@/lib/types/crm";
+import { AssessmentResultSchema, type AssessmentResult } from "@/lib/assessment-progress";
 
 /**
  * The durable steps of `run_assessment`. Each is a `"use step"` function: eve records its
@@ -167,14 +168,27 @@ export async function recordFeedback(
 }
 recordFeedback.maxRetries = 0;
 
-/** Decides status and Suggested Next Steps in code and writes back atomically, closing the session. */
+/** Decides status and Suggested Next Steps in code, writes back atomically (closing the session) and returns the verdict. */
 export async function writeBack(
   opportunityId: string,
-  scope: AssessmentScope
-): Promise<{ opportunity: Opportunity; suggestedNextSteps: string; deltaScore: number; qualificationStatus: QualificationStatus }> {
+  scope: AssessmentScope,
+  feedback: AssessmentResult["feedback"]
+): Promise<AssessmentResult> {
   "use step";
   const opportunity = await requireOpportunity(opportunityId);
-  const { opportunity: updated, suggestedNextSteps, deltaScore } = await writebackQualification(opportunity, scope);
-  return { opportunity: updated, suggestedNextSteps, deltaScore, qualificationStatus: updated.qualification_status };
+  const written = await writebackQualification(opportunity, scope);
+  // The verdict is built here, in code, and validated before it leaves the step.
+  return AssessmentResultSchema.parse({
+    status: "written_back",
+    opportunityId,
+    qualificationStatus: written.opportunity.qualification_status,
+    baselineScore: written.baselineScore,
+    finalScore: written.finalScore,
+    delta: written.deltaScore,
+    nextSteps: written.suggestedNextSteps,
+    writebackId: written.writebackId,
+    feedback,
+    opportunity: written.opportunity,
+  });
 }
 writeBack.maxRetries = 0;

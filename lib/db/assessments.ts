@@ -149,7 +149,14 @@ export async function recordSaFeedback(
 export async function writebackQualification(
   opportunity: Opportunity,
   scope: AssessmentScope
-): Promise<{ opportunity: Opportunity; suggestedNextSteps: string; deltaScore: number }> {
+): Promise<{
+  opportunity: Opportunity;
+  suggestedNextSteps: string;
+  deltaScore: number;
+  baselineScore: number;
+  finalScore: number;
+  writebackId: string;
+}> {
   // Sequential so a missing step fails with the earliest tool to run.
   const jevResult = await loadLatestJevResult(opportunity.id, scope.sessionId);
   const baseline = await loadBaselineJevResult(opportunity.id, scope.sessionId);
@@ -157,7 +164,7 @@ export async function writebackQualification(
   const qualificationStatus = decideQualificationStatus(jevResult, system2Result);
   const suggestedNextSteps = synthesizeSuggestedNextSteps(qualificationStatus, jevResult, system2Result);
   const deltaScore = jevResult.overallScore - baseline.overallScore;
-  const updated = await writebackOpportunityQualification(opportunity.id, {
+  const { opportunity: updated, writebackId } = await writebackOpportunityQualification(opportunity.id, {
     expectedAeNotes: opportunity.ae_notes,
     suggested_next_steps: suggestedNextSteps,
     qualification_status: qualificationStatus,
@@ -179,7 +186,14 @@ export async function writebackQualification(
       },
     },
   });
-  return { opportunity: updated, suggestedNextSteps, deltaScore };
+  return {
+    opportunity: updated,
+    suggestedNextSteps,
+    deltaScore,
+    baselineScore: baseline.overallScore,
+    finalScore: jevResult.overallScore,
+    writebackId,
+  };
 }
 
 const SessionWritebackSchema = z.object({

@@ -24,16 +24,16 @@ describe('Assessment Session: run_assessment steps are scoped to the root eve se
     await assessIn('wrun_A', { valueFocus: 'Session A focus' });
     await assessIn('wrun_B', { valueFocus: 'Session B focus' });
 
-    const result = await writeBack(ACME, scope('wrun_A', 'turn_2'));
+    const result = await writeBack(ACME, scope('wrun_A', 'turn_2'), 'skipped');
 
-    expect(result.suggestedNextSteps).toContain('Focus: Session A focus');
+    expect(result.nextSteps).toContain('Focus: Session A focus');
   });
 
   it('System 2 and the writeback read only their own Assessment Session', async () => {
     await assessIn('wrun_A');
     expect((await loadLatestJevResult(ACME, 'wrun_A')).overallScore).toBe(54);
     await expect(loadLatestJevResult(ACME, 'wrun_Z')).rejects.toThrow(/No System 1 result/);
-    await expect(writeBack(ACME, scope('wrun_Z', 'turn_1'))).rejects.toThrow(/No System 1 result/);
+    await expect(writeBack(ACME, scope('wrun_Z', 'turn_1'), 'skipped')).rejects.toThrow(/No System 1 result/);
   });
 
   it('run_assessment fails loudly outside an eve session', async () => {
@@ -46,7 +46,7 @@ describe('Assessment Session: run_assessment steps are scoped to the root eve se
     const opp = (await getOpportunity(ACME))!;
     await recordJevScoring(opp, jev({ overallScore: 61 }), scope('wrun_A', 'turn_2'));
 
-    const result = await writeBack(ACME, scope('wrun_A', 'turn_2'));
+    const result = await writeBack(ACME, scope('wrun_A', 'turn_2'), 'skipped');
 
     const writebacks = (await getInteractions(ACME)).filter((i) => i.action === 'writeback');
     expect(writebacks).toHaveLength(1);
@@ -57,10 +57,10 @@ describe('Assessment Session: run_assessment steps are scoped to the root eve se
       newScore: 61,
       deltaScore: 7,
       qualificationStatus: 'in_review',
-      suggestedNextSteps: result.suggestedNextSteps,
+      suggestedNextSteps: result.nextSteps,
       sessionState: 'closed',
     });
-    expect(result.deltaScore).toBe(7);
+    expect(result.delta).toBe(7);
   });
 
   it('recording SA feedback appends timestamped SA notes once per payload, leaving ae_notes alone', async () => {
@@ -93,8 +93,8 @@ describe('Assessment Session: run_assessment steps are scoped to the root eve se
 
   it('the writeback closes the session once: a second writeback in the same session is rejected', async () => {
     await assessIn('wrun_A');
-    await writeBack(ACME, scope('wrun_A', 'turn_2'));
-    await expect(writeBack(ACME, scope('wrun_A', 'turn_2'))).rejects.toThrow(/already closed/);
+    await writeBack(ACME, scope('wrun_A', 'turn_2'), 'skipped');
+    await expect(writeBack(ACME, scope('wrun_A', 'turn_2'), 'skipped')).rejects.toThrow(/already closed/);
     expect((await getInteractions(ACME)).filter((i) => i.action === 'writeback')).toHaveLength(1);
   });
 

@@ -10,7 +10,7 @@ import {
   scoreWithJev,
   writeBack,
 } from "../lib/assessment-steps";
-import type { AssessmentProgress, AssessmentClosed } from "@/lib/assessment-progress";
+import type { AssessmentProgress, AssessmentResult } from "@/lib/assessment-progress";
 
 /** Prompt of the discovery pause. The workbench renders the form from the yielded System 2 result. */
 export const DISCOVERY_PROMPT =
@@ -35,17 +35,17 @@ export default defineWorkflowTool({
   }),
   label: {
     start: () => "Scoring with Jev (System 1)",
-    delta: (_input, partial: AssessmentProgress | AssessmentClosed) => progressLabel(partial),
-    complete: (_input, output: AssessmentProgress | AssessmentClosed) =>
+    delta: (_input, partial: AssessmentProgress | AssessmentResult) => progressLabel(partial),
+    complete: (_input, output: AssessmentProgress | AssessmentResult) =>
       progressLabel(output),
   },
-  // The workbench renders from the yields; the root model only needs the outcome.
-  toModelOutput(output: AssessmentProgress | AssessmentClosed) {
-    if (output.stage !== "closed") return { type: "json", value: { stage: output.stage } };
-    const { qualificationStatus, deltaScore } = output.writeback;
-    return { type: "json", value: { outcome: "completed", qualificationStatus, deltaScore } };
+  // The workbench and evals read the full result from the stream; the root model only needs one line.
+  toModelOutput(output: AssessmentProgress | AssessmentResult) {
+    if (!("status" in output)) return { type: "json", value: { stage: output.stage } };
+    const { status, qualificationStatus, finalScore, delta } = output;
+    return { type: "json", value: { status, qualificationStatus, finalScore, delta } };
   },
-  async *execute({ opportunityId, model, writebackWithoutFeedback }, ctx): AsyncGenerator<AssessmentProgress, AssessmentClosed> {
+  async *execute({ opportunityId, model, writebackWithoutFeedback }, ctx): AsyncGenerator<AssessmentProgress, AssessmentResult> {
     "use workflow";
     const scope = assessmentScopeOf(ctx);
     const system2Model = model ?? (await defaultSystem2Model());
@@ -69,8 +69,7 @@ export default defineWorkflowTool({
       yield { stage: "jev_saved", round: "rescore", jevResult: rescore.jevResult, opportunity: rescored };
     }
 
-    const { opportunity, ...writeback } = await writeBack(opportunityId, scope);
-    return { stage: "closed", writeback, opportunity };
+    return writeBack(opportunityId, scope, writebackWithoutFeedback ? "skipped" : "recorded");
   },
 });
 
@@ -80,7 +79,8 @@ async function defaultSystem2Model() {
   return resolveSystem2Model();
 }
 
-function progressLabel(progress: AssessmentProgress | AssessmentClosed): string {
+function progressLabel(progress: AssessmentProgress | AssessmentResult): string {
+  if ("status" in progress) return `Written back: ${progress.qualificationStatus}`;
   switch (progress.stage) {
     case "jev_scored":
       return "Jev scored; saving to the CRM";
@@ -90,7 +90,5 @@ function progressLabel(progress: AssessmentProgress | AssessmentClosed): string 
       return "Waiting for the Solutions Architect";
     case "feedback_recorded":
       return "Re-scoring with Jev";
-    case "closed":
-      return `Written back: ${progress.writeback.qualificationStatus}`;
   }
 }

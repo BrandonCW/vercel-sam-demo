@@ -4,7 +4,7 @@ import { getOpportunity } from "@/lib/db/crm";
 import { loadLatestJevResult, loadSessionWriteback } from "@/lib/db/assessments";
 import { DEFAULT_SYSTEM2_MODEL } from "@/lib/models";
 import { assessTurnMessage } from "@/lib/assessment-turns";
-import { TURN, NEXT_STEPS_FORMAT, completedOutcome } from "../shared";
+import { NEXT_STEPS_FORMAT, assessmentAction, assessmentWrittenBack } from "../shared";
 
 const GLOBEX = "opp_globex_fintech_002";
 
@@ -12,9 +12,15 @@ export default defineEval({
   description: "Globex / AWS Amplify: Jev detects AWS Amplify; a writeback without SA feedback lands [IN REVIEW].",
   tags: ["live"],
   async test(t) {
-    const turn = await t.send(assessTurnMessage(GLOBEX, DEFAULT_SYSTEM2_MODEL, { writeback: true }), TURN);
-    await t.require(turn.data, completedOutcome);
+    const turn = await t.send(assessTurnMessage(GLOBEX, DEFAULT_SYSTEM2_MODEL, { writeback: true }));
+    // Pass or fail is the run_assessment action itself, not anything the model says.
+    const action = assessmentAction(turn.session.events);
+    await t.require(action, assessmentWrittenBack);
+    t.calledTool("run_assessment", { count: 1 });
     t.toolOrder(["run_assessment"]);
+    t.check(action!.result!.feedback, equals("skipped")).label("written back without SA feedback");
+    t.check(action!.result!.opportunityId, equals(GLOBEX));
+    t.check(action!.result!.nextSteps, includes(NEXT_STEPS_FORMAT)).label("result carries the standardized next steps");
     turn.notCalledTool("run_jev_scoring");
     t.check(turn.inputRequests.length, equals(0)).label("no SA pause when writing back without feedback");
     t.noFailedActions();

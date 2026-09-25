@@ -44,7 +44,7 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
       },
     };
 
-    const writebackResult = await writebackOpportunityQualification('opp_acme_corp_001', {
+    const { opportunity: writebackResult, writebackId } = await writebackOpportunityQualification('opp_acme_corp_001', {
       expectedAeNotes: oppBefore!.ae_notes,
       suggested_next_steps:
         '[QUALIFIED] Advance to Stage 3 (Technical Validation). Schedule architecture review with VP of E-Commerce. | Owner: SA (Lead) + AE | Focus: Turborepo Remote Caching | Watch: Netlify 30% discount renewal offer.',
@@ -65,6 +65,8 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
     const audits = (await getInteractions('opp_acme_corp_001')).filter((i) => i.action === 'writeback');
     expect(audits).toHaveLength(1);
     expect(audits[0].payload).toMatchObject({ assessmentSessionId: 'wrun_wb', sessionState: 'closed' });
+    // The same statement returns the audit row's id, so the tool can report it.
+    expect(writebackId).toBe(audits[0].id);
     expect(writebackResult.meddpicc_breakdown.economicBuyer?.score).toBe(8);
     expect(writebackResult.stage_gate?.gateReady).toBe(true);
 

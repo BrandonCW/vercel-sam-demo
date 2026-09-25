@@ -1,12 +1,12 @@
 import { defineEval } from "eve/evals";
 import { equals, includes, matches, satisfies } from "eve/evals/expect";
-import { getOpportunity } from "@/lib/db/crm";
+import { getOpportunity, getSessionInteractions } from "@/lib/db/crm";
 import { loadLatestJevResult, loadLatestSystem2Result, loadSessionWriteback } from "@/lib/db/assessments";
 import { computeCompositeScore, getDimensionStatus } from "@/lib/agents/jev-scorer";
 import { JsonRenderFormSchema } from "@/lib/ui/json-render-schema";
 import { DEFAULT_SYSTEM2_MODEL } from "@/lib/models";
 import { assessTurnMessage, saAnswerText } from "@/lib/assessment-turns";
-import { TURN, NEXT_STEPS_FORMAT, completedOutcome, sessionActions } from "../shared";
+import { NEXT_STEPS_FORMAT, assessmentAction, assessmentWrittenBack, sessionActions } from "../shared";
 
 const ACME = "opp_acme_corp_001";
 
@@ -18,7 +18,7 @@ export default defineEval({
     const baseline = (await getOpportunity(ACME))!;
 
     // Assess: run_assessment scores, analyzes, then parks on its discovery question.
-    const first = await t.send(assessTurnMessage(ACME, DEFAULT_SYSTEM2_MODEL), TURN);
+    const first = await t.send(assessTurnMessage(ACME, DEFAULT_SYSTEM2_MODEL));
     const pause = first.session.requireInputRequest({ toolName: "run_assessment", display: "text" });
     const sessionId = first.sessionId;
 
@@ -78,16 +78,26 @@ export default defineEval({
         "Success metric: p95 build time from 45 to under 5 minutes and zero launch-day deploy queueing. " +
         "Paper process mapped: legal owns MSA redlines, security review uses our SOC2 report, procurement runs a standard 30-day cycle.",
     };
-    const second = await first.session.respond(
-      [{ requestId: pause.requestId, text: await saAnswerText(payload.formResponses, payload.notesDelta) }],
-      TURN
-    );
-    await t.require(second.data, completedOutcome);
-
+    const second = await first.session.respond([
+      { requestId: pause.requestId, text: await saAnswerText(payload.formResponses, payload.notesDelta) },
+    ]);
+    // Pass or fail is the run_assessment action itself, not anything the model says.
+    const action = assessmentAction(second.session.events);
+    await t.require(action, assessmentWrittenBack);
     t.toolOrder(["run_assessment"]);
     t.calledTool("run_assessment", { count: 1 });
     t.noFailedActions();
     t.succeeded();
+
+    const verdict = action!.result!;
+    t.check(verdict.feedback, equals("recorded")).label("SA answers recorded");
+    t.check(verdict.qualificationStatus, equals("qualified")).label("result: qualified");
+    t.check(verdict.baselineScore, equals(jev.overallScore)).label("result baseline = session baseline");
+    t.check(verdict.delta, equals(verdict.finalScore - verdict.baselineScore)).label("result delta consistent");
+    t.check(
+      (await getSessionInteractions(ACME, sessionId)).find((i) => i.action === "writeback")?.id,
+      equals(verdict.writebackId)
+    ).label("result names the session's writeback row");
 
     const writeback = await loadSessionWriteback(ACME, sessionId);
     const after = (await getOpportunity(ACME))!;

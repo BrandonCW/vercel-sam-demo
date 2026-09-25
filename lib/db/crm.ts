@@ -100,7 +100,7 @@ export interface QualificationWritebackData {
 export async function writebackOpportunityQualification(
   id: string,
   writeback: QualificationWritebackData
-): Promise<Opportunity> {
+): Promise<{ opportunity: Opportunity; writebackId: string }> {
   const now = new Date().toISOString();
   const sql = getSql();
   const payload = { ...writeback.audit.payload, assessmentSessionId: writeback.sessionId };
@@ -132,8 +132,9 @@ export async function writebackOpportunityQualification(
     ), audit AS (
       INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
       SELECT id, ${writeback.audit.actor}, 'writeback', ${JSON.stringify(payload)}::jsonb FROM updated
+      RETURNING id
     )
-    SELECT * FROM updated;
+    SELECT updated.*, (SELECT id FROM audit) AS writeback_id FROM updated;
   `,
   ]);
   if (rows.length === 0) {
@@ -144,7 +145,8 @@ export async function writebackOpportunityQualification(
     if (!existing) throw new Error(`Opportunity ${id} not found`);
     throw new Error(`Writeback to ${id} rejected: ae_notes changed since it was read; ae_notes is immutable.`);
   }
-  return mapRowToOpportunity(rows[0]);
+  const { writeback_id: writebackId, ...row } = rows[0];
+  return { opportunity: mapRowToOpportunity(row), writebackId: String(writebackId) };
 }
 
 /**

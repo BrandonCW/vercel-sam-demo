@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { assessTurnMessage, parseTurnRequest, saAnswerText } from '@/lib/assessment-turns';
+import * as turns from '@/lib/assessment-turns';
+import { assessTurnMessage, saAnswerText } from '@/lib/assessment-turns';
 import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 
 describe('Assessment Session turn contract', () => {
@@ -15,15 +16,6 @@ describe('Assessment Session turn contract', () => {
     );
   });
 
-  it('reads the requested model and writeback mode back from the message', () => {
-    expect(parseTurnRequest(assessTurnMessage('opp_acme_corp_001', 'openai/gpt-5.5'))).toEqual({ model: 'openai/gpt-5.5', writeback: false });
-    expect(parseTurnRequest(assessTurnMessage('opp_x', 'google/gemini-3.8-flash', { writeback: true }))).toEqual({
-      model: 'google/gemini-3.8-flash',
-      writeback: true,
-    });
-    expect(parseTurnRequest('hello')).toBeNull();
-  });
-
   it('encodes the SA answers as the JSON text run_assessment expects, keyed so tampering is detected', async () => {
     const text = await saAnswerText({ eb: 'CFO signs' }, 'Budget approved.');
     expect(JSON.parse(text)).toEqual({
@@ -32,5 +24,9 @@ describe('Assessment Session turn contract', () => {
       feedbackKey: await saFeedbackKey({ eb: 'CFO signs' }, 'Budget approved.'),
     });
     expect(JSON.parse(await saAnswerText({ eb: 'CFO signs' }))).not.toHaveProperty('notesDelta');
+  });
+
+  it('asks for no structured turn outcome: code decides pass or fail from run_assessment', () => {
+    expect(Object.keys(turns).sort()).toEqual(['assessTurnMessage', 'saAnswerText']);
   });
 });

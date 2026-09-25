@@ -96,7 +96,7 @@ describe('eve agent tools', () => {
     await recordJevScoring(opp, jev(), S);
     await recordSystem2Analysis(opp, jev(), system2(), S);
 
-    const result = await writeBack(ACME, S);
+    const result = await writeBack(ACME, S, 'skipped');
 
     expect(result.opportunity.qualification_status).toBe('in_review');
     expect(result.opportunity.suggested_next_steps).toMatch(
@@ -112,7 +112,7 @@ describe('eve agent tools', () => {
   });
 
   it('the writeback fails loudly when no assessment has run', async () => {
-    await expect(writeBack(ACME, S)).rejects.toThrow(/No System 1 result/);
+    await expect(writeBack(ACME, S, 'skipped')).rejects.toThrow(/No System 1 result/);
   });
 
   it('writeback rejects the write when ae_notes changed since the record was read', async () => {

@@ -39,7 +39,7 @@ describe.skipIf(!live)('run_assessment - live Acme assessment through writeback 
     console.log('CITATIONS_VERBATIM', `${verbatim.length}/${citations.length}`);
 
     expect(result.opportunity.qualification_status).toBe('in_review');
-    expect(result.writeback.suggestedNextSteps).toMatch(
+    expect(result.nextSteps).toMatch(
       /^\[IN REVIEW\] Hold at Stage 2 - Discovery\. [^|]+ \| Owner: AE \| Focus: [^|]+ \| Watch: Netlify \(high threat\)$/
     );
 

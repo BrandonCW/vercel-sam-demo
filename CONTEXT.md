@@ -61,5 +61,5 @@ The rapid secondary evaluation executed by System 1 after an SA submits response
 _Avoid_: Re-evaluation, secondary grading, score update
 
 **Assessment Session**:
-The stateful, discrete evaluation lifecycle bounded between an initial assessment trigger and final CRM write-back, which pauses at zero compute cost while awaiting SA feedback. It is one durable eve session and one `run_assessment` workflow call, sequenced in code.
+The stateful, discrete evaluation lifecycle bounded between an initial assessment trigger and final CRM write-back, which pauses at zero compute cost while awaiting SA feedback. It is one durable eve session and one `run_assessment` workflow call, sequenced in code; the call's result (or its failure) is the session's verdict, decided in code.
 _Avoid_: Evaluation run, qualification job, agent thread

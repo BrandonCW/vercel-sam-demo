@@ -36,14 +36,22 @@ export const AssessmentProgressSchema = z.discriminatedUnion('stage', [
 ]);
 export type AssessmentProgress = z.infer<typeof AssessmentProgressSchema>;
 
-/** The session's final result: status and next steps decided in code, written back atomically. */
-export const AssessmentClosedSchema = z.object({
-  stage: z.literal('closed'),
-  writeback: z.object({
-    suggestedNextSteps: z.string().min(1),
-    deltaScore: z.number(),
-    qualificationStatus: z.enum(['unqualified', 'in_review', 'qualified', 'disqualified']),
-  }),
+/**
+ * The session's verdict: `run_assessment`'s return value, built in code. A completed action whose
+ * output parses as this is a pass; any failure is a thrown error, so eve marks the action failed.
+ */
+export const AssessmentResultSchema = z.object({
+  status: z.literal('written_back'),
+  opportunityId: z.string().min(1),
+  qualificationStatus: z.enum(['unqualified', 'in_review', 'qualified', 'disqualified']),
+  baselineScore: z.number(),
+  finalScore: z.number(),
+  delta: z.number(),
+  nextSteps: z.string().min(1),
+  /** Id of the session's single `writeback` audit row. */
+  writebackId: z.string().min(1),
+  /** Whether SA answers were recorded, or the writeback was requested without them. */
+  feedback: z.enum(['recorded', 'skipped']),
   opportunity: OpportunitySchema,
 });
-export type AssessmentClosed = z.infer<typeof AssessmentClosedSchema>;
+export type AssessmentResult = z.infer<typeof AssessmentResultSchema>;

@@ -3,7 +3,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results';
-import { TURN_OUTCOME_JSON_SCHEMA, assessTurnMessage } from '@/lib/assessment-turns';
+import { assessTurnMessage } from '@/lib/assessment-turns';
 import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 import { LEGACY_SESSION_ERROR } from '@/lib/assessment-results';
 import { loadSavedSession, saveSession } from '@/lib/ui/saved-assessment-session';
@@ -51,12 +51,12 @@ describe('WorkbenchShell on useEveAgent', () => {
     expect(hook.options.host).toBeUndefined();
   });
 
-  it('starts the Assessment Session on a fresh session with the selected System 2 model and the structured outcome', async () => {
+  it('starts the Assessment Session on a fresh session with the selected System 2 model, asking for no structured outcome', async () => {
     renderShell();
     fireEvent.change(screen.getByLabelText('Select System 2 Model'), { target: { value: 'openai/gpt-5.5' } });
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /Start Assessment/ })));
     expect(hook.reset).toHaveBeenCalled();
-    expect(hook.send).toHaveBeenCalledWith(assessTurnMessage(base.id, 'openai/gpt-5.5'), { outputSchema: TURN_OUTCOME_JSON_SCHEMA });
+    expect(hook.send).toHaveBeenCalledWith(assessTurnMessage(base.id, 'openai/gpt-5.5'));
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -119,14 +119,14 @@ describe('WorkbenchShell on useEveAgent', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /Submit Discovery Findings/ })));
     expect(hook.reset).not.toHaveBeenCalled();
     expect(hook.send).not.toHaveBeenCalled();
-    const [responses, options] = hook.respond.mock.calls[0] as unknown as [{ requestId: string; text: string }[], object];
+    const [responses, options] = hook.respond.mock.calls[0] as unknown as [{ requestId: string; text: string }[], object?];
     expect(responses).toHaveLength(1);
     expect(responses[0].requestId).toBe('req_1');
     expect(JSON.parse(responses[0].text)).toEqual({
       formResponses: { eb: 'CFO Mark Ellis' },
       feedbackKey: await saFeedbackKey({ eb: 'CFO Mark Ellis' }),
     });
-    expect(options).toEqual({ outputSchema: TURN_OUTCOME_JSON_SCHEMA });
+    expect(options).toBeUndefined();
   });
 
   it('shows the written-back Suggested Next Steps when the session is closed', () => {
@@ -134,7 +134,6 @@ describe('WorkbenchShell on useEveAgent', () => {
     hook.state.data = view({
       phase: 'closed',
       system2Result: system2(),
-      writeback: { suggestedNextSteps: steps, deltaScore: 33 },
       opportunity: opportunity({ meddpicc_score: 89, qualification_status: 'qualified', suggested_next_steps: steps }),
     });
     renderShell();

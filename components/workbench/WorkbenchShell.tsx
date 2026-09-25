@@ -9,7 +9,7 @@ import {
   AssessmentSessionState,
 } from '@/lib/types/crm';
 import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results';
-import { assessTurnMessage, saAnswerText, TURN_OUTCOME_JSON_SCHEMA } from '@/lib/assessment-turns';
+import { assessTurnMessage, saAnswerText } from '@/lib/assessment-turns';
 import { clearSavedSession, loadSavedSession, saveSession } from '@/lib/ui/saved-assessment-session';
 import { TopNavBar } from './TopNavBar';
 import { ContextColumn } from './ContextColumn';
@@ -187,7 +187,7 @@ function AssessmentWorkbench({
     setResumeError(null);
     showToast('Executing System 1 (Jev) scoring & System 2 deep reasoning...');
     await sendTurn(ASSESS_FAILED, () =>
-      agent.send(assessTurnMessage(baseOpportunity.id, selectedModel), { outputSchema: TURN_OUTCOME_JSON_SCHEMA })
+      agent.send(assessTurnMessage(baseOpportunity.id, selectedModel))
     );
   }
 
@@ -201,7 +201,7 @@ function AssessmentWorkbench({
     showToast('Submitting discovery findings...');
     const text = await saAnswerText(formResponses, notesDelta);
     await sendTurn(WRITEBACK_FAILED, () =>
-      agent.respond([{ requestId: pending.requestId, text }], { outputSchema: TURN_OUTCOME_JSON_SCHEMA })
+      agent.respond([{ requestId: pending.requestId, text }])
     );
   }
 

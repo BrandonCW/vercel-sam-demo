@@ -2,17 +2,18 @@ import { z } from 'zod';
 import type { EveAgentReducer, EveAgentReducerEvent } from 'eve/react';
 import type { JevScoringResult } from '@/lib/agents/jev-schema';
 import type { System2AnalysisResult } from '@/lib/agents/system2';
-import { AssessmentClosedSchema, AssessmentProgressSchema } from '@/lib/assessment-progress';
+import { AssessmentProgressSchema, AssessmentResultSchema, type AssessmentResult } from '@/lib/assessment-progress';
 import { withJevScores } from '@/lib/agents/qualification-decision';
-import { parseTurnRequest, TurnOutcomeSchema, type TurnOutcome, type TurnRequest } from '@/lib/assessment-turns';
 import type { Opportunity } from '@/lib/types/crm';
 
 /**
  * The workbench view of one Assessment Session, projected from the root eve session's stream.
  * The session is one `run_assessment` workflow call: its yields (`action.partial`: Jev scores
  * before their CRM write, then each persisted result), its discovery pause (`input.requested`,
- * answered through `respond`), its final result (`action.result`), the structured turn outcome
- * (`result.completed`) and turn lifecycle events. A resumed session replays the same stream,
+ * answered through `respond`), its final result (`action.result`) and turn lifecycle events.
+ * Pass or fail is decided by code, from that one action: a completed `run_assessment` whose
+ * output parses as `AssessmentResultSchema` is a pass; a failed one is a failure, with eve's
+ * error verbatim. Nothing the root model says is read. A resumed session replays the same stream,
  * so the view rebuilds itself, including a pending pause.
  *
  * Client-safe (no server imports). Fails loudly: a failed action, a failed outcome or anything
@@ -23,10 +24,8 @@ export type AssessmentPhase = 'ready' | 'assessing' | 'awaiting_feedback' | 'sub
 
 export interface AssessmentView {
   phase: AssessmentPhase;
-  /** What the assess message asked for (System 2 model, writeback mode); results are checked against it. */
-  request: TurnRequest | null;
-  /** Structured outcome the agent reported for the turn. */
-  outcome: TurnOutcome | null;
+  /** What run_assessment was called with (System 2 model, writeback mode); results are checked against it. */
+  request: AssessmentRequest | null;
   /** Root tool currently running, for progress. */
   runningTool: string | null;
   /** Jev has scored and System 2 is still running (the "System 2 analysis running…" indicator). */
@@ -39,10 +38,17 @@ export interface AssessmentView {
   jevResult: JevScoringResult | null;
   system2Result: System2AnalysisResult | null;
   feedback: { recorded: boolean; feedbackKey: string } | null;
-  writeback: { suggestedNextSteps: string; deltaScore: number } | null;
+  /** run_assessment's code-built verdict: set only when the action completed and its output parsed. */
+  result: AssessmentResult | null;
   /** The session was started by an older deployment this one cannot continue: start a fresh one. */
   legacySession: boolean;
   error: string | null;
+}
+
+/** The run_assessment call, read from its action input in the stream. */
+export interface AssessmentRequest {
+  model: string;
+  writeback: boolean;
 }
 
 export const LEGACY_SESSION_ERROR =
@@ -59,7 +65,6 @@ const SentAnswerSchema = z.object({ feedbackKey: z.string() });
 const INITIAL: AssessmentView = {
   phase: 'ready',
   request: null,
-  outcome: null,
   runningTool: null,
   system2Running: false,
   pendingInput: null,
@@ -68,7 +73,7 @@ const INITIAL: AssessmentView = {
   jevResult: null,
   system2Result: null,
   feedback: null,
-  writeback: null,
+  result: null,
   legacySession: false,
   error: null,
 };
@@ -114,40 +119,40 @@ function applyProgress(view: AssessmentView, output: unknown): AssessmentView {
 }
 
 function applyResult(view: AssessmentView, output: unknown): AssessmentView {
-  const parsed = AssessmentClosedSchema.safeParse(output);
+  const parsed = AssessmentResultSchema.safeParse(output);
   if (!parsed.success) return fail(view, `Unreadable ${TOOL} result: ${issues(parsed.error)}`);
-  const { writeback, opportunity } = parsed.data;
+  return { ...view, runningTool: null, pendingInput: null, result: parsed.data, opportunity: parsed.data.opportunity };
+}
+
+const RequestInputSchema = z.object({ model: z.string().optional(), writebackWithoutFeedback: z.boolean().optional() });
+
+/** The run_assessment call starts the session; its input is what the results are checked against. */
+function applyCall(view: AssessmentView, input: unknown): AssessmentView {
+  if (view.request) return fail(view, `${TOOL} was called more than once in this Assessment Session.`);
+  const parsed = RequestInputSchema.safeParse(input ?? {});
+  if (!parsed.success) return fail(view, `Unreadable ${TOOL} input: ${issues(parsed.error)}`);
+  if (!parsed.data.model) return fail(view, `${TOOL} was called without a System 2 model; the workbench always selects one.`);
   return {
     ...view,
-    runningTool: null,
-    pendingInput: null,
-    writeback: { suggestedNextSteps: writeback.suggestedNextSteps, deltaScore: writeback.deltaScore },
-    opportunity,
+    runningTool: TOOL,
+    request: { model: parsed.data.model, writeback: parsed.data.writebackWithoutFeedback === true },
   };
 }
 
 function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentView {
   switch (event.type) {
-    case 'message.received': {
-      const request = parseTurnRequest(event.data.message);
-      return request ? { ...view, request } : view;
-    }
     case 'client.message.submitted':
-    case 'turn.started': {
-      const request = event.type === 'client.message.submitted' ? parseTurnRequest(event.data.message) : null;
-      if (request) view = { ...view, request };
-      if (view.phase !== 'ready' && view.phase !== 'failed') {
-        return view.phase === 'closed'
-          ? fail(view, 'This Assessment Session is already closed (written back); start a new assessment.')
-          : view;
+    case 'turn.started':
+      if (view.phase === 'closed') {
+        return fail(view, 'This Assessment Session is already closed (written back); start a new assessment.');
       }
-      if (view.phase === 'failed') return view;
-      return { ...view, phase: 'assessing', error: null, outcome: null };
-    }
+      return view.phase === 'ready' ? { ...view, phase: 'assessing', error: null } : view;
     case 'actions.requested': {
       const call = event.data.actions.find((a) => a.kind === 'tool-call');
       if (!call || !('toolName' in call)) return view;
-      return LEGACY_TOOLS.has(call.toolName) ? legacy(view) : { ...view, runningTool: call.toolName };
+      if (LEGACY_TOOLS.has(call.toolName)) return legacy(view);
+      if (view.phase === 'failed') return view;
+      return call.toolName === TOOL ? applyCall(view, 'input' in call ? call.input : undefined) : { ...view, runningTool: call.toolName };
     }
     case 'action.partial': {
       if (view.phase === 'failed') return view;
@@ -192,17 +197,11 @@ function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentVi
       if (!result.toolName) return fail(view, 'The eve stream sent a completed action result that names no tool.');
       return result.toolName === TOOL ? applyResult(view, result.output) : { ...view, runningTool: null };
     }
-    case 'result.completed': {
-      const outcome = TurnOutcomeSchema.safeParse(event.data.result);
-      if (!outcome.success) return fail(view, 'The eve agent returned no structured turn outcome.');
-      const next = { ...view, outcome: outcome.data };
-      return outcome.data.outcome === 'failed' ? fail(next, outcome.data.error ?? 'The eve agent reported a failed turn.') : next;
-    }
     case 'turn.completed':
       if (view.phase === 'failed') return view;
       // The turn completes as run_assessment parks on its question; the run itself is still open.
       if (view.phase === 'awaiting_feedback' && view.pendingInput) return view;
-      if (view.writeback) return { ...view, phase: 'closed', runningTool: null };
+      if (view.result) return { ...view, phase: 'closed', runningTool: null };
       return fail(view, `The Assessment Session ended without a CRM writeback (${TOOL} did not complete).`);
     case 'turn.failed':
     case 'session.failed':
