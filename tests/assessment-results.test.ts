@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results';
+import { assessTurnMessage, feedbackTurnMessage } from '@/lib/assessment-turns';
 import { jev, opportunity, system2 } from './fixtures/qualification';
 
 // The workbench view is a projection of the root session's eve stream: typed tool results
@@ -153,5 +154,22 @@ describe('assessmentReducer (workbench view from the eve stream)', () => {
     const view = run([submitted(), ev('action.result', { status: 'completed', stepIndex: 0, result: { callId: 'c', kind: 'tool-result', output: {} } })]);
     expect(view.phase).toBe('failed');
     expect(view.error).toMatch(/names no tool/);
+  });
+
+  it('fails when System 2 ran with a model other than the one the turn asked for', () => {
+    const view = run([
+      submitted(assessTurnMessage('opp_acme_corp_001', 'openai/gpt-5.5')),
+      ok('analyze_deal', { interactionId: 'i2', system2Result: system2({ modelUsed: 'anthropic/claude-sonnet-5' }), opportunity: opportunity() }),
+    ]);
+    expect(view.phase).toBe('failed');
+    expect(view.error).toMatch(/System 2 ran with anthropic\/claude-sonnet-5, not the requested model openai\/gpt-5.5/);
+  });
+
+  it('fails when the agent recorded different SA answers than the workbench sent (feedbackKey mismatch)', () => {
+    const paused = run(assessTurn);
+    const message = feedbackTurnMessage({ opportunityId: 'opp_acme_corp_001', formResponses: { eb: 'x' } }, 'sent-key');
+    const view = run([submitted(message), ok('record_sa_feedback', { recorded: true, feedbackKey: 'other-key' })], paused);
+    expect(view.phase).toBe('failed');
+    expect(view.error).toMatch(/recorded different SA answers/);
   });
 });

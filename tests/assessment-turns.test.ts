@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { assessTurnMessage, feedbackTurnMessage } from '@/lib/assessment-turns';
+import { assessTurnMessage, feedbackTurnMessage, parseTurnRequest } from '@/lib/assessment-turns';
 
 // The routes and the live evals send these exact turn messages.
 describe('Assessment Session turn messages', () => {
@@ -21,5 +21,12 @@ describe('Assessment Session turn messages', () => {
     expect(message).toContain('feedbackKey abc123');
     expect(message).toContain(JSON.stringify(payload));
     expect(message).toMatch(/record_sa_feedback.*score_deal.*crm_update_next_steps/s);
+  });
+
+  it('reads back what a turn message asked for, so the workbench can check the results against it', () => {
+    expect(parseTurnRequest(assessTurnMessage('opp_acme_corp_001', 'openai/gpt-5.5'))).toEqual({ turn: 'assess', model: 'openai/gpt-5.5' });
+    const payload = { opportunityId: 'opp_acme_corp_001', formResponses: { eb: 'CFO signs' } };
+    expect(parseTurnRequest(feedbackTurnMessage(payload, 'abc123'))).toEqual({ turn: 'feedback', feedbackKey: 'abc123' });
+    expect(parseTurnRequest('hello')).toBeNull();
   });
 });

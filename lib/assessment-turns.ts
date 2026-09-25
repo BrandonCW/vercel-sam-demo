@@ -25,6 +25,18 @@ export function feedbackTurnMessage(payload: SaFeedbackPayload, feedbackKey: str
   );
 }
 
+/** What a turn message asked for: turn 1's System 2 model, or turn 2's feedbackKey. */
+export type TurnRequest = { turn: 'assess'; model: string } | { turn: 'feedback'; feedbackKey: string };
+
+/** Reads a turn message built by assessTurnMessage / feedbackTurnMessage back; null for any other message. */
+export function parseTurnRequest(message: string): TurnRequest | null {
+  const assess = /^Assess opportunity \S+: call crm_read_deal, then score_deal, then analyze_deal with model (\S+?)(?:\. Do not|, then)/.exec(message);
+  if (assess) return { turn: 'assess', model: assess[1] };
+  const feedback = /record_sa_feedback with exactly this payload and feedbackKey ([0-9a-zA-Z_-]+),/.exec(message);
+  if (feedback) return { turn: 'feedback', feedbackKey: feedback[1] };
+  return null;
+}
+
 /** Structured result every Assessment Session turn requests (`outputSchema`). */
 export const TurnOutcomeSchema = z.object({
   outcome: z.enum(['completed', 'failed']),

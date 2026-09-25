@@ -1,6 +1,6 @@
 # 14: Workbench runs the Assessment Session through useEveAgent
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Type:** task
 
@@ -33,3 +33,29 @@ The selected model is written into turn 1's message (`analyze_deal … with mode
 - [ ] **Tests.** A component test renders the shell with a stubbed `eve/react` hook and asserts:
   - the messages and `outputSchema` it sends;
   - the stages it renders for projected states.
+
+## Answer
+
+- **`WorkbenchShell`**
+  - Holds the scenario, the model dropdown and the demo reset.
+  - `AssessmentWorkbench`, keyed by `opportunityId:resetGeneration`, owns `useEveAgent({ reducer: assessmentReducer })` against same-origin `/eve/v1`, with cookie auth.
+  - Start, Re-run and Re-evaluate call `agent.reset()` and then send `assessTurnMessage(id, selectedModel)` on a new session. eve's store clears the session synchronously on reset, so the send creates a new one.
+  - The discovery form sends `feedbackTurnMessage(payload, await saFeedbackKey(...))` to the same session.
+  - Every turn requests `TURN_OUTCOME_JSON_SCHEMA`.
+- **Rendering**
+  - The stages and runtime status map from `view.phase`, plus RESUMING.
+  - `ContextColumn` and the header show the latest tool-result Opportunity, so scores, evidence and gaps come from the stream.
+  - A failed feedback turn keeps the paused form, so the SA can resubmit to the same session. The eve error shows verbatim in a toast and an `role="alert"` banner. The banner is new; the old UI only toasted.
+  - A send that never reaches the stream (network, 401, a turn already running) is caught and shown the same way.
+- **Model dropdown and answer check.** The reducer reads back what each turn asked for (`parseTurnRequest` in `lib/assessment-turns.ts`):
+  - it fails when `analyze_deal` reports a `modelUsed` different from the model in the turn-1 message;
+  - it fails when `record_sa_feedback` records a `feedbackKey` different from the one sent.
+
+  Both checks run on top of the agent's own enforcement. A paused session shows the model it was assessed with; the dropdown applies to the next assessment.
+- **Reset guard (from 12).** Reset, the scenario switch and Start are disabled while a turn is submitted, streaming or resuming.
+- **Tests.** `tests/workbench-shell.test.tsx` has 10 tests. It stubs `eve/react`, and `fetch` throws. They cover:
+  - the messages and `outputSchema` sent;
+  - the paused form with evidence and gaps;
+  - the closed writeback;
+  - failures, including a rejected send;
+  - the control locks.

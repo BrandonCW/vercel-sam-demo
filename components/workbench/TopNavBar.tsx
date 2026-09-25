@@ -25,6 +25,8 @@ interface TopNavBarProps {
   onModelChange: (model: System2ModelOption) => void;
   onReset: () => Promise<void>;
   isResetting: boolean;
+  /** An Assessment Session turn is in flight: a reset or scenario switch would delete or orphan its results. */
+  controlsLocked: boolean;
   runtimeStatus: string;
 }
 
@@ -36,6 +38,7 @@ export function TopNavBar({
   onModelChange,
   onReset,
   isResetting,
+  controlsLocked,
   runtimeStatus,
 }: TopNavBarProps) {
   // Competitor threat calculation
@@ -111,6 +114,7 @@ export function TopNavBar({
               aria-label="Select Scenario"
               value={currentScenarioId}
               onChange={(e) => onScenarioChange(e.target.value)}
+              disabled={controlsLocked}
               className="bg-transparent text-zinc-200 font-semibold focus:outline-none cursor-pointer pr-1"
             >
               {Object.entries(DEMO_SCENARIOS).map(([id, scenario]) => (
@@ -142,8 +146,8 @@ export function TopNavBar({
           {/* Reset Demo State Button */}
           <button
             onClick={onReset}
-            disabled={isResetting}
-            title="Reset Scenario to baseline unqualified state"
+            disabled={isResetting || controlsLocked}
+            title={controlsLocked ? 'Wait for the running assessment to finish' : 'Reset Scenario to baseline unqualified state'}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#27272a] hover:bg-[#3f3f46] text-zinc-200 font-semibold rounded-lg border border-zinc-700 disabled:opacity-50 transition-colors shadow-sm"
           >
             <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin text-[#0070f3]' : ''}`} />

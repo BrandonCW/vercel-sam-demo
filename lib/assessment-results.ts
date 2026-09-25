@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { EveAgentReducer, EveAgentReducerEvent } from 'eve/react';
 import { JevScoringResultSchema, type JevScoringResult } from '@/lib/agents/jev-schema';
 import { System2AnalysisResultSchema, type System2AnalysisResult } from '@/lib/agents/system2';
-import { TurnOutcomeSchema, type TurnOutcome } from '@/lib/assessment-turns';
+import { parseTurnRequest, TurnOutcomeSchema, type TurnOutcome, type TurnRequest } from '@/lib/assessment-turns';
 import type { Opportunity } from '@/lib/types/crm';
 
 /**
@@ -30,6 +30,8 @@ export interface AssessmentView {
   turn: 'assess' | 'feedback' | null;
   /** Structured outcome the agent reported for the last turn. */
   outcome: TurnOutcome | null;
+  /** What the latest turn message asked for (System 2 model or feedbackKey); results are checked against it. */
+  request: TurnRequest | null;
   /** Root tool currently running (e.g. score_deal, analyze_deal), for progress. */
   runningTool: string | null;
   opportunity: Opportunity | null;
@@ -67,9 +69,16 @@ const PROJECTORS = {
   ),
   analyze_deal: projector(
     z.object({ interactionId: z.string(), system2Result: System2AnalysisResultSchema, opportunity: OpportunitySchema }),
-    (v, r) => ({ ...v, system2Result: r.system2Result, opportunity: r.opportunity })
+    (v, r) =>
+      v.request?.turn === 'assess' && r.system2Result.modelUsed !== v.request.model
+        ? fail(v, `System 2 ran with ${r.system2Result.modelUsed}, not the requested model ${v.request.model}.`)
+        : { ...v, system2Result: r.system2Result, opportunity: r.opportunity }
   ),
-  record_sa_feedback: projector(z.object({ recorded: z.boolean(), feedbackKey: z.string() }), (v, r) => ({ ...v, feedback: r })),
+  record_sa_feedback: projector(z.object({ recorded: z.boolean(), feedbackKey: z.string() }), (v, r) =>
+    v.request?.turn === 'feedback' && r.feedbackKey !== v.request.feedbackKey
+      ? fail(v, 'The agent recorded different SA answers than the workbench submitted (feedbackKey mismatch).')
+      : { ...v, feedback: r }
+  ),
   crm_update_next_steps: projector(
     z.object({ suggestedNextSteps: z.string().min(1), deltaScore: z.number(), opportunity: OpportunitySchema }),
     (v, r) => ({ ...v, writeback: { suggestedNextSteps: r.suggestedNextSteps, deltaScore: r.deltaScore }, opportunity: r.opportunity })
@@ -80,6 +89,7 @@ const INITIAL: AssessmentView = {
   phase: 'ready',
   turn: null,
   outcome: null,
+  request: null,
   runningTool: null,
   opportunity: null,
   jevResult: null,
@@ -120,8 +130,14 @@ function settledPhase(view: AssessmentView): AssessmentView {
 
 function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentView {
   switch (event.type) {
+    case 'message.received': {
+      const request = parseTurnRequest(event.data.message);
+      return request ? { ...view, request } : view;
+    }
     case 'client.message.submitted':
     case 'turn.started': {
+      const request = event.type === 'client.message.submitted' ? parseTurnRequest(event.data.message) : null;
+      if (request) view = { ...view, request };
       if (view.phase === 'assessing' || view.phase === 'submitting_feedback') return view;
       if (view.writeback) {
         return fail(view, 'This Assessment Session is already closed (written back); start a new assessment.');
