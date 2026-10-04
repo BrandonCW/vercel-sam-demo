@@ -46,7 +46,7 @@ export function TopNavBar({
 
 
   return (
-    <header className="bg-[#121215] border-b border-[#27272a] sticky top-0 z-50 px-4 py-3 shadow-md">
+    <header className="sticky top-0 z-50 px-4 py-3">
       <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Left: Deal Identity & Meta */}
         <div className="flex flex-wrap items-center gap-3">

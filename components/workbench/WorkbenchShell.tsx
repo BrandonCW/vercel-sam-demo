@@ -79,7 +79,7 @@ export function WorkbenchShell({ initialOpportunity, initialScenarioId }: Workbe
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#09090b] text-[#f4f4f5]">
+    <div className="workbench-root min-h-screen flex flex-col">
       {!hydrated && (
         <main className="flex-1 flex items-center justify-center text-xs text-zinc-500">Loading workbench…</main>
       )}
@@ -233,7 +233,7 @@ function AssessmentWorkbench({
         runtimeStatus={runtimeStatus}
       />
 
-      <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 md:p-6">
+      <main className="flex-1 w-full mx-auto">
         {failure && (
           <div role="alert" className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/40 text-xs text-red-200">
             <span className="font-bold text-red-300 mr-1.5">{failure.label}</span>
