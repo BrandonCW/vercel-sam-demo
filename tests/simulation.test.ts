@@ -110,17 +110,19 @@ describe('Simulation Engine & Acme Fixture (TDD)', () => {
   });
 
   describe('Simulation State Machine', () => {
-    it('initializes to READY_TO_ASSESS with baseline score 54 and gate 2 blocked', () => {
+    it('initializes to READY_TO_ASSESS with baseline score 0 and gate 2 blocked', () => {
       const state = createSimulationState(fixture);
       expect(state.workflowState).toBe('READY_TO_ASSESS');
-      expect(state.score).toBe(54);
+      expect(state.score).toBe(0);
       expect(state.statusLabel).toBe('[READY TO ASSESS]');
       expect(state.stageGate.gateReady).toBe(false);
       expect(state.stageGate.gateBlockers.length).toBeGreaterThan(0);
       expect(state.suggestedNextSteps).toBeNull();
       expect(state.discoveryForm).toBeNull();
-      expect(state.dimensions.identifyPain.score).toBe(9);
-      expect(state.dimensions.economicBuyer.score).toBe(3);
+      expect(state.dimensions.identifyPain.score).toBe(0);
+      expect(state.dimensions.identifyPain.status).toBe('unaddressed');
+      expect(state.dimensions.economicBuyer.score).toBe(0);
+      expect(state.dimensions.economicBuyer.status).toBe('unaddressed');
     });
 
     it('transitions READY_TO_ASSESS -> ANALYZING on START_ASSESSMENT', () => {
@@ -128,7 +130,7 @@ describe('Simulation Engine & Acme Fixture (TDD)', () => {
       state = simulationReducer(state, { type: 'START_ASSESSMENT' }, fixture);
 
       expect(state.workflowState).toBe('ANALYZING');
-      expect(state.score).toBe(54);
+      expect(state.score).toBe(0);
       expect(state.statusLabel).toBe('[IN REVIEW]');
       expect(state.stageGate.gateReady).toBe(false);
       expect(state.suggestedNextSteps).toBeNull();
@@ -204,7 +206,7 @@ describe('Simulation Engine & Acme Fixture (TDD)', () => {
       // Jump to 2 / ANALYZING
       const state2 = simulationReducer(state0, { type: 'JUMP_TO_STATE', target: 2 }, fixture);
       expect(state2.workflowState).toBe('ANALYZING');
-      expect(state2.score).toBe(54);
+      expect(state2.score).toBe(0);
       expect(state2.statusLabel).toBe('[IN REVIEW]');
       expect(state2.stageGate.gateReady).toBe(false);
 
@@ -232,7 +234,7 @@ describe('Simulation Engine & Acme Fixture (TDD)', () => {
       // Jump back to 1 / READY_TO_ASSESS
       const state1 = simulationReducer(state5, { type: 'JUMP_TO_STATE', target: 1 }, fixture);
       expect(state1.workflowState).toBe('READY_TO_ASSESS');
-      expect(state1.score).toBe(54);
+      expect(state1.score).toBe(0);
       expect(state1.statusLabel).toBe('[READY TO ASSESS]');
       expect(state1.stageGate.gateReady).toBe(false);
       expect(state1.suggestedNextSteps).toBeNull();
@@ -246,7 +248,7 @@ describe('Simulation Engine & Acme Fixture (TDD)', () => {
 
       state = simulationReducer(state, { type: 'RESET' }, fixture);
       expect(state.workflowState).toBe('READY_TO_ASSESS');
-      expect(state.score).toBe(54);
+      expect(state.score).toBe(0);
       expect(state.statusLabel).toBe('[READY TO ASSESS]');
       expect(state.stageGate.gateReady).toBe(false);
       expect(state.suggestedNextSteps).toBeNull();

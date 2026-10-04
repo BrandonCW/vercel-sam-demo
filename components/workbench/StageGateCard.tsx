@@ -26,10 +26,10 @@ export function StageGateCard({
     return dim ? dim.score : fallback;
   };
 
-  const painScore = getScore('identifyPain', complete ? 9 : 9);
-  const champScore = getScore('champion', complete ? 7 : 7);
-  const metricsScore = getScore('metrics', complete ? 6 : 6);
-  const ebScore = getScore('economicBuyer', complete ? 8 : 3);
+  const painScore = getScore('identifyPain', 0);
+  const champScore = getScore('champion', 0);
+  const metricsScore = getScore('metrics', 0);
+  const ebScore = getScore('economicBuyer', 0);
 
   const criteria = [
     { label: 'Pain', value: painScore, min: 6 },
@@ -40,6 +40,7 @@ export function StageGateCard({
   ];
 
   const blockersCount = criteria.filter((c) => c.value < c.min).length;
+  const isSatisfied = complete || (blockersCount === 0 && score >= 50);
 
   return (
     <section className="rounded-xl border border-[#dfe5ed] bg-white shadow-xs">
@@ -76,12 +77,12 @@ export function StageGateCard({
 
       <div
         className={`border-t px-5 py-4 text-xs font-semibold ${
-          complete
+          isSatisfied
             ? 'border-[#b9dfcf] bg-[#eaf8f1] text-[#256b50]'
             : 'border-[#ead9b4] bg-[#fff8e7] text-[#795711]'
         }`}
       >
-        {complete
+        {isSatisfied
           ? 'Gate criteria satisfied'
           : `${blockersCount} blocker${blockersCount === 1 ? '' : 's'} remaining before advancement`}
       </div>

@@ -20,6 +20,7 @@ import { StageGateCard } from './StageGateCard';
 import { DealSummaryCard } from './DealSummaryCard';
 import { ActionPanel } from './ActionPanel';
 import { DynamicDiscoveryForm } from './DynamicDiscoveryForm';
+import { LiveQualificationWorkbench } from './LiveQualificationWorkbench';
 
 interface QualificationWorkbenchProps {
   initialOpportunity: Opportunity;
@@ -30,8 +31,35 @@ const fixture = acmeFixtureRaw as SimulationFixture;
 
 export function QualificationWorkbench({
   initialOpportunity,
+  initialScenarioId = 'scenario_acme_netlify',
 }: QualificationWorkbenchProps) {
   const [mode, setMode] = useState<WorkbenchMode>('simulation');
+
+  if (mode === 'live') {
+    return (
+      <LiveQualificationWorkbench
+        initialOpportunity={initialOpportunity}
+        initialScenarioId={initialScenarioId}
+        onModeChange={setMode}
+      />
+    );
+  }
+
+  return (
+    <SimulationQualificationWorkbench
+      initialOpportunity={initialOpportunity}
+      onModeChange={setMode}
+    />
+  );
+}
+
+function SimulationQualificationWorkbench({
+  initialOpportunity,
+  onModeChange,
+}: {
+  initialOpportunity: Opportunity;
+  onModeChange: (mode: WorkbenchMode) => void;
+}) {
   const [isResetting, setIsResetting] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -85,14 +113,14 @@ export function QualificationWorkbench({
     }, 1200);
   }
 
-  const currentOpportunity = mode === 'simulation' ? simState.opportunity : initialOpportunity;
+  const currentOpportunity = simState.opportunity;
 
   return (
     <main className="min-h-screen bg-[#f5f7fa] text-[#152238]">
       <TopNavBar
         opportunity={currentOpportunity}
-        mode={mode}
-        onModeChange={setMode}
+        mode="simulation"
+        onModeChange={onModeChange}
         onReset={handleReset}
         isResetting={isResetting}
       />
@@ -113,13 +141,14 @@ export function QualificationWorkbench({
             </h2>
             <p className="mt-1 text-sm text-[#718097]">
               MEDDPICC assessment workspace <span className="mx-2 text-[#c4ccd7]">•</span>{' '}
-              {mode === 'simulation' ? 'Deterministic simulation' : 'Live connected'}
+              Deterministic simulation (zero database leases, instant resets)
             </p>
           </div>
 
           <JumpToStateButtons
             currentWorkflow={simState.workflowState}
             onJumpToState={handleJumpToState}
+            mode="simulation"
           />
         </div>
 
@@ -135,7 +164,7 @@ export function QualificationWorkbench({
           workflow={simState.workflowState}
           isComplete={isComplete}
           statusLabel={simState.statusLabel}
-          isLive={mode === 'live'}
+          isLive={false}
         />
 
         {/* Main 2-Column Split Workbench */}
@@ -173,13 +202,10 @@ export function QualificationWorkbench({
 
             <ActionPanel
               workflow={simState.workflowState}
+              isComplete={isComplete}
+              nextSteps={simState.suggestedNextSteps}
               onAdvance={handleAdvance}
               onReset={handleReset}
-              isComplete={isComplete}
-              nextSteps={
-                simState.suggestedNextSteps ||
-                '[QUALIFIED] Advance to Stage 3 - Technical Validation.'
-              }
             />
           </aside>
         </div>
@@ -187,5 +213,3 @@ export function QualificationWorkbench({
     </main>
   );
 }
-
-export default QualificationWorkbench;

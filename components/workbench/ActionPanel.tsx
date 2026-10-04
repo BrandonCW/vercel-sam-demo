@@ -10,7 +10,7 @@ interface ActionPanelProps {
   onAdvance: () => void;
   onReset: () => void;
   isComplete: boolean;
-  nextSteps: string;
+  nextSteps?: string | null;
   isBusy?: boolean;
 }
 
@@ -34,7 +34,9 @@ export function ActionPanel({
 
   async function copyNextSteps() {
     try {
-      await navigator.clipboard?.writeText(nextSteps);
+      if (nextSteps) {
+        await navigator.clipboard?.writeText(nextSteps);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

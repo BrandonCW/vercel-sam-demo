@@ -23,14 +23,14 @@ describe('QualificationWorkbench Component & Flow', () => {
     expect(screen.getAllByText('Baseline').length).toBeGreaterThan(0);
     expect(screen.getByText('Start assessment')).toBeDefined();
 
-    // Baseline Score 54
-    expect(screen.getAllByText('54').length).toBeGreaterThan(0);
+    // Baseline Score is 0 (unassessed)
+    expect(screen.getAllByText('0').length).toBeGreaterThan(0);
 
-    // Gate 2 check
-    expect(screen.getByText(/blockers? remaining before advancement/i)).toBeDefined();
+    // Gate 2 check (5 blockers initially)
+    expect(screen.getByText(/5 blockers remaining before advancement/i)).toBeDefined();
   });
 
-  it('toggles between Simulation Mode and Live AI Mode', async () => {
+  it('toggles between Simulation Mode and Live AI Mode without mocked state bleed', async () => {
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
     const liveBtn = screen.getByText('🌐 Live AI mode');
@@ -39,6 +39,11 @@ describe('QualificationWorkbench Component & Flow', () => {
     });
 
     expect(screen.getByText(/Live connected/i)).toBeDefined();
+    expect(screen.getByText('Live Mode')).toBeDefined();
+    expect(screen.getByText('AI Gateway & Salesforce')).toBeDefined();
+    // In Live Mode, the simulation JumpToState buttons (1, 2, 3, 4, 5) should not be present
+    expect(screen.queryByRole('button', { name: /Jump to 1/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Jump to 3/i })).toBeNull();
 
     const simBtn = screen.getByText('⚡ Simulation mode');
     await act(async () => {
@@ -46,6 +51,7 @@ describe('QualificationWorkbench Component & Flow', () => {
     });
 
     expect(screen.getByText(/Deterministic simulation/i)).toBeDefined();
+    expect(screen.getByRole('button', { name: /Jump to 1/i })).toBeDefined();
   });
 
   it('jumps directly to State 3 (Discovery paused) and displays dynamic form', async () => {
@@ -56,6 +62,9 @@ describe('QualificationWorkbench Component & Flow', () => {
     await act(async () => {
       fireEvent.click(jumpBtn3);
     });
+
+    // Expect score 54
+    expect(screen.getAllByText('54').length).toBeGreaterThan(0);
 
     // Expect $0 compute banner
     expect(screen.getByText(/\$0 compute/i)).toBeDefined();
@@ -97,9 +106,9 @@ describe('QualificationWorkbench Component & Flow', () => {
       fireEvent.click(resetBtn);
     });
 
-    // Score is 54 again and Start assessment button returned
-    expect(screen.getAllByText('54').length).toBeGreaterThan(0);
-    expect(screen.getByText(/blockers? remaining before advancement/i)).toBeDefined();
+    // Score is 0 again and Start assessment button returned
+    expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+    expect(screen.getByText(/5 blockers remaining before advancement/i)).toBeDefined();
     expect(screen.getByText('Start assessment')).toBeDefined();
   });
 });

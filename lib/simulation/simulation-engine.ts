@@ -51,6 +51,71 @@ function buildDimensionFindings(
   return result;
 }
 
+const INITIAL_GAPS: Record<string, string[]> = {
+  identifyPain: ['Operational and business impact unquantified'],
+  champion: ['Internal advocate not yet tested for influence or access'],
+  economicBuyer: ['Budget authority and discretionary sponsor unconfirmed'],
+  decisionCriteria: ['Technical benchmarks and architecture requirements not locked'],
+  decisionProcess: ['Formal evaluation stages and milestone timeline not mapped'],
+  metrics: ['Quantifiable business KPIs and CWV targets not specified'],
+  competition: ['Alternative vendor evaluation criteria not countered'],
+  paperProcess: ['Procurement, security review, and legal path undefined'],
+};
+
+const INITIAL_WEIGHTS: Record<string, number> = {
+  identifyPain: 0.2,
+  champion: 0.15,
+  economicBuyer: 0.15,
+  decisionCriteria: 0.15,
+  decisionProcess: 0.1,
+  metrics: 0.1,
+  competition: 0.1,
+  paperProcess: 0.05,
+};
+
+const DIMENSION_LABELS: Record<string, string> = {
+  identifyPain: 'Identify Pain',
+  champion: 'Champion',
+  economicBuyer: 'Economic Buyer',
+  decisionCriteria: 'Decision Criteria',
+  decisionProcess: 'Decision Process',
+  metrics: 'Metrics',
+  competition: 'Competition',
+  paperProcess: 'Paper Process',
+};
+
+function buildUnassessedDimensions(): Record<string, SimulationDimension> {
+  const result: Record<string, SimulationDimension> = {};
+  for (const [key, label] of Object.entries(DIMENSION_LABELS)) {
+    const gaps = INITIAL_GAPS[key] || [];
+    result[key] = {
+      key,
+      label,
+      weight: INITIAL_WEIGHTS[key] || 0.1,
+      score: 0,
+      status: 'unaddressed',
+      confidence: 0,
+      quotes: [],
+      gap: gaps[0],
+      gaps,
+    };
+  }
+  return result;
+}
+
+const UNASSESSED_STAGE_GATE = {
+  gate: 'Gate 2',
+  gateReady: false,
+  gateBlockers: [
+    'identifyPain (score: 0, minimum: 6)',
+    'champion (score: 0, minimum: 5)',
+    'metrics (score: 0, minimum: 4)',
+    'economicBuyer (score: 0, minimum: 4)',
+    'Composite score 0 is below the Gate 2 threshold (50)',
+  ],
+  satisfiedCriteria: [],
+};
+
 export function getStateForWorkflow(
   workflowState: WorkflowState,
   fixture: SimulationFixture
@@ -61,23 +126,19 @@ export function getStateForWorkflow(
 
   switch (workflowState) {
     case 'READY_TO_ASSESS': {
-      const dimensions = buildDimensions(
-        fixture.baseline.jevResult.dimensions,
-        fixture.baseline.system2Result.dimensionFindings,
-        false
-      );
+      const dimensions = buildUnassessedDimensions();
       return {
         workflowState: 'READY_TO_ASSESS',
         opportunity: {
           ...fixture.opportunity,
           qualification_status: 'unqualified',
-          meddpicc_score: fixture.baseline.jevResult.overallScore,
+          meddpicc_score: null as any,
           suggested_next_steps: null,
         },
-        score: fixture.baseline.jevResult.overallScore,
-        dimensionFindings,
+        score: 0,
+        dimensionFindings: {},
         dimensions,
-        stageGate: fixture.baseline.jevResult.stageGate,
+        stageGate: UNASSESSED_STAGE_GATE as any,
         statusLabel: '[READY TO ASSESS]',
         suggestedNextSteps: null,
         discoveryForm: null,
@@ -85,23 +146,19 @@ export function getStateForWorkflow(
     }
 
     case 'ANALYZING': {
-      const dimensions = buildDimensions(
-        fixture.baseline.jevResult.dimensions,
-        fixture.baseline.system2Result.dimensionFindings,
-        false
-      );
+      const dimensions = buildUnassessedDimensions();
       return {
         workflowState: 'ANALYZING',
         opportunity: {
           ...fixture.opportunity,
           qualification_status: 'in_review',
-          meddpicc_score: fixture.baseline.jevResult.overallScore,
+          meddpicc_score: null as any,
           suggested_next_steps: null,
         },
-        score: fixture.baseline.jevResult.overallScore,
-        dimensionFindings,
+        score: 0,
+        dimensionFindings: {},
         dimensions,
-        stageGate: fixture.baseline.jevResult.stageGate,
+        stageGate: UNASSESSED_STAGE_GATE as any,
         statusLabel: '[IN REVIEW]',
         suggestedNextSteps: null,
         discoveryForm: null,

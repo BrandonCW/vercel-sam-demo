@@ -28,11 +28,11 @@ export function MeddpiccScorecard({ score, dimensions }: MeddpiccScorecardProps)
         ...d,
         key: d.key,
         weightLabel: typeof d.weight === 'number' ? `${Math.round(d.weight * 100)}%` : String(d.weight),
-        quotes: d.quotes || (d.quote ? [d.quote] : []),
+        quotes: d.quotes || (d.quote ? [d.quote] : (d as any).evidence || []),
         gaps: d.gaps || (d.gap ? [d.gap] : []),
       }))
     : DIMENSION_ORDER.map((key) => {
-        const d = dimensions[key] || {
+        const d = (dimensions as any)[key] || {
           label: key,
           score: 0,
           status: 'unaddressed' as const,
@@ -44,7 +44,7 @@ export function MeddpiccScorecard({ score, dimensions }: MeddpiccScorecardProps)
           ...d,
           key,
           weightLabel: typeof d.weight === 'number' ? `${Math.round(d.weight * 100)}%` : String(d.weight || '10%'),
-          quotes: d.quotes || (d.quote ? [d.quote] : []),
+          quotes: d.quotes || (d.quote ? [d.quote] : (d as any).evidence || []),
           gaps: d.gaps || (d.gap ? [d.gap] : []),
         };
       });

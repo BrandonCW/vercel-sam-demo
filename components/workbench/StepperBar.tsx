@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Check } from 'lucide-react';
-import type { WorkflowState } from '@/lib/simulation/types';
+import type { WorkflowState, WorkbenchMode } from '@/lib/simulation/types';
 
 export const STEPS: { state: WorkflowState; label: string }[] = [
   { state: 'READY_TO_ASSESS', label: 'Baseline' },
@@ -69,12 +69,25 @@ export function StepperBar({
 interface JumpToStateProps {
   currentWorkflow: WorkflowState;
   onJumpToState: (state: WorkflowState) => void;
+  mode?: WorkbenchMode;
 }
 
 export function JumpToStateButtons({
   currentWorkflow,
   onJumpToState,
+  mode = 'simulation',
 }: JumpToStateProps) {
+  if (mode === 'live') {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-[#dfe5ed] bg-white px-3 py-1.5 shadow-xs text-xs">
+        <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="font-medium text-[#152238]">Live Mode</span>
+        <span className="text-[#a8b3c2]">•</span>
+        <span className="text-[#718097]">AI Gateway & Salesforce</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 rounded-xl border border-[#dfe5ed] bg-white p-1.5 shadow-xs">
       <span className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#92a0b3]">
