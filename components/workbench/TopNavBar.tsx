@@ -107,6 +107,19 @@ export function TopNavBar({
 
         {/* Right: Controls (Scenario, Model, Reset, DB status) */}
         <div className="flex flex-wrap items-center gap-2.5 text-xs">
+          <div className="hidden xl:flex items-center gap-1 rounded-lg border border-[#263244] bg-[#0c121c] px-2 py-1.5" aria-label="Assessment workflow">
+            {['READY', 'ANALYZE', 'PAUSE', 'EVALUATE', 'DONE'].map((step, index) => {
+              const active = runtimeStatus === (index === 0 ? 'READY_TO_ASSESS' : index === 1 ? 'ANALYZING' : index === 2 ? 'PENDING_FEEDBACK' : index === 3 ? 'EVALUATING' : 'COMPLETED');
+              return (
+                <React.Fragment key={step}>
+                  {index > 0 && <span className="mx-0.5 text-zinc-700">/</span>}
+                  <span className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wide ${active ? 'bg-blue-500/20 text-blue-300' : 'text-zinc-600'}`}>
+                    {step}
+                  </span>
+                </React.Fragment>
+              );
+            })}
+          </div>
           {/* Scenario Selector */}
           <div className="flex items-center gap-1.5 bg-[#18181b] border border-[#27272a] rounded-lg px-2.5 py-1.5">
             <span className="text-zinc-400 font-medium">Scenario:</span>
