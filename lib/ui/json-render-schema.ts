@@ -41,6 +41,7 @@ export const FormFieldSchema = z.object({
   helpCallout: z.string().optional(),
 });
 export type FormField = z.infer<typeof FormFieldSchema>;
+export type JsonRenderField = FormField;
 
 export const CalloutTypeSchema = z.enum(['info', 'warning', 'tip']);
 export type CalloutType = z.infer<typeof CalloutTypeSchema>;

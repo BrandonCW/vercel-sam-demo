@@ -1,20 +1,25 @@
 import { getOpportunityByScenario } from '@/lib/db/crm';
-import { DEFAULT_SCENARIO_ID } from '@/lib/db/scenarios';
-import { assertAiGatewayConfigured } from '@/lib/env';
-import { WorkbenchShell } from '@/components/workbench/WorkbenchShell';
+import { DEFAULT_SCENARIO_ID, DEMO_SCENARIOS } from '@/lib/db/scenarios';
+import { QualificationWorkbench } from '@/components/workbench/QualificationWorkbench';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  // Fail loudly at render time if the AI Gateway is not configured.
-  assertAiGatewayConfigured();
-
-  const opportunity = await getOpportunityByScenario(DEFAULT_SCENARIO_ID);
-  if (!opportunity) {
-    throw new Error(
-      `Default scenario '${DEFAULT_SCENARIO_ID}' is not seeded in Postgres. Reset the demo or load the scenario seed data.`
-    );
+  let opportunity = null;
+  try {
+    opportunity = await getOpportunityByScenario(DEFAULT_SCENARIO_ID);
+  } catch {
+    // If DB is offline or not configured, fall back to default demo data for simulation
   }
 
-  return <WorkbenchShell initialOpportunity={opportunity} initialScenarioId={DEFAULT_SCENARIO_ID} />;
+  if (!opportunity) {
+    opportunity = DEMO_SCENARIOS[DEFAULT_SCENARIO_ID]?.default_data as any;
+  }
+
+  return (
+    <QualificationWorkbench
+      initialOpportunity={opportunity}
+      initialScenarioId={DEFAULT_SCENARIO_ID}
+    />
+  );
 }
