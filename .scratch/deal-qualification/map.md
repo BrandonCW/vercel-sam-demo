@@ -32,6 +32,10 @@ A complete MVP build specification (`.scratch/deal-qualification/spec.md`) for t
 
 - [Direct root tools, UI before DB, fast System 2 (issue 18)](.scratch/deal-qualification/issues/18-direct-root-tools-progressive-results-haiku.md): Subagents are removed, and the root calls Jev and System 2 directly. Scores and System 2 drafts stream to the UI through eve `action.partial` before the atomic CRM write. System 2 defaults to Gemini 3.8 Flash. The root stays on Sonnet 5, because Haiku 4.5 failed structured output through the Gateway.
 
+- [Assessment workflow tool & code verdict (issues 19–20)](.scratch/deal-qualification/issues/20-code-decides-pass-fail.md): Durable workflow sequences steps in code without subagents; pass/fail and verdicts determined in code.
+
+- [Enterprise UI Redesign & Simulation Mode (issue 21)](.scratch/deal-qualification/issues/21-ui-redesign-and-simulation-mode.md): Redesign workbench with light-mode enterprise UI from `deal-qualification-system.zip` and client-side simulation mode replaying captured real LLM responses.
+
 ## Not yet specified
 
 - **Production Salesforce Integration**: Real OAuth2/REST API sync with Salesforce standard/custom objects once validated beyond the mock stage.
