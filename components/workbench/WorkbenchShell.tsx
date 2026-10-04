@@ -233,27 +233,73 @@ function AssessmentWorkbench({
         runtimeStatus={runtimeStatus}
       />
 
-      <main className="flex-1 w-full mx-auto">
-        {failure && (
-          <div role="alert" className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/40 text-xs text-red-200">
-            <span className="font-bold text-red-300 mr-1.5">{failure.label}</span>
-            {failure.text}
-          </div>
-        )}
-        <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr] gap-6 items-start">
-          <ContextColumn opportunity={opportunity} />
-          <ActionStage
-            opportunity={opportunity}
-            selectedModel={view.system2Result?.modelUsed ?? selectedModel}
-            sessionState={stage.sessionState}
-            dynamicForm={stage.form}
-            isSystem2Running={view.system2Running}
-            onStartAssessment={handleStartAssessment}
-            isAssessing={stage.isAssessing || turnInFlight}
-            onSubmitFeedback={handleSubmitFeedback}
-            isSubmittingFeedback={stage.isSubmittingFeedback}
-            isFormLocked={turnInFlight}
-          />
+      <main className="workbench-canvas flex-1 w-full">
+        <div className="workbench-layout">
+          <aside className="deal-rail" aria-label="Deal overview">
+            <div className="rail-kicker">DEAL ROOM</div>
+            <div className="rail-number">01</div>
+            <div className="rail-rule" />
+            <div className="rail-label">Opportunity</div>
+            <h1 className="rail-title">{opportunity.name}</h1>
+            <div className="rail-meta-list">
+              <div><span>Stage</span><strong>{opportunity.stage}</strong></div>
+              <div><span>ACV</span><strong>{opportunity.acv}</strong></div>
+              <div><span>Owner</span><strong>{opportunity.ae}</strong></div>
+              <div><span>Architect</span><strong>{opportunity.sa}</strong></div>
+            </div>
+            <div className="rail-bottom">
+              <div className="rail-label">Operating principle</div>
+              <p>Turn scattered evidence into a confident next decision.</p>
+              <div className="rail-status"><span className="status-dot" /> {runtimeStatus.replaceAll('_', ' ')}</div>
+            </div>
+          </aside>
+
+          <section className="qualification-column">
+            {failure && (
+              <div role="alert" className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/40 text-xs text-red-200">
+                <span className="font-bold text-red-300 mr-1.5">{failure.label}</span>
+                {failure.text}
+              </div>
+            )}
+            <div className="section-intro">
+              <div>
+                <div className="eyebrow">Qualification workspace / {runtimeStatus.replaceAll('_', ' ')}</div>
+                <h2>Should this deal move forward?</h2>
+              </div>
+              <div className="intro-score"><span>Current confidence</span><strong>{opportunity.meddpicc_score ?? '—'}<small>/100</small></strong></div>
+            </div>
+            <ActionStage
+              opportunity={opportunity}
+              selectedModel={view.system2Result?.modelUsed ?? selectedModel}
+              sessionState={stage.sessionState}
+              dynamicForm={stage.form}
+              isSystem2Running={view.system2Running}
+              onStartAssessment={handleStartAssessment}
+              isAssessing={stage.isAssessing || turnInFlight}
+              onSubmitFeedback={handleSubmitFeedback}
+              isSubmittingFeedback={stage.isSubmittingFeedback}
+              isFormLocked={turnInFlight}
+            />
+          </section>
+
+          <aside className="evidence-rail" aria-label="Deal evidence">
+            <div className="rail-kicker">EVIDENCE AT A GLANCE</div>
+            <div className="evidence-block">
+              <div className="evidence-label">The tension</div>
+              <p>{opportunity.competitor || 'Competitive context needs to be established.'}</p>
+            </div>
+            <div className="evidence-block">
+              <div className="evidence-label">Why now</div>
+              <p>{opportunity.ae_notes?.split('. ')[1] || opportunity.ae_notes}</p>
+            </div>
+            <div className="evidence-block">
+              <div className="evidence-label">Technical reality</div>
+              <p>{opportunity.sa_notes}</p>
+            </div>
+            <div className="evidence-footer">
+              <span className="status-dot" /> Evidence is directional until verified with the customer.
+            </div>
+          </aside>
         </div>
       </main>
     </>
