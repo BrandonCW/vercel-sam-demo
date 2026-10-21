@@ -1,9 +1,35 @@
 # 23: Enterprise Settings Menu, Sequential Navigation & DESIGN.md Workbench Alignment
 
-**Status:** ready-for-agent  
+**Status:** resolved  
 **Type:** task  
 **Blocked by:** 22  
 **Parent Epic:** [GitHub Issue #6](https://github.com/BrandonCW/vercel-sam-demo/issues/6)
+
+## Implementation & Verification Summary
+
+### Commit Ledger
+- `9407e6d` (`feat(workbench): lift TopNavBar controlled state and implement accessible Settings popover`):
+  - Task T5: Lifted `<TopNavBar />`, `mode`, `scenarioId`, `selectedModel`, and `settingsOpen` into `QualificationWorkbench.tsx`.
+  - Replaced inline debug switches with accessible `<SettingsPopover />` dialog (`role="dialog"`, `aria-label="Workbench settings"`, keyboard Escape and click-outside dismissal, focus trap and return).
+  - Cleaned up raw enum status badges and `"Salesforce connected"` pill.
+  - Added +4 unit tests in `tests/workbench-shell.test.tsx` (26/26 passed).
+- `61eadbe` (`feat(workbench): enforce sequential progression, previous-step navigation, and timer cleanup`):
+  - Task T6: Removed raw `{step.state}` subtitles and `JumpToStateButtons` from `StepperBar.tsx`.
+  - Added `"← Previous step"` secondary button in `ActionPanel.tsx` (disabled at `READY_TO_ASSESS`, hidden in Live mode).
+  - Added `STEP_BACK` reducer handling, delta calculations on `COMPLETED`, delta reset on `STEP_BACK`, and transition timer cleanup with `useRef` in `QualificationWorkbench.tsx`.
+  - Added `tests/simulation-engine.test.ts` (+3 tests) and updated `tests/qualification-workbench.test.tsx` (5/5 passed).
+- `c08ea16` (`feat(workbench): enforce permanently open 8-row MEDDPICC ledger and DESIGN.md styling`):
+  - Task T7: Permanently rendered all 8 MEDDPICC rows open with color-quarantined 10-segment score bars, monospace deltas (`(+Δ)`), and inline buyer evidence and blind spots in `MeddpiccScorecard.tsx`.
+  - Supported all 5 field types (`text`, `textarea`, `select`, `radio`, `checkbox_group`) and score chip formatting `"{label}: {score}/10"` in `DynamicDiscoveryForm.tsx`.
+  - Removed yellow `$0 compute` banners and aligned design tokens (`#F8F8F6` canvas, `#FFFFFF` surface, `#F1F0EC` wells, `#E2E0D8` hairline borders, `#0F52BA` CTA) in `Banners.tsx`, `app/globals.css`, and `app/layout.tsx`.
+  - Added +5 unit tests in `tests/dynamic-form-renderer.test.tsx` (12/12 passed).
+
+### Test Verification
+- `tests/workbench-shell.test.tsx`: 26 passed
+- `tests/dynamic-form-renderer.test.tsx`: 12 passed
+- `tests/simulation-engine.test.ts`: 3 passed
+- `tests/qualification-workbench.test.tsx`: 5 passed
+- Total verified test suite: 46 passing unit/integration tests across workbench components.
 
 ## Context
 
