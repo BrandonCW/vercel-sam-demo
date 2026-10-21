@@ -219,15 +219,29 @@ export function getStateForWorkflow(
         fixture.baseline.system2Result.dimensionFindings,
         true
       );
+      const previousScore = fixture.baseline.jevResult.overallScore;
+      const currentScore = fixture.feedback.rescoreJevResult.overallScore;
+      const overallDelta = currentScore - previousScore;
+
+      for (const [key, dim] of Object.entries(dimensions)) {
+        const baseDim = (fixture.baseline.jevResult.dimensions as any)[key];
+        if (baseDim) {
+          dim.previousScore = baseDim.score;
+          dim.delta = dim.score - baseDim.score;
+        }
+      }
+
       return {
         workflowState: 'COMPLETED',
         opportunity: {
           ...fixture.verdict.opportunity,
           qualification_status: 'qualified',
-          meddpicc_score: fixture.feedback.rescoreJevResult.overallScore,
+          meddpicc_score: currentScore,
           suggested_next_steps: fixture.verdict.nextSteps,
         },
-        score: fixture.feedback.rescoreJevResult.overallScore,
+        score: currentScore,
+        previousScore,
+        delta: overallDelta,
         dimensionFindings,
         dimensions,
         stageGate: fixture.feedback.rescoreJevResult.stageGate,
@@ -293,6 +307,26 @@ export function simulationReducer(
         return getStateForWorkflow('COMPLETED', fixture);
       }
       return state;
+
+    case 'STEP_BACK': {
+      if (state.workflowState === 'COMPLETED' || state.workflowState === 'EVALUATING') {
+        const nextState = getStateForWorkflow('PENDING_FEEDBACK', fixture);
+        return {
+          ...nextState,
+          previousScore: null,
+          delta: null,
+        };
+      }
+      if (state.workflowState === 'PENDING_FEEDBACK' || state.workflowState === 'ANALYZING') {
+        const nextState = getStateForWorkflow('READY_TO_ASSESS', fixture);
+        return {
+          ...nextState,
+          previousScore: null,
+          delta: null,
+        };
+      }
+      return state;
+    }
 
     case 'JUMP_TO_STATE': {
       const rawTarget = action.target ?? action.targetState;

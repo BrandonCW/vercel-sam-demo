@@ -55,51 +55,95 @@ describe('QualificationWorkbench Component & Flow', () => {
     expect(screen.getByText(/Deterministic simulation/i)).toBeDefined();
   });
 
-  it('jumps directly to State 3 (Discovery paused) and displays dynamic form', async () => {
+  it('progresses sequentially and supports stepping back to the previous stage with input preservation', async () => {
+    vi.useFakeTimers();
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    // Click "3" in Jump to state
-    const jumpBtn3 = screen.getByRole('button', { name: /Jump to 3/i });
+    // At READY_TO_ASSESS, Previous step button is disabled
+    const prevBtn = screen.getByRole('button', { name: /Previous step/i });
+    expect(prevBtn).toHaveProperty('disabled', true);
+
+    // Click Start assessment to advance to ANALYZING
+    const startBtn = screen.getByText('Start assessment');
     await act(async () => {
-      fireEvent.click(jumpBtn3);
+      fireEvent.click(startBtn);
     });
 
-    // Expect score 54
-    expect(screen.getAllByText('54').length).toBeGreaterThan(0);
+    // Advance 1200ms timer to reach PENDING_FEEDBACK
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
+    });
 
-    // Expect $0 compute banner
-    expect(screen.getByText(/\$0 compute/i)).toBeDefined();
+    // Score is 54 and dynamic discovery form is rendered
+    expect(screen.getAllByText('54').length).toBeGreaterThan(0);
     expect(screen.getByText(/Submit discovery findings/i)).toBeDefined();
+
+    // Previous step button is now enabled
+    expect(prevBtn).toHaveProperty('disabled', false);
+
+    // Step back to READY_TO_ASSESS
+    await act(async () => {
+      fireEvent.click(prevBtn);
+    });
+
+    // Baseline score 0 is restored
+    expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+    expect(screen.getByText('Start assessment')).toBeDefined();
+    expect(prevBtn).toHaveProperty('disabled', true);
+
+    vi.useRealTimers();
   });
 
-  it('jumps directly to State 5 (Completed) and displays 76 score with Gate 2 Passed and Next Steps', async () => {
+  it('completes assessment and allows stepping back from COMPLETED to PENDING_FEEDBACK', async () => {
+    vi.useFakeTimers();
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    // Click "5" in Jump to state
-    const jumpBtn5 = screen.getByRole('button', { name: /Jump to 5/i });
+    // Advance to PENDING_FEEDBACK
     await act(async () => {
-      fireEvent.click(jumpBtn5);
+      fireEvent.click(screen.getByText('Start assessment'));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
     });
 
-    // Expect score 76
+    // Advance from PENDING_FEEDBACK via ActionPanel
+    const advanceBtn = screen.getByText('Awaiting discovery findings');
+    await act(async () => {
+      fireEvent.click(advanceBtn);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
+    });
+
+    // Reaches COMPLETED with 76 score
     expect(screen.getAllByText('76').length).toBeGreaterThan(0);
     expect(screen.getByText(/Gate criteria satisfied/i)).toBeDefined();
-    expect(screen.getByText(/Stage Gate Passed/i)).toBeDefined();
 
-    // Suggested Next Steps visible
-    expect(screen.getAllByText(/Advance to Stage 3/i).length).toBeGreaterThan(0);
-    expect(screen.getByText('Copy to clipboard')).toBeDefined();
+    // Step back from COMPLETED to PENDING_FEEDBACK
+    const prevBtn = screen.getByRole('button', { name: /Previous step/i });
+    await act(async () => {
+      fireEvent.click(prevBtn);
+    });
+
+    // Score reverts to 54 and discovery form is visible again
+    expect(screen.getAllByText('54').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Submit discovery findings/i)).toBeDefined();
+
+    vi.useRealTimers();
   });
 
   it('resets back to baseline on Reset button click', async () => {
+    vi.useFakeTimers();
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    // Jump to 5 first
-    const jumpBtn5 = screen.getByRole('button', { name: /Jump to 5/i });
+    // Advance to PENDING_FEEDBACK
     await act(async () => {
-      fireEvent.click(jumpBtn5);
+      fireEvent.click(screen.getByText('Start assessment'));
     });
-    expect(screen.getAllByText('76').length).toBeGreaterThan(0);
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
+    });
+    expect(screen.getAllByText('54').length).toBeGreaterThan(0);
 
     // Reset via Settings
     const settingsBtn = screen.getByRole('button', { name: /Workbench settings|Settings/i });
@@ -110,8 +154,16 @@ describe('QualificationWorkbench Component & Flow', () => {
     await act(async () => {
       fireEvent.click(resetBtn);
     });
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
 
     // Score is 0 again and Start assessment button returned
+    expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+    expect(screen.getByText(/5 blockers remaining before advancement/i)).toBeDefined();
+    expect(screen.getByText('Start assessment')).toBeDefined();
+
+    vi.useRealTimers();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
     expect(screen.getByText(/5 blockers remaining before advancement/i)).toBeDefined();
     expect(screen.getByText('Start assessment')).toBeDefined();

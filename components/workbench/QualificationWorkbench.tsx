@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useReducer, useState, useTransition } from 'react';
+import React, { useEffect, useReducer, useRef, useState, useTransition } from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { Opportunity } from '@/lib/types/crm';
 import { DEFAULT_SYSTEM2_MODEL, type System2ModelOption } from '@/lib/types/crm';
@@ -13,7 +13,7 @@ import {
 } from '@/lib/simulation/simulation-engine';
 
 import { TopNavBar } from './TopNavBar';
-import { StepperBar, JumpToStateButtons } from './StepperBar';
+import { StepperBar } from './StepperBar';
 import { WorkflowBanners } from './Banners';
 import { DealContextCard } from './DealContextCard';
 import { MeddpiccScorecard } from './MeddpiccScorecard';
@@ -39,7 +39,10 @@ export function QualificationWorkbench({
   const [selectedModel, setSelectedModel] = useState<System2ModelOption>(DEFAULT_SYSTEM2_MODEL);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [savedFormData, setSavedFormData] = useState<Record<string, string | string[]>>({});
   const [, startTransition] = useTransition();
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Simulation State Machine
   const [simState, dispatch] = useReducer(
@@ -51,8 +54,23 @@ export function QualificationWorkbench({
   const isComplete = simState.workflowState === 'COMPLETED';
   const isBusy = simState.workflowState === 'ANALYZING' || simState.workflowState === 'EVALUATING';
 
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
+
   function handleReset() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     setIsResetting(true);
+    setSavedFormData({});
     if (mode === 'simulation') {
       dispatch({ type: 'RESET' });
       setTimeout(() => setIsResetting(false), 300);
@@ -68,37 +86,54 @@ export function QualificationWorkbench({
     }
   }
 
-  // State transitions with realistic simulated delays
+  // State transitions with realistic simulated delays guarded by timerRef
   function handleAdvance() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
     if (simState.workflowState === 'READY_TO_ASSESS') {
       dispatch({ type: 'START_ASSESSMENT' });
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         startTransition(() => {
           dispatch({ type: 'ANALYSIS_COMPLETE' });
+          timerRef.current = null;
         });
       }, 1200);
     } else if (simState.workflowState === 'PENDING_FEEDBACK') {
       dispatch({ type: 'SUBMIT_FEEDBACK' });
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         startTransition(() => {
           dispatch({ type: 'EVALUATION_COMPLETE' });
+          timerRef.current = null;
         });
       }, 1200);
     }
   }
 
-  function handleJumpToState(target: WorkflowState) {
-    dispatch({ type: 'JUMP_TO_STATE', targetState: target });
+  function handleStepBack() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    dispatch({ type: 'STEP_BACK' });
   }
 
   function handleSubmitFeedback(
     responses: Record<string, string | string[]>,
     notesDelta?: string
   ) {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setSavedFormData(responses);
     dispatch({ type: 'SUBMIT_FEEDBACK', formResponses: responses, notesDelta });
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       startTransition(() => {
         dispatch({ type: 'EVALUATION_COMPLETE' });
+        timerRef.current = null;
       });
     }, 1200);
   }
@@ -154,18 +189,11 @@ export function QualificationWorkbench({
                 MEDDPICC assessment workspace <span className="mx-2 text-[#E2E0D8]">•</span> Deterministic simulation (zero database leases, instant resets)
               </p>
             </div>
-
-            <JumpToStateButtons
-              currentWorkflow={simState.workflowState}
-              onJumpToState={handleJumpToState}
-              mode="simulation"
-            />
           </div>
 
-          {/* 5-Step Stepper Bar */}
+          {/* 5-Step Stepper Bar (Sequential Progression) */}
           <StepperBar
             currentWorkflow={simState.workflowState}
-            onJumpToState={handleJumpToState}
             isComplete={isComplete}
           />
 
@@ -184,10 +212,17 @@ export function QualificationWorkbench({
               <DealContextCard opportunity={currentOpportunity} />
 
               {simState.workflowState === 'PENDING_FEEDBACK' ? (
-                <DynamicDiscoveryForm
-                  dynamicForm={simState.discoveryForm}
-                  onSubmit={handleSubmitFeedback}
-                />
+                <>
+                  <DynamicDiscoveryForm
+                    dynamicForm={simState.discoveryForm}
+                    initialValues={savedFormData}
+                    onSubmit={handleSubmitFeedback}
+                  />
+                  <MeddpiccScorecard
+                    score={simState.score}
+                    dimensions={simState.dimensions}
+                  />
+                </>
               ) : (
                 <MeddpiccScorecard
                   score={simState.score}
@@ -215,6 +250,7 @@ export function QualificationWorkbench({
                 isComplete={isComplete}
                 nextSteps={simState.suggestedNextSteps}
                 onAdvance={handleAdvance}
+                onStepBack={handleStepBack}
                 onReset={handleReset}
               />
             </aside>

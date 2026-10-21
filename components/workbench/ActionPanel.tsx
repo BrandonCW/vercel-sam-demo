@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Zap, Play, Clipboard, Check, RotateCcw } from 'lucide-react';
+import { Zap, Play, Clipboard, Check, RotateCcw, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { WorkflowState } from '@/lib/simulation/types';
 
 interface ActionPanelProps {
   workflow: WorkflowState;
   onAdvance: () => void;
+  onStepBack?: () => void;
   onReset: () => void;
   isComplete: boolean;
   nextSteps?: string | null;
   isBusy?: boolean;
+  isLive?: boolean;
 }
 
 const labels: Record<WorkflowState, string> = {
@@ -25,10 +27,12 @@ const labels: Record<WorkflowState, string> = {
 export function ActionPanel({
   workflow,
   onAdvance,
+  onStepBack,
   onReset,
   isComplete,
   nextSteps,
   isBusy = false,
+  isLive = false,
 }: ActionPanelProps) {
   const [copied, setCopied] = useState(false);
 
@@ -40,33 +44,34 @@ export function ActionPanel({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   }
 
+  const isStepBackDisabled = workflow === 'READY_TO_ASSESS' || isBusy;
+
   return (
-    <section className="rounded-xl border border-[#dfe5ed] bg-[#14233b] p-5 text-white shadow-xs">
-      <div className="flex items-center gap-2 text-[#f3b547]">
-        <Zap className="size-4" aria-hidden="true" />
-        <h3 className="font-semibold text-white">Workflow controls</h3>
+    <section className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-5 shadow-xs">
+      <div className="flex items-center gap-2 text-[#111215]">
+        <Zap className="size-4 text-[#0F52BA]" aria-hidden="true" />
+        <h3 className="font-semibold text-sm text-[#111215]">Workflow controls</h3>
       </div>
 
       {isComplete ? (
-        <div className="mt-5 rounded-lg bg-white/10 p-4">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#f3c56b]">
+        <div className="mt-4 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] p-4">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.05em] text-[#787C87]">
             Suggested next steps
           </p>
-          <p className="text-xs leading-5 text-[#d8e0eb]">{nextSteps}</p>
+          <p className="text-xs leading-5 text-[#52545D] font-mono">{nextSteps}</p>
           <Button
             onClick={copyNextSteps}
             variant="secondary"
-            className="mt-4 w-full bg-white text-[#14233b] hover:bg-[#edf2f8] cursor-pointer"
+            className="mt-4 w-full bg-[#FFFFFF] border border-[#E2E0D8] text-[#111215] hover:bg-[#F1F0EC] cursor-pointer text-xs"
           >
             {copied ? (
               <>
-                <Check className="size-3.5 mr-1" />
+                <Check className="size-3.5 mr-1 text-[#059669]" />
                 Copied to clipboard
               </>
             ) : (
@@ -79,17 +84,17 @@ export function ActionPanel({
         </div>
       ) : (
         <>
-          <p className="mt-3 text-sm leading-6 text-[#bcc9d9]">
-            Use the simulation controller to move through the qualification lifecycle.
+          <p className="mt-2 text-xs leading-5 text-[#787C87]">
+            Use the controller to move sequentially through the deal qualification lifecycle.
           </p>
           <Button
             onClick={onAdvance}
             disabled={workflow === 'ANALYZING' || workflow === 'EVALUATING' || isBusy}
-            className="mt-5 w-full bg-[#f3b547] text-[#14233b] hover:bg-[#f7c66c] font-semibold cursor-pointer disabled:opacity-50"
+            className="mt-4 w-full bg-[#0F52BA] hover:bg-[#0C4196] text-white font-semibold cursor-pointer disabled:opacity-50 text-xs py-2 h-auto"
           >
             {isBusy || workflow === 'ANALYZING' ? (
               <>
-                <span className="inline-block size-3.5 border-2 border-[#14233b]/30 border-t-[#14233b] rounded-full animate-spin mr-1.5" />
+                <span className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
                 <span>Evaluating Opportunity...</span>
               </>
             ) : (
@@ -102,10 +107,24 @@ export function ActionPanel({
         </>
       )}
 
+      {/* Sequential Previous Step Navigation (hidden in Live mode, disabled at READY_TO_ASSESS) */}
+      {!isLive && onStepBack && (
+        <Button
+          onClick={onStepBack}
+          disabled={isStepBackDisabled}
+          variant="outline"
+          aria-label="Previous step"
+          className="mt-2 w-full border border-[#E2E0D8] bg-[#FFFFFF] text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer disabled:opacity-40 text-xs py-2 h-auto"
+        >
+          <ArrowLeft className="size-3.5 mr-1" />
+          <span>← Previous step</span>
+        </Button>
+      )}
+
       <Button
         onClick={onReset}
         variant="ghost"
-        className="mt-2 w-full text-[#bcc9d9] hover:bg-white/10 hover:text-white cursor-pointer"
+        className="mt-2 w-full text-[#787C87] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer text-xs py-2 h-auto"
       >
         <RotateCcw className="size-3.5 mr-1" />
         {isComplete ? 'Reset / re-evaluate' : 'Reset workflow'}
