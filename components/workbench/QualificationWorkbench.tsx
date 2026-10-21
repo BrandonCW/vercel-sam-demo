@@ -257,7 +257,7 @@ export function QualificationWorkbench({
                         className="btn-action-primary flex items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2.5 text-xs font-semibold text-[#FFFFFF] hover:bg-[#0C4196] cursor-pointer shadow-2xs"
                       >
                         <span>Run MEDDPICC Deal Audit →</span>
-                        <span className="text-white/80 font-normal">Start assessment</span>
+                        <span className="sr-only">Start assessment</span>
                       </button>
                     </div>
 
@@ -423,7 +423,7 @@ export function QualificationWorkbench({
                         className="flex items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer"
                       >
                         <RotateCcw className="size-3" aria-hidden="true" />
-                        <span>↺ Restart Walkthrough</span>
+                        <span>Restart Walkthrough</span>
                       </button>
                     </div>
 

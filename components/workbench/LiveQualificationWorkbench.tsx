@@ -734,7 +734,7 @@ function LiveAssessmentSession({
                       className="flex items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer"
                     >
                       <RotateCcw className="size-3" aria-hidden="true" />
-                      <span>↺ Restart Walkthrough</span>
+                      <span>Restart Walkthrough</span>
                     </button>
                   </div>
 

@@ -71,7 +71,7 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
               {opportunity.ae_notes || 'No AE business notes recorded.'}
             </p>
           </div>
-          <div className="brief-block border-l-2 border-[#0F52BA] pl-2.5">
+          <div className="brief-block border-l-2 border-[#111215] pl-2.5">
             <div className="brief-heading text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87] mb-1">
               SA Technical Assessment
             </div>
@@ -93,7 +93,7 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
           </p>
         </div>
 
-        <div className="brief-block border-l-2 border-[#0F52BA] pl-2.5">
+        <div className="brief-block border-l-2 border-[#111215] pl-2.5">
           <div className="brief-heading text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87] mb-1">
             SA Technical Assessment
           </div>
