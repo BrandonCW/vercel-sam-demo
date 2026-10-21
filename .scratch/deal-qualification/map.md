@@ -36,6 +36,12 @@ A complete MVP build specification (`.scratch/deal-qualification/spec.md`) for t
 
 - [Enterprise UI Redesign & Simulation Mode (issue 21)](.scratch/deal-qualification/issues/21-ui-redesign-and-simulation-mode.md): Redesign workbench with light-mode enterprise UI from `deal-qualification-system.zip` and client-side simulation mode replaying captured real LLM responses.
 
+- [System 2 Schema Pruning, 2-Model Registry & Legacy Dead Code Removal (issue 22)](.scratch/deal-qualification/issues/22-system2-schema-models-and-legacy-cleanup.md): Prune unused System 2 fields (phase1Gaps, phase2Competitive, summary) to resolve output truncation, make toRenderField resilient to empty options, restrict SYSTEM2_MODELS to Gemini 3.8 Flash + Haiku 5.5, seed Soylent competitor flag, and delete 4 orphaned legacy dark-theme components. (Child of Epic [GitHub Issue #6](https://github.com/BrandonCW/vercel-sam-demo/issues/6))
+
+- [Enterprise Settings Menu & DESIGN.md Workbench Alignment (issue 23)](.scratch/deal-qualification/issues/23-settings-menu-and-design-md-alignment.md): Move mode/model/scenario controls and reset into an enterprise Settings popover, remove demo artifacts ($0 compute, internal enums, JumpToState buttons), add sequential navigation, and enforce DESIGN.md monochrome styling with an always-open 8-row MEDDPICC ledger. (Child of Epic [GitHub Issue #6](https://github.com/BrandonCW/vercel-sam-demo/issues/6), blocked by issue 22)
+
+- [Deal Desk OS Split-Workbench Layout & Operational State Integration (issue 24)](.scratch/deal-qualification/issues/24-desk-os-workbench-layout.md): Refactor workbench into a high-density Desk OS 35%/65% split layout with a 3-stage process stepper (`1. Initial Deal Audit`, `2. Field Discovery Checklist`, `3. Updated Assessment & Next Steps`), persistent left Opportunity Brief, in-place stage & loading transitions (Blank Start, Initial Assessment Loading, Re-Scoring Loading), embedded 10-segment score bars in discovery cards, and top Next Steps block above the upgraded Stage 3 MEDDPICC ledger. (Child of Epic [GitHub Issue #6](https://github.com/BrandonCW/vercel-sam-demo/issues/6), blocked by issue 23)
+
 ## Not yet specified
 
 - **Production Salesforce Integration**: Real OAuth2/REST API sync with Salesforce standard/custom objects once validated beyond the mock stage.

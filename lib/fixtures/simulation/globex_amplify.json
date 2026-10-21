@@ -1,0 +1,576 @@
+{
+  "scenarioId": "opp_globex_fintech_002",
+  "opportunity": {
+    "id": "opp_globex_fintech_002",
+    "name": "Globex FinTech - Wealth Portal Replatform",
+    "account_name": "Globex Financial",
+    "stage_name": "Stage 2 - Discovery",
+    "amount": 240000,
+    "close_date": "2026-11-30",
+    "ae_name": "Marcus Vance",
+    "sa_name": "Sarah Miller",
+    "ae_notes": "Lead came inbound from CTO's tweet. AWS account team is pushing Amplify heavily with credits. Need SOC2 Type II compliance, VPC peering or secure backend integration, and SSO.",
+    "sa_notes": "Security team has strict egress IP filtering requirements. Investigating Vercel Secure Compute and Edge Functions. AWS Amplify offering $100k AWS credits to stay on AWS stack.",
+    "suggested_next_steps": null,
+    "qualification_status": "unqualified",
+    "meddpicc_score": 48,
+    "meddpicc_breakdown": {
+      "identifyPain": {
+        "key": "identifyPain",
+        "label": "Identify Pain",
+        "weight": 0.2,
+        "score": 8,
+        "status": "verified",
+        "confidence": 0.9,
+        "evidence": [
+          "Legacy wealth portal slow on mobile; need SOC2 compliant edge infrastructure"
+        ],
+        "gaps": []
+      },
+      "champion": {
+        "key": "champion",
+        "label": "Champion",
+        "weight": 0.15,
+        "score": 7,
+        "status": "partial",
+        "confidence": 0.85,
+        "evidence": [
+          "VP Engineering strongly prefers Vercel developer experience over AWS Amplify"
+        ],
+        "gaps": [
+          "CTO has final sign-off on cloud provider switch"
+        ]
+      },
+      "economicBuyer": {
+        "key": "economicBuyer",
+        "label": "Economic Buyer",
+        "weight": 0.15,
+        "score": 6,
+        "status": "partial",
+        "confidence": 0.8,
+        "evidence": [
+          "$240k annual budget allocated for wealth portal modernization"
+        ],
+        "gaps": [
+          "CFO requires security approval before releasing funds"
+        ]
+      },
+      "decisionCriteria": {
+        "key": "decisionCriteria",
+        "label": "Decision Criteria",
+        "weight": 0.15,
+        "score": 2,
+        "status": "unaddressed",
+        "confidence": 0.8,
+        "evidence": [],
+        "gaps": [
+          "VPC peering and dedicated static egress IP architecture unverified"
+        ]
+      },
+      "decisionProcess": {
+        "key": "decisionProcess",
+        "label": "Decision Process",
+        "weight": 0.1,
+        "score": 5,
+        "status": "partial",
+        "confidence": 0.8,
+        "evidence": [
+          "Target decision date before Q4 procurement cycle"
+        ],
+        "gaps": [
+          "Formal architecture security sign-off process undefined"
+        ]
+      },
+      "metrics": {
+        "key": "metrics",
+        "label": "Metrics",
+        "weight": 0.1,
+        "score": 5,
+        "status": "partial",
+        "confidence": 0.8,
+        "evidence": [
+          "Portal response latency < 200ms globally"
+        ],
+        "gaps": [
+          "Financial transaction conversion uplift unquantified"
+        ]
+      },
+      "competition": {
+        "key": "competition",
+        "label": "Competition",
+        "weight": 0.1,
+        "score": 6,
+        "status": "partial",
+        "confidence": 0.85,
+        "evidence": [
+          "AWS Amplify offering $100k AWS credits to stay on AWS stack"
+        ],
+        "gaps": [
+          "Need TCO comparison showing Amplify hidden engineering costs"
+        ]
+      },
+      "paperProcess": {
+        "key": "paperProcess",
+        "label": "Paper Process",
+        "weight": 0.05,
+        "score": 2,
+        "status": "unaddressed",
+        "confidence": 0.75,
+        "evidence": [],
+        "gaps": [
+          "InfoSec SOC2 Type II compliance audit checklist pending"
+        ]
+      }
+    },
+    "competitive_flags": [
+      "AWS Amplify"
+    ],
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "updated_at": "2026-10-01T00:00:00.000Z"
+  },
+  "baseline": {
+    "jevResult": {
+      "opportunityId": "opp_globex_fintech_002",
+      "overallScore": 48,
+      "dimensions": {
+        "identifyPain": {
+          "key": "identifyPain",
+          "label": "Identify Pain",
+          "weight": 0.2,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "champion": {
+          "key": "champion",
+          "label": "Champion",
+          "weight": 0.15,
+          "score": 7,
+          "status": "partial",
+          "confidence": 0.85
+        },
+        "economicBuyer": {
+          "key": "economicBuyer",
+          "label": "Economic Buyer",
+          "weight": 0.15,
+          "score": 6,
+          "status": "partial",
+          "confidence": 0.8
+        },
+        "decisionCriteria": {
+          "key": "decisionCriteria",
+          "label": "Decision Criteria",
+          "weight": 0.15,
+          "score": 2,
+          "status": "unaddressed",
+          "confidence": 0.8
+        },
+        "decisionProcess": {
+          "key": "decisionProcess",
+          "label": "Decision Process",
+          "weight": 0.1,
+          "score": 5,
+          "status": "partial",
+          "confidence": 0.8
+        },
+        "metrics": {
+          "key": "metrics",
+          "label": "Metrics",
+          "weight": 0.1,
+          "score": 5,
+          "status": "partial",
+          "confidence": 0.8
+        },
+        "competition": {
+          "key": "competition",
+          "label": "Competition",
+          "weight": 0.1,
+          "score": 6,
+          "status": "partial",
+          "confidence": 0.85
+        },
+        "paperProcess": {
+          "key": "paperProcess",
+          "label": "Paper Process",
+          "weight": 0.05,
+          "score": 2,
+          "status": "unaddressed",
+          "confidence": 0.75
+        }
+      },
+      "competitiveFlags": [
+        {
+          "name": "AWS Amplify",
+          "threatLevel": "high"
+        }
+      ],
+      "stageGate": {
+        "gateReady": false,
+        "currentStage": "Stage 2 - Discovery",
+        "targetStage": "Stage 3 - Technical Validation",
+        "gateBlockers": [
+          "Decision Criteria score is 2/10 (VPC peering and egress IP filtering unconfirmed)",
+          "Paper Process score is 2/10 (SOC2 Type II compliance audit unverified)"
+        ],
+        "blockingDimensions": [
+          "decisionCriteria",
+          "paperProcess"
+        ]
+      },
+      "evaluatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    "system2Result": {
+      "opportunityId": "opp_globex_fintech_002",
+      "modelUsed": "google/gemini-3.8-flash",
+      "dimensionFindings": {
+        "identifyPain": {
+          "citations": [
+            "Legacy wealth portal slow on mobile; need SOC2 compliant edge infrastructure"
+          ],
+          "gaps": []
+        },
+        "champion": {
+          "citations": [
+            "VP Engineering strongly prefers Vercel developer experience over AWS Amplify"
+          ],
+          "gaps": [
+            "CTO has final sign-off on cloud provider switch"
+          ]
+        },
+        "economicBuyer": {
+          "citations": [
+            "$240k annual budget allocated for wealth portal modernization"
+          ],
+          "gaps": [
+            "CFO requires security approval before releasing funds"
+          ]
+        },
+        "decisionCriteria": {
+          "citations": [],
+          "gaps": [
+            "VPC peering and dedicated static egress IP architecture unverified"
+          ]
+        },
+        "decisionProcess": {
+          "citations": [
+            "Target decision date before Q4 procurement cycle"
+          ],
+          "gaps": [
+            "Formal architecture security sign-off process undefined"
+          ]
+        },
+        "metrics": {
+          "citations": [
+            "Portal response latency < 200ms globally"
+          ],
+          "gaps": [
+            "Financial transaction conversion uplift unquantified"
+          ]
+        },
+        "competition": {
+          "citations": [
+            "AWS Amplify offering $100k AWS credits to stay on AWS stack"
+          ],
+          "gaps": [
+            "Need TCO comparison showing Amplify hidden engineering costs"
+          ]
+        },
+        "paperProcess": {
+          "citations": [],
+          "gaps": [
+            "InfoSec SOC2 Type II compliance audit checklist pending"
+          ]
+        }
+      },
+      "phase3Form": {
+        "opportunityId": "opp_globex_fintech_002",
+        "title": "FinTech Security & Enterprise Architecture Validation",
+        "summary": "Verify Vercel Secure Compute VPC peering and SOC2 Type II compliance requirements to unlock Gate 2.",
+        "sections": [
+          {
+            "id": "section_security_blockers",
+            "title": "Stage Gate Security & Architecture Blockers",
+            "description": "Confirm networking and compliance specifications required by Globex InfoSec.",
+            "calloutType": "warning",
+            "calloutText": "Dedicated static egress IPs and SOC2 Type II certification are mandatory for Gate 2 clearance.",
+            "fields": [
+              {
+                "id": "secure_compute_peering",
+                "name": "secure_compute_peering",
+                "label": "Confirmed Vercel Secure Compute VPC peering and dedicated egress IP architecture?",
+                "type": "radio",
+                "required": true,
+                "dimensionTarget": "decisionCriteria",
+                "helpCallout": "Validates direct backend integration with AWS banking core",
+                "options": [
+                  {
+                    "label": "Confirmed Secure Compute VPC peering satisfies egress filtering",
+                    "value": "confirmed_secure_compute"
+                  },
+                  {
+                    "label": "Architecture review pending with network team",
+                    "value": "review_pending"
+                  },
+                  {
+                    "label": "Unaddressed",
+                    "value": "unaddressed"
+                  }
+                ]
+              },
+              {
+                "id": "infosec_compliance",
+                "name": "infosec_compliance",
+                "label": "Confirmed InfoSec SOC2 Type II audit checklist:",
+                "type": "select",
+                "required": true,
+                "dimensionTarget": "paperProcess",
+                "helpCallout": "Enterprise security and regulatory compliance path",
+                "options": [
+                  {
+                    "label": "SOC2 Type II + ISO 27001 packet pre-approved by InfoSec",
+                    "value": "soc2_preapproved"
+                  },
+                  {
+                    "label": "Standard vendor questionnaire in progress",
+                    "value": "questionnaire_in_progress"
+                  },
+                  {
+                    "label": "Undefined",
+                    "value": "undefined"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "fatalBlocker": null,
+      "valueFocus": "Vercel Secure Compute with VPC Peering and SOC2 Type II compliance",
+      "primaryRisk": "AWS account team pushing $100k AWS Amplify credits",
+      "nextMilestone": "Coordinate Secure Compute VPC peering architecture review with CISO team"
+    }
+  },
+  "feedback": {
+    "formResponses": {
+      "secure_compute_peering": "confirmed_secure_compute",
+      "infosec_compliance": "soc2_preapproved"
+    },
+    "notesDelta": "Security Criteria verified: VP Eng and InfoSec Lead confirmed Vercel Secure Compute with dedicated static egress IPs satisfies all regulatory filtering criteria. Paper process verified: SOC2 Type II and ISO 27001 compliance packet pre-approved.",
+    "rescoreJevResult": {
+      "opportunityId": "opp_globex_fintech_002",
+      "overallScore": 78,
+      "dimensions": {
+        "identifyPain": {
+          "key": "identifyPain",
+          "label": "Identify Pain",
+          "weight": 0.2,
+          "score": 9,
+          "status": "verified",
+          "confidence": 0.95
+        },
+        "champion": {
+          "key": "champion",
+          "label": "Champion",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "economicBuyer": {
+          "key": "economicBuyer",
+          "label": "Economic Buyer",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "decisionCriteria": {
+          "key": "decisionCriteria",
+          "label": "Decision Criteria",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "decisionProcess": {
+          "key": "decisionProcess",
+          "label": "Decision Process",
+          "weight": 0.1,
+          "score": 7,
+          "status": "verified",
+          "confidence": 0.85
+        },
+        "metrics": {
+          "key": "metrics",
+          "label": "Metrics",
+          "weight": 0.1,
+          "score": 7,
+          "status": "partial",
+          "confidence": 0.85
+        },
+        "competition": {
+          "key": "competition",
+          "label": "Competition",
+          "weight": 0.1,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "paperProcess": {
+          "key": "paperProcess",
+          "label": "Paper Process",
+          "weight": 0.05,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        }
+      },
+      "competitiveFlags": [
+        {
+          "name": "AWS Amplify",
+          "threatLevel": "medium"
+        }
+      ],
+      "stageGate": {
+        "gateReady": true,
+        "currentStage": "Stage 2 - Discovery",
+        "targetStage": "Stage 3 - Technical Validation",
+        "gateBlockers": [],
+        "blockingDimensions": []
+      },
+      "evaluatedAt": "2026-10-01T12:05:00.000Z"
+    }
+  },
+  "verdict": {
+    "status": "written_back",
+    "opportunityId": "opp_globex_fintech_002",
+    "qualificationStatus": "qualified",
+    "baselineScore": 48,
+    "finalScore": 78,
+    "delta": 30,
+    "nextSteps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Sarah Miller (SA). Action: Coordinate Secure Compute VPC peering architecture review with CISO team. Counter AWS Amplify credits with developer productivity and total cost of ownership model.",
+    "writebackId": "wb_sim_globex_002",
+    "feedback": "recorded",
+    "opportunity": {
+      "id": "opp_globex_fintech_002",
+      "name": "Globex FinTech - Wealth Portal Replatform",
+      "account_name": "Globex Financial",
+      "stage_name": "Stage 2 - Discovery",
+      "amount": 240000,
+      "close_date": "2026-11-30",
+      "ae_name": "Marcus Vance",
+      "sa_name": "Sarah Miller",
+      "ae_notes": "Lead came inbound from CTO's tweet. AWS account team is pushing Amplify heavily with credits. Need SOC2 Type II compliance, VPC peering or secure backend integration, and SSO.",
+      "sa_notes": "Security team has strict egress IP filtering requirements. Investigating Vercel Secure Compute and Edge Functions. AWS Amplify offering $100k AWS credits to stay on AWS stack.\n\n[SA Discovery Update - 2026-10-01T12:05:00.000Z]\n• secure_compute_peering: confirmed_secure_compute\n• infosec_compliance: soc2_preapproved\n• Additional SA Notes: Security Criteria verified: VP Eng and InfoSec Lead confirmed Vercel Secure Compute with dedicated static egress IPs satisfies all regulatory filtering criteria. Paper process verified: SOC2 Type II and ISO 27001 compliance packet pre-approved.",
+      "suggested_next_steps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Sarah Miller (SA). Action: Coordinate Secure Compute VPC peering architecture review with CISO team. Counter AWS Amplify credits with developer productivity and total cost of ownership model.",
+      "qualification_status": "qualified",
+      "meddpicc_score": 78,
+      "meddpicc_breakdown": {
+        "identifyPain": {
+          "key": "identifyPain",
+          "label": "Identify Pain",
+          "weight": 0.2,
+          "score": 9,
+          "status": "verified",
+          "confidence": 0.95,
+          "evidence": [
+            "Legacy wealth portal slow on mobile; need SOC2 compliant edge infrastructure"
+          ],
+          "gaps": []
+        },
+        "champion": {
+          "key": "champion",
+          "label": "Champion",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9,
+          "evidence": [
+            "VP Engineering strongly prefers Vercel developer experience over AWS Amplify"
+          ],
+          "gaps": [
+            "CTO has final sign-off on cloud provider switch"
+          ]
+        },
+        "economicBuyer": {
+          "key": "economicBuyer",
+          "label": "Economic Buyer",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9,
+          "evidence": [
+            "$240k annual budget allocated for wealth portal modernization"
+          ],
+          "gaps": []
+        },
+        "decisionCriteria": {
+          "key": "decisionCriteria",
+          "label": "Decision Criteria",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9,
+          "evidence": [
+            "Confirmed Secure Compute VPC peering satisfies egress filtering"
+          ],
+          "gaps": []
+        },
+        "decisionProcess": {
+          "key": "decisionProcess",
+          "label": "Decision Process",
+          "weight": 0.1,
+          "score": 7,
+          "status": "verified",
+          "confidence": 0.85,
+          "evidence": [
+            "Target decision date before Q4 procurement cycle"
+          ],
+          "gaps": []
+        },
+        "metrics": {
+          "key": "metrics",
+          "label": "Metrics",
+          "weight": 0.1,
+          "score": 7,
+          "status": "partial",
+          "confidence": 0.85,
+          "evidence": [
+            "Portal response latency < 200ms globally"
+          ],
+          "gaps": []
+        },
+        "competition": {
+          "key": "competition",
+          "label": "Competition",
+          "weight": 0.1,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9,
+          "evidence": [
+            "AWS Amplify offering $100k AWS credits to stay on AWS stack"
+          ],
+          "gaps": []
+        },
+        "paperProcess": {
+          "key": "paperProcess",
+          "label": "Paper Process",
+          "weight": 0.05,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9,
+          "evidence": [
+            "SOC2 Type II + ISO 27001 packet pre-approved by InfoSec"
+          ],
+          "gaps": []
+        }
+      },
+      "competitive_flags": [
+        "AWS Amplify"
+      ],
+      "created_at": "2026-10-01T00:00:00.000Z",
+      "updated_at": "2026-10-01T12:05:00.000Z"
+    }
+  },
+  "capturedAt": "2026-10-01T12:05:00.000Z"
+}

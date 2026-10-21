@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
 import { useEveAgent } from 'eve/react';
 import type { Opportunity, System2ModelOption } from '@/lib/types/crm';
 import { DEFAULT_SYSTEM2_MODEL } from '@/lib/types/crm';
@@ -15,19 +14,30 @@ import {
 import type { WorkflowState, WorkbenchMode } from '@/lib/simulation/types';
 
 import { TopNavBar } from './TopNavBar';
-import { StepperBar, JumpToStateButtons } from './StepperBar';
-import { WorkflowBanners } from './Banners';
+import { StepperBar, type DeskOsStageId } from './StepperBar';
 import { DealContextCard } from './DealContextCard';
 import { MeddpiccScorecard } from './MeddpiccScorecard';
-import { StageGateCard } from './StageGateCard';
-import { DealSummaryCard } from './DealSummaryCard';
-import { ActionPanel } from './ActionPanel';
 import { DynamicDiscoveryForm } from './DynamicDiscoveryForm';
+import {
+  MonochromeTopBar,
+  SuggestedNextStepsCard,
+  ProblemCauseFixBanner,
+  Stage3HeaderLockup,
+  STAGE_GATE_THRESHOLD,
+} from './desk-os-shared';
 
 interface LiveQualificationWorkbenchProps {
   initialOpportunity: Opportunity;
-  initialScenarioId: string;
-  onModeChange: (mode: WorkbenchMode) => void;
+  initialScenarioId?: string;
+  onModeChange?: (mode: WorkbenchMode) => void;
+  hideTopNavBar?: boolean;
+  scenarioId?: string;
+  onScenarioChange?: (scenarioId: string) => void;
+  selectedModel?: System2ModelOption;
+  onModelChange?: (model: System2ModelOption) => void;
+  settingsOpen?: boolean;
+  onSettingsOpenChange?: (open: boolean) => void;
+  initialStageView?: 'blank' | 'stage1' | 'stage2' | 'stage3';
 }
 
 const ASSESS_FAILED = 'Assessment failed:';
@@ -49,23 +59,70 @@ function failureLabel(view: AssessmentView): string {
   return view.feedback || view.sentFeedbackKey !== null ? WRITEBACK_FAILED : ASSESS_FAILED;
 }
 
+const DIMENSION_LABELS: Record<string, string> = {
+  identifyPain: 'Identify Pain',
+  champion: 'Champion',
+  economicBuyer: 'Economic Buyer',
+  decisionCriteria: 'Decision Criteria',
+  decisionProcess: 'Decision Process',
+  metrics: 'Metrics',
+  competition: 'Competition',
+  paperProcess: 'Paper Process',
+};
+
 function formatDimensionsForScorecard(
   dimensionsInput?: Record<string, any>,
-  findingsInput?: Record<string, any>
+  findingsInput?: Record<string, any>,
+  fallbackBreakdown?: Record<string, any>,
+  baselineDimensionsInput?: Record<string, any>
 ) {
-  if (!dimensionsInput) return {};
+  if (!dimensionsInput && !fallbackBreakdown) return {};
+  const source = dimensionsInput || fallbackBreakdown || {};
   const result: Record<string, any> = {};
-  for (const [key, dim] of Object.entries(dimensionsInput)) {
+  for (const [key, dim] of Object.entries(source)) {
+    if (key === 'stageGate') continue;
+    const fb = fallbackBreakdown?.[key];
     const finding = findingsInput ? findingsInput[key] : null;
-    const quotes = finding?.citations || dim.evidence || (dim.quote ? [dim.quote] : []);
-    const gaps = finding?.gaps || dim.gaps || (dim.gap ? [dim.gap] : []);
+    const baselineDim = baselineDimensionsInput?.[key];
+
+    const quotes =
+      finding?.citations?.length
+        ? finding.citations
+        : dim.evidence?.length
+        ? dim.evidence
+        : fb?.evidence?.length
+        ? fb.evidence
+        : dim.quote
+        ? [dim.quote]
+        : fb?.quote
+        ? [fb.quote]
+        : [];
+    const gaps =
+      finding?.gaps?.length
+        ? finding.gaps
+        : dim.gaps?.length
+        ? dim.gaps
+        : fb?.gaps?.length
+        ? fb.gaps
+        : dim.gap
+        ? [dim.gap]
+        : fb?.gap
+        ? [fb.gap]
+        : [];
+
+    const currentScore = dim.score ?? fb?.score ?? 0;
+    const previousScore = baselineDim?.score ?? dim.previousScore;
+    const delta = previousScore !== undefined && previousScore !== null ? currentScore - previousScore : dim.delta;
+
     result[key] = {
       key,
-      label: dim.label || key,
-      weight: dim.weight ?? 0.1,
-      score: dim.score ?? 0,
-      status: dim.status || 'unaddressed',
-      confidence: dim.confidence ?? 0,
+      label: DIMENSION_LABELS[key] || dim.label || fb?.label || key,
+      weight: dim.weight ?? fb?.weight ?? 0.1,
+      score: currentScore,
+      previousScore: previousScore ?? null,
+      delta: delta && delta > 0 ? delta : null,
+      status: dim.status || fb?.status || 'unaddressed',
+      confidence: dim.confidence ?? fb?.confidence ?? 0,
       quote: quotes[0],
       quotes,
       gap: gaps[0],
@@ -77,19 +134,65 @@ function formatDimensionsForScorecard(
 
 export function LiveQualificationWorkbench({
   initialOpportunity,
-  initialScenarioId,
+  initialScenarioId = 'scenario_acme_netlify',
   onModeChange,
+  hideTopNavBar = false,
+  scenarioId: controlledScenarioId,
+  onScenarioChange: controlledOnScenarioChange,
+  selectedModel: controlledSelectedModel,
+  onModelChange: controlledOnModelChange,
+  settingsOpen,
+  onSettingsOpenChange,
+  initialStageView,
 }: LiveQualificationWorkbenchProps) {
   const [opportunity, setOpportunity] = useState<Opportunity>(initialOpportunity);
-  const [scenarioId, setScenarioId] = useState<string>(initialScenarioId);
-  const [selectedModel, setSelectedModel] = useState<System2ModelOption>(DEFAULT_SYSTEM2_MODEL);
+  const [internalScenarioId, setInternalScenarioId] = useState<string>(initialScenarioId);
+  const [internalSelectedModel, setInternalSelectedModel] = useState<System2ModelOption>(DEFAULT_SYSTEM2_MODEL);
   const [generation, setGeneration] = useState(0);
   const [isResetting, setIsResetting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (controlledScenarioId && controlledScenarioId !== internalScenarioId) {
+      setInternalScenarioId(controlledScenarioId);
+      let cancelled = false;
+      fetch(`/api/crm/opportunity?scenarioId=${controlledScenarioId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!cancelled && data && data.id) {
+            setOpportunity(data);
+          }
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [controlledScenarioId, internalScenarioId]);
+
+  const scenarioId = controlledScenarioId !== undefined ? controlledScenarioId : internalScenarioId;
+  const setScenarioId = controlledOnScenarioChange || setInternalScenarioId;
+  const selectedModel = controlledSelectedModel !== undefined ? controlledSelectedModel : internalSelectedModel;
+  const setSelectedModel = controlledOnModelChange || setInternalSelectedModel;
 
   const showToast = useCallback((msg: string) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 4000);
   }, []);
 
   async function handleScenarioChange(newScenarioId: string) {
@@ -139,6 +242,10 @@ export function LiveQualificationWorkbench({
       showToast={showToast}
       toastMessage={toastMessage}
       onModeChange={onModeChange}
+      hideTopNavBar={hideTopNavBar}
+      settingsOpen={settingsOpen}
+      onSettingsOpenChange={onSettingsOpenChange}
+      initialStageView={initialStageView}
     />
   );
 }
@@ -153,7 +260,11 @@ interface LiveAssessmentSessionProps {
   isResetting: boolean;
   showToast: (msg: string) => void;
   toastMessage: string | null;
-  onModeChange: (mode: WorkbenchMode) => void;
+  onModeChange?: (mode: WorkbenchMode) => void;
+  hideTopNavBar?: boolean;
+  settingsOpen?: boolean;
+  onSettingsOpenChange?: (open: boolean) => void;
+  initialStageView?: 'blank' | 'stage1' | 'stage2' | 'stage3';
 }
 
 function LiveAssessmentSession({
@@ -167,6 +278,10 @@ function LiveAssessmentSession({
   showToast,
   toastMessage,
   onModeChange,
+  hideTopNavBar = false,
+  settingsOpen,
+  onSettingsOpenChange,
+  initialStageView,
 }: LiveAssessmentSessionProps) {
   const [savedSession] = useState(() => loadSavedSession(baseOpportunity));
   const [resumeError, setResumeError] = useState<string | null>(null);
@@ -194,6 +309,69 @@ function LiveAssessmentSession({
     isResuming;
 
   const currentOpportunity = view.opportunity ?? baseOpportunity;
+
+  // Map real Eve agent session state to WorkflowState
+  const workflowState: WorkflowState =
+    view.phase === 'assessing'
+      ? 'ANALYZING'
+      : view.phase === 'awaiting_feedback'
+      ? 'PENDING_FEEDBACK'
+      : view.phase === 'submitting_feedback'
+      ? 'EVALUATING'
+      : view.phase === 'closed' || currentOpportunity.suggested_next_steps
+      ? 'COMPLETED'
+      : 'READY_TO_ASSESS';
+
+  const isComplete = workflowState === 'COMPLETED';
+
+  // Desk OS 3-Stage State
+  const [activeStageView, setActiveStageView] = useState<'blank' | 'stage1' | 'stage2' | 'stage3'>(
+    initialStageView ??
+      (workflowState === 'COMPLETED'
+        ? 'stage3'
+        : workflowState === 'PENDING_FEEDBACK'
+        ? 'stage1'
+        : 'blank')
+  );
+
+  const [savedFormData, setSavedFormData] = useState<Record<string, string | string[]>>({});
+  const [savedManualNotes, setSavedManualNotes] = useState<string>('');
+  const [baselineAssessment, setBaselineAssessment] = useState<{
+    score: number;
+    dimensions: any;
+  } | null>(null);
+
+  const prevWorkflowStateRef = useRef<WorkflowState>(workflowState);
+
+  // Synchronize activeStageView with workflowState transitions
+  useEffect(() => {
+    const prevWorkflow = prevWorkflowStateRef.current;
+    if (prevWorkflow !== workflowState || activeStageView === 'blank') {
+      if (workflowState === 'PENDING_FEEDBACK') {
+        if (prevWorkflow === 'ANALYZING' || activeStageView === 'blank') {
+          const score = currentOpportunity.meddpicc_score ?? view.jevResult?.overallScore ?? 0;
+          setBaselineAssessment({
+            score,
+            dimensions: formatDimensionsForScorecard(
+              view.jevResult?.dimensions,
+              view.system2Result?.dimensionFindings,
+              currentOpportunity.meddpicc_breakdown
+            ),
+          });
+          setActiveStageView('stage1');
+        }
+      } else if (workflowState === 'EVALUATING') {
+        if (activeStageView === 'blank') {
+          setActiveStageView('stage2');
+        }
+      } else if (workflowState === 'COMPLETED') {
+        if (prevWorkflow === 'EVALUATING' || activeStageView === 'blank' || !baselineAssessment) {
+          setActiveStageView('stage3');
+        }
+      }
+      prevWorkflowStateRef.current = workflowState;
+    }
+  }, [workflowState, activeStageView, currentOpportunity.meddpicc_score, view.jevResult, baselineAssessment]);
 
   const [sendError, setSendError] = useState<{ label: string; text: string } | null>(null);
   const failure = resumeError
@@ -223,6 +401,10 @@ function LiveAssessmentSession({
   async function handleStartAssessment() {
     agent.reset();
     setResumeError(null);
+    setActiveStageView('blank');
+    setBaselineAssessment(null);
+    setSavedFormData({});
+    setSavedManualNotes('');
     showToast('Executing System 1 (Jev) scoring & System 2 deep reasoning via AI Gateway...');
     await sendTurn(ASSESS_FAILED, () =>
       agent.send(assessTurnMessage(baseOpportunity.id, selectedModel))
@@ -241,6 +423,9 @@ function LiveAssessmentSession({
       });
       return;
     }
+    setSavedFormData(formResponses);
+    if (notesDelta !== undefined) setSavedManualNotes(notesDelta);
+
     showToast('Submitting discovery findings to Eve Agent for delta re-scoring...');
     const text = await saAnswerText(formResponses, notesDelta);
     await sendTurn(WRITEBACK_FAILED, () =>
@@ -248,45 +433,41 @@ function LiveAssessmentSession({
     );
   }
 
-  // Map real Eve agent session state to WorkflowState
-  const workflowState: WorkflowState =
-    view.phase === 'assessing'
-      ? 'ANALYZING'
-      : view.phase === 'awaiting_feedback'
-      ? 'PENDING_FEEDBACK'
-      : view.phase === 'submitting_feedback'
-      ? 'EVALUATING'
-      : view.phase === 'closed' || currentOpportunity.suggested_next_steps
-      ? 'COMPLETED'
-      : 'READY_TO_ASSESS';
-
-  const isComplete = workflowState === 'COMPLETED';
-
   // Live score and dimensions
-  const liveScore = currentOpportunity.meddpicc_score ?? (isComplete ? 76 : 0);
+  const liveScore = currentOpportunity.meddpicc_score ?? view.jevResult?.overallScore ?? (isComplete ? 76 : 0);
 
-  const liveDimensions = view.jevResult
-    ? formatDimensionsForScorecard(
-        view.jevResult.dimensions,
-        view.system2Result?.dimensionFindings
-      )
-    : formatDimensionsForScorecard(currentOpportunity.meddpicc_breakdown);
+  const baselineScore =
+    baselineAssessment?.score ??
+    view.baselineJevResult?.overallScore ??
+    view.result?.baselineScore ??
+    null;
 
-  const liveStageGate = view.jevResult?.stageGate ?? currentOpportunity.stage_gate;
+  const scoreDelta =
+    baselineScore !== null ? liveScore - baselineScore : view.result?.delta ?? null;
 
-  const dynamicForm =
-    workflowState === 'PENDING_FEEDBACK' ? view.system2Result?.phase3Form ?? null : null;
+  const liveDimensions = formatDimensionsForScorecard(
+    view.jevResult?.dimensions,
+    view.system2Result?.dimensionFindings,
+    currentOpportunity.meddpicc_breakdown,
+    view.baselineJevResult?.dimensions ?? baselineAssessment?.dimensions
+  );
+
+  // Dynamic discovery form is computed ungated by workflowState === 'PENDING_FEEDBACK'
+  const dynamicForm = view.system2Result?.phase3Form ?? null;
+
+  const discoveryQuestionCount = dynamicForm?.sections
+    ? dynamicForm.sections.reduce((acc, s) => acc + (s.fields?.length || 0), 0)
+    : 0;
+
+  const gapCount = (baselineAssessment?.dimensions ?? liveDimensions)
+    ? Object.values(baselineAssessment?.dimensions ?? liveDimensions).filter(
+        (d: any) => d.score <= 3 || d.status === 'unaddressed'
+      ).length
+    : 0;
 
   const suggestedNextSteps =
     currentOpportunity.suggested_next_steps ??
     (view.phase === 'closed' ? view.result?.nextSteps ?? null : null);
-
-  const statusLabel =
-    currentOpportunity.qualification_status === 'qualified'
-      ? '[QUALIFIED]'
-      : workflowState === 'PENDING_FEEDBACK'
-      ? '[IN REVIEW]'
-      : '[READY TO ASSESS]';
 
   const runtimeStatus = isResuming
     ? 'RESUMING'
@@ -300,119 +481,323 @@ function LiveAssessmentSession({
     ? 'COMPLETED'
     : 'READY_TO_ASSESS';
 
+  // Check if retrospectively inspecting when session is already closed or failed
+  const isRetrospectiveReadOnly = (isComplete || view.phase === 'failed') && view.pendingInput === null;
+
   return (
-    <main className="min-h-screen bg-[#f5f7fa] text-[#152238]">
-      <TopNavBar
-        opportunity={currentOpportunity}
-        mode="live"
-        onModeChange={onModeChange}
-        currentScenarioId={scenarioId}
-        onScenarioChange={onScenarioChange}
-        selectedModel={selectedModel}
-        onModelChange={onModelChange}
-        onReset={onReset}
-        isResetting={isResetting}
-        controlsLocked={turnInFlight}
-        runtimeStatus={runtimeStatus}
-      />
+    <main className="min-h-screen bg-[#F8F8F6] text-[#111215]">
+      {!hideTopNavBar && (
+        <TopNavBar
+          opportunity={currentOpportunity}
+          mode="live"
+          onModeChange={onModeChange}
+          currentScenarioId={scenarioId}
+          onScenarioChange={onScenarioChange}
+          selectedModel={selectedModel}
+          onModelChange={onModelChange}
+          onReset={onReset}
+          isResetting={isResetting}
+          controlsLocked={turnInFlight}
+          runtimeStatus={runtimeStatus}
+          settingsOpen={settingsOpen}
+          onSettingsOpenChange={onSettingsOpenChange}
+        />
+      )}
 
-      <div className="mx-auto max-w-[1500px] px-5 py-7 lg:px-8">
-        {failure && (
-          <div
-            role="alert"
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800"
-          >
-            <span className="font-semibold text-red-900 mr-1.5">{failure.label}</span>
-            {failure.text}
-          </div>
-        )}
-
-        {/* Breadcrumbs and Title Header */}
-        <div className="mb-6 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[#718097]">
-              <span>PIPELINE</span>
-              <ChevronRight className="size-3" aria-hidden="true" />
-              <span>{currentOpportunity.account_name?.toUpperCase() || 'ACME CORP'}</span>
-              <ChevronRight className="size-3" aria-hidden="true" />
-              <span className="text-[#152238]">QUALIFICATION</span>
-            </div>
-            <h2 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl text-[#152238]">
-              {currentOpportunity.name || 'Acme Corp — Platform Migration'}
-            </h2>
-            <p className="mt-1 text-sm text-[#718097]">
-              MEDDPICC assessment workspace <span className="mx-2 text-[#c4ccd7]">•</span> Live connected (AI Gateway & Salesforce CRM)
-            </p>
-          </div>
-
-          <JumpToStateButtons
-            currentWorkflow={workflowState}
-            onJumpToState={() => {}}
-            mode="live"
-          />
-        </div>
-
-        {/* 5-Step Stepper Bar */}
+      <div className="mx-auto max-w-[1440px] px-4 py-6">
+        {/* Desk OS 3-Stage Tactile Stepper */}
         <StepperBar
-          currentWorkflow={workflowState}
-          onJumpToState={() => {}}
+          activeStageView={activeStageView}
+          workflowState={workflowState}
           isComplete={isComplete}
+          onSelectStage={(stage: DeskOsStageId) => setActiveStageView(stage)}
+          readOnlyRetrospective={isComplete && !baselineScore}
         />
 
-        {/* Status / Alert Banners */}
-        <WorkflowBanners
-          workflow={workflowState}
-          isComplete={isComplete}
-          statusLabel={statusLabel}
-          isLive={true}
-        />
+        {/* Unified Desk OS Workbench Shell */}
+        <div className="workbench-shell rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] shadow-xs overflow-hidden">
+          {/* Quiet Monochrome Top Bar */}
+          <MonochromeTopBar opportunity={currentOpportunity} mode="live" />
 
-        {/* Main 2-Column Split Workbench */}
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          {/* Left Column: Deal Context + (Discovery Form OR MEDDPICC Scorecard) */}
-          <div className="min-w-0 space-y-6">
+          {/* 35% / 65% Desk OS Split Workbench */}
+          <div className="workbench-split grid grid-cols-1 lg:grid-cols-[35%_65%] min-h-[720px] bg-[#FFFFFF]">
+            {/* Left Pane (35%): Opportunity Brief */}
             <DealContextCard opportunity={currentOpportunity} />
 
-            {workflowState === 'PENDING_FEEDBACK' && dynamicForm ? (
-              <DynamicDiscoveryForm
-                dynamicForm={dynamicForm}
-                onSubmit={handleSubmitFeedback}
-                isSubmitting={turnInFlight}
-              />
-            ) : (
-              <MeddpiccScorecard
-                score={liveScore}
-                dimensions={liveDimensions}
-              />
-            )}
+            {/* Right Pane (65%): Stage Canvas Router */}
+            <div className="workbench-right flex flex-col p-5 gap-5 bg-[#FFFFFF]">
+              {/* Failure / Alert Banner */}
+              {failure && (
+                <ProblemCauseFixBanner
+                  problem={failure.label}
+                  cause={failure.text}
+                  onRetry={
+                    view.pendingInput && savedFormData
+                      ? () => handleSubmitFeedback(savedFormData, savedManualNotes)
+                      : handleStartAssessment
+                  }
+                  onDismiss={() => {
+                    setSendError(null);
+                    setResumeError(null);
+                  }}
+                  onSwitchToSimulation={() => onModeChange?.('simulation')}
+                />
+              )}
+
+              {/* System 2 Running Status Pill */}
+              {view.system2Running && (
+                <div
+                  role="status"
+                  className="flex items-center gap-2 rounded-md border border-[#0F52BA]/20 bg-[#0F52BA]/5 p-3 text-xs text-[#0F52BA]"
+                >
+                  <span className="inline-block size-3.5 border-2 border-[#0F52BA] border-t-transparent rounded-full animate-spin" />
+                  <span className="font-semibold">System 2 analysis running…</span>
+                  <span className="text-[#52545D]">Scoring complete; formulating targeted discovery questions.</span>
+                </div>
+              )}
+
+              {/* 1. Blank Start State */}
+              {activeStageView === 'blank' && workflowState === 'READY_TO_ASSESS' && (
+                <div className="space-y-4">
+                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
+                    <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                        <span className="font-mono text-2xl font-bold tracking-tight text-[#787C87]">
+                          --
+                        </span>
+                        <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                      </div>
+                      <span className="mono-pill rounded border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-mono text-[11px] font-semibold text-[#52545D]">
+                        Stage Gate 2 · Unassessed Opportunity
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleStartAssessment}
+                      disabled={turnInFlight}
+                      aria-label={turnInFlight ? 'Evaluating Opportunity...' : 'Start assessment'}
+                      className="btn-action-primary flex items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2.5 text-xs font-semibold text-[#FFFFFF] hover:bg-[#0C4196] cursor-pointer shadow-2xs disabled:opacity-50"
+                    >
+                      {turnInFlight ? (
+                        <>
+                          <span className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Evaluating Opportunity...</span>
+                        </>
+                      ) : (
+                        <span>Run MEDDPICC Deal Audit — Start Assessment</span>
+                      )}
+                    </button>
+                  </div>
+
+                  <MeddpiccScorecard
+                    mode="unassessed"
+                    score={0}
+                    dimensions={liveDimensions}
+                    hideHeader={true}
+                  />
+                </div>
+              )}
+
+              {/* 2. Initial Assessment Loading (ANALYZING) */}
+              {workflowState === 'ANALYZING' && (
+                <div className="space-y-4">
+                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
+                    <div className="score-lockup flex items-center gap-3">
+                      {liveScore > 0 && (
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-mono text-2xl font-bold tracking-tight text-[#111215] tabular-nums">
+                            {liveScore}
+                          </span>
+                          <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                        </div>
+                      )}
+                      <div className="text-xs text-[#787C87]">
+                        System 1 scoring + System 2 reasoning in progress via AI Gateway...
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={true}
+                      aria-label="Evaluating Opportunity..."
+                      className="rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-1.5 text-xs font-semibold text-[#787C87] cursor-not-allowed opacity-75"
+                    >
+                      <span>Evaluating Opportunity...</span>
+                    </button>
+                  </div>
+
+                  <MeddpiccScorecard
+                    mode={view.jevResult ? 'analyzing' : 'loading'}
+                    score={liveScore}
+                    loadingStatus="Audit in progress..."
+                    dimensions={liveDimensions}
+                    hideHeader={true}
+                    onAbort={() => {
+                      void agent.cancel();
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* 3. Stage 1: Initial Deal Audit */}
+              {activeStageView === 'stage1' && workflowState !== 'ANALYZING' && (
+                <div className="space-y-4">
+                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
+                    <div className="score-lockup flex flex-wrap items-center gap-3">
+                      <span className="font-mono text-2xl font-bold tracking-tight text-[#111215] tabular-nums">
+                        {baselineScore ?? liveScore}
+                      </span>
+                      <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                      <span className="mono-pill rounded border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-mono text-[11px] font-semibold text-[#52545D]">
+                        {view.system2Result
+                          ? `Stage Gate 2 · System 2 Reasoning Complete (${baselineScore ?? liveScore}/100)`
+                          : (baselineScore ?? liveScore) < STAGE_GATE_THRESHOLD
+                          ? `Stage Gate 2 · ${gapCount} Gaps Identified (Score < ${STAGE_GATE_THRESHOLD})`
+                          : `Stage Gate 2 · Gate Criteria Satisfied (${baselineScore ?? liveScore}/100)`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isComplete && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveStageView('stage3')}
+                          className="flex items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-2 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] cursor-pointer"
+                        >
+                          <span>Return to Updated Assessment (Stage 3) →</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveStageView('stage2')}
+                        className="btn-action-primary flex items-center justify-center gap-1.5 rounded-md bg-[#0F52BA] px-4 py-2 text-xs font-semibold text-[#FFFFFF] hover:bg-[#0C4196] cursor-pointer shadow-2xs"
+                      >
+                        <span>Answer {discoveryQuestionCount > 0 ? `${discoveryQuestionCount} ` : ''}Discovery Questions →</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <MeddpiccScorecard
+                    mode="audit"
+                    score={baselineScore ?? liveScore}
+                    dimensions={
+                      baselineAssessment?.dimensions
+                        ? (baselineAssessment.dimensions.identifyPain?.quotes
+                            ? baselineAssessment.dimensions
+                            : formatDimensionsForScorecard(
+                                baselineAssessment.dimensions,
+                                view.system2Result?.dimensionFindings,
+                                currentOpportunity.meddpicc_breakdown
+                              ))
+                        : liveDimensions
+                    }
+                    hideHeader={true}
+                  />
+
+                  {/* Stage 1 Bottom Summary Footer */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md border border-[#E2E0D8] bg-[#FAFAF7] p-3.5">
+                    <span className="text-xs text-[#787C87]">
+                      {gapCount} qualification gaps blocking Stage Gate 2 advancement.
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveStageView('stage2')}
+                      className="flex items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#111215] hover:bg-[#F1F0EC] cursor-pointer"
+                    >
+                      <span>Proceed to Stage 2: Field Discovery →</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. Stage 2: Field Discovery Checklist */}
+              {activeStageView === 'stage2' && workflowState !== 'ANALYZING' && (
+                <div className="space-y-4">
+                  {workflowState === 'EVALUATING' ? (
+                    <MeddpiccScorecard
+                      mode="loading"
+                      loadingStatus="Synthesizing Discovery Findings & Re-Scoring Deal..."
+                      dimensions={liveDimensions}
+                      hideHeader={true}
+                      onAbort={() => {
+                        void agent.cancel();
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {isComplete && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setActiveStageView('stage3')}
+                            className="flex items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] cursor-pointer"
+                          >
+                            <span>Return to Updated Assessment (Stage 3) →</span>
+                          </button>
+                        </div>
+                      )}
+
+                      <DynamicDiscoveryForm
+                        dynamicForm={dynamicForm}
+                        initialValues={savedFormData}
+                        initialNotes={savedManualNotes}
+                        dimensions={liveDimensions}
+                        readOnly={isRetrospectiveReadOnly}
+                        isSubmitting={turnInFlight}
+                        onBack={() => setActiveStageView('stage1')}
+                        onCancel={() => setActiveStageView('stage1')}
+                        onDraftChange={(answers, notes) => {
+                          setSavedFormData(answers);
+                          setSavedManualNotes(notes);
+                        }}
+                        onSubmit={handleSubmitFeedback}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* 5. Stage 3: Updated Assessment & Next Steps */}
+              {activeStageView === 'stage3' && isComplete && (
+                <div className="space-y-5">
+                  {/* Stage 3 Header Lockup */}
+                  <Stage3HeaderLockup
+                    score={liveScore}
+                    baselineScore={baselineScore}
+                    scoreDelta={scoreDelta}
+                    gapCount={gapCount}
+                    onReset={onReset}
+                  />
+
+                  {/* Suggested Next Steps Block Directly Above the Scorecard */}
+                  <SuggestedNextStepsCard
+                    nextSteps={suggestedNextSteps}
+                    score={liveScore}
+                    qualificationStatus={currentOpportunity.qualification_status}
+                  />
+
+                  {/* Upgraded 8-Row MEDDPICC Scorecard */}
+                  <MeddpiccScorecard
+                    mode="completed"
+                    score={liveScore}
+                    previousScore={baselineScore}
+                    delta={scoreDelta}
+                    dimensions={liveDimensions}
+                    hideHeader={true}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* Right Column: Stage Gate 2 + Summary + Workflow Controls */}
-          <aside className="space-y-6">
-            <StageGateCard
-              score={liveScore}
-              complete={isComplete}
-              stageGate={liveStageGate}
-              dimensions={liveDimensions}
-            />
-
-            <DealSummaryCard score={liveScore} statusLabel={statusLabel} />
-
-            <ActionPanel
-              workflow={workflowState}
-              isComplete={isComplete}
-              nextSteps={suggestedNextSteps}
-              onAdvance={handleStartAssessment}
-              onReset={onReset}
-              isBusy={turnInFlight}
-            />
-          </aside>
         </div>
       </div>
 
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-[#dfe5ed] bg-white px-4 py-2.5 text-xs font-medium text-[#152238] shadow-lg flex items-center gap-2">
-          <span className="size-2 rounded-full bg-[#0070f3]" />
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-[#E2E0D8] bg-white px-4 py-2.5 text-xs font-medium text-[#111215] shadow-lg flex items-center gap-2">
+          <span className="size-2 rounded-full bg-[#0F52BA]" />
           <span>{toastMessage}</span>
         </div>
       )}

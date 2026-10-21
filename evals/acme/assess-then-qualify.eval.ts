@@ -49,16 +49,11 @@ export default defineEval({
     t.check(citations.length, satisfies((n: number) => n > 0, "System 2 cites the notes"));
     t.judge(
       {
-        state: { notes, dimensionFindings: system2.dimensionFindings, competitivePlaybook: system2.phase2Competitive },
+        state: { notes, dimensionFindings: system2.dimensionFindings },
         questions: {
           citationsGrounded: {
             type: "boolean",
             instructions: "Is every citation in dimensionFindings a sentence (or close excerpt) that appears in notes, attributed to a sensible dimension?",
-          },
-          playbookQuality: {
-            type: "score",
-            instructions: "Grade the Netlify competitive playbook: specific counter-positioning grounded in the notes (renewal discount, build times, launch-day queues) plus a usable trap question.",
-            criteria: ["Generic or wrong", "Partly specific", "Specific and grounded", "Specific, grounded and actionable"],
           },
         },
       }

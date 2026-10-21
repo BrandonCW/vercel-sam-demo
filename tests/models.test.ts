@@ -20,12 +20,10 @@ function walk(dir: string): string[] {
 }
 
 describe('System 2 model configuration', () => {
-  it('offers current Vercel AI Gateway model IDs: a fast Gemini Flash default, Haiku 4.5 and Sonnet 5 selectable', () => {
+  it('offers current Vercel AI Gateway model IDs: Gemini 3.8 Flash default and Claude Haiku 5.5 fast', () => {
     expect(SYSTEM2_MODELS.map((m) => m.id)).toEqual([
       'google/gemini-3.8-flash',
-      'anthropic/claude-haiku-4.5',
-      'anthropic/claude-sonnet-5',
-      'openai/gpt-5.5',
+      'anthropic/claude-haiku-5.5',
     ]);
     expect(SYSTEM2_MODELS.find((m) => m.id === DEFAULT_SYSTEM2_MODEL)?.badge).toBe('Default');
   });
@@ -35,20 +33,20 @@ describe('System 2 model configuration', () => {
   it('runs the root agent on Gemini 3.8 Flash unless AGENT_MODEL_ID overrides it (issue 19)', () => {
     expect(DEFAULT_AGENT_MODEL).toBe('google/gemini-3.8-flash');
     expect(resolveAgentModel({})).toBe('google/gemini-3.8-flash');
-    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'openai/gpt-5.5' })).toBe('google/gemini-3.8-flash');
-    expect(resolveAgentModel({ AGENT_MODEL_ID: 'anthropic/claude-haiku-4.5' })).toBe('anthropic/claude-haiku-4.5');
+    expect(resolveAgentModel({ SYSTEM2_MODEL_ID: 'anthropic/claude-haiku-5.5' })).toBe('google/gemini-3.8-flash');
+    expect(resolveAgentModel({ AGENT_MODEL_ID: 'anthropic/claude-haiku-5.5' })).toBe('anthropic/claude-haiku-5.5');
   });
 
-  // Haiku 4.5 stops after the first property of the System 2 object through the Gateway (issue 18),
-  // so System 2 defaults to a fast Gemini Flash model with schema-constrained output.
+  // System 2 defaults to a fast Gemini Flash model with schema-constrained output.
   it('defaults System 2 to Gemini 3.8 Flash unless SYSTEM2_MODEL_ID overrides it', () => {
     expect(DEFAULT_SYSTEM2_MODEL).toBe('google/gemini-3.8-flash');
     expect(resolveSystem2Model({})).toBe('google/gemini-3.8-flash');
-    expect(resolveSystem2Model({ SYSTEM2_MODEL_ID: 'anthropic/claude-sonnet-5' })).toBe('anthropic/claude-sonnet-5');
+    expect(resolveSystem2Model({ SYSTEM2_MODEL_ID: 'anthropic/claude-haiku-5.5' })).toBe('anthropic/claude-haiku-5.5');
   });
 
   it('rejects a retired or unknown model override instead of silently using it', () => {
-    expect(() => resolveSystem2Model({ SYSTEM2_MODEL_ID: 'claude-3-5-sonnet' })).toThrow(/SYSTEM2_MODEL_ID/);
+    expect(() => resolveSystem2Model({ SYSTEM2_MODEL_ID: 'claude-3-5-sonnet' })).toThrow(/Unknown System 2 model: claude-3-5-sonnet.*SYSTEM2_MODEL_ID/);
+    expect(() => resolveSystem2Model('unknown-model')).toThrow(/Unknown System 2 model: unknown-model/);
     expect(() => resolveAgentModel({ AGENT_MODEL_ID: 'claude-3-5-sonnet' })).toThrow(/AGENT_MODEL_ID/);
   });
 

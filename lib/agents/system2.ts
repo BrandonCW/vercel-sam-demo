@@ -13,29 +13,6 @@ import {
 import { System2ModelSchema, type System2ModelOption } from '@/lib/models';
 
 
-export const QualificationGapSchema = z.object({
-  dimension: DimensionTargetSchema,
-  dimensionLabel: z.string(),
-  score: z.number(),
-  status: z.enum(['unaddressed', 'partial']),
-  isStageGateBlocker: z.boolean(),
-  riskLevel: z.enum(['critical', 'high', 'medium', 'low']),
-  verifiedFact: z.string(),
-  aeAssumption: z.string(),
-  riskAnalysis: z.string(),
-});
-export type QualificationGap = z.infer<typeof QualificationGapSchema>;
-
-export const CompetitiveCounterPointSchema = z.object({
-  competitor: z.string(),
-  threatLevel: z.enum(['low', 'medium', 'high']),
-  competitorClaim: z.string(),
-  vercelDifferentiator: z.string(),
-  tacticalAngle: z.string(),
-  trapQuestion: z.string(),
-});
-export type CompetitiveCounterPoint = z.infer<typeof CompetitiveCounterPointSchema>;
-
 /** Per-dimension citations (verbatim note quotes) and gap callouts. Jev returns no text, so these come from System 2. */
 export const DimensionFindingSchema = z.object({
   citations: z.array(z.string()),
@@ -107,12 +84,9 @@ export const System2ModelOutputSchema = z.object({
     .string()
     .nullable()
     .describe('An unresolvable constraint that rules out Vercel (e.g. strict on-premise mandate), or null.'),
-  phase1Gaps: z.array(QualificationGapSchema),
-  phase2Competitive: z.array(CompetitiveCounterPointSchema),
   valueFocus: z.string().describe('Core technical or business value to focus on, a short phrase.'),
   primaryRisk: z.string().describe('Primary non-competitor risk to watch, a short phrase.'),
   nextMilestone: z.string().describe('The single next milestone action if the deal advances, one sentence.'),
-  summary: z.string(),
 });
 export type System2ModelOutput = z.infer<typeof System2ModelOutputSchema>;
 
@@ -133,21 +107,37 @@ function present<T>(value: T | null): T | undefined {
 type ModelFormSection = System2ModelOutput['phase3Form']['sections'][number];
 type ModelFormField = ModelFormSection['fields'][number];
 
-/** One model form field as the renderer takes it. Throws on a choice field without options. */
+/** One model form field as the renderer takes it. Choice fields without valid options gracefully coerce to text. */
 function toRenderField(field: ModelFormField): FormField {
   const isChoice = CHOICE_TYPES.has(field.type);
-  if (isChoice && field.options.length === 0) {
-    throw new Error(`System 2 returned ${field.type} field "${field.id}" with no options`);
+  let fieldType: FormField['type'] = field.type;
+  let cleanOptions: { label: string; value: string }[] | undefined = undefined;
+
+  if (isChoice) {
+    const validOptions = (field.options || [])
+      .map((opt) => ({
+        label: opt.label.trim(),
+        value: opt.value.trim(),
+      }))
+      .filter((opt) => opt.label.length > 0 && opt.value.length > 0);
+
+    if (validOptions.length === 0) {
+      fieldType = 'text';
+      cleanOptions = undefined;
+    } else {
+      cleanOptions = validOptions;
+    }
   }
+
   return {
     id: field.id,
     name: field.name,
     label: field.label,
     description: present(field.description),
-    type: field.type,
+    type: fieldType,
     placeholder: present(field.placeholder),
     required: field.required,
-    options: isChoice ? field.options : undefined,
+    options: cleanOptions,
     dimensionTarget: field.dimensionTarget,
     helpCallout: present(field.helpCallout),
   };

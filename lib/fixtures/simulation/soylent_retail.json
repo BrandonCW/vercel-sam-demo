@@ -1,0 +1,570 @@
+{
+  "scenarioId": "opp_soylent_retail_003",
+  "opportunity": {
+    "id": "opp_soylent_retail_003",
+    "name": "Soylent Retail - Headless Storefront",
+    "account_name": "Soylent Nutrition Inc.",
+    "stage_name": "Stage 2 - Discovery",
+    "amount": 90000,
+    "close_date": "2026-10-31",
+    "ae_name": "Elena Rostova",
+    "sa_name": "Liam Chen",
+    "ae_notes": "Need to launch before Q4 peak freeze (Nov 1). CEO and CMO sponsor. $90k ACV. Decision maker is Head of Engineering.",
+    "sa_notes": "Evaluation criteria: Core Web Vitals (LCP < 1.5s), automated preview branches for marketing team, Sanity CMS webhooks. Current architecture uses legacy Akamai/Fastly CDN edge rules that require migration or cache-control parity.",
+    "suggested_next_steps": null,
+    "qualification_status": "unqualified",
+    "meddpicc_score": 52,
+    "meddpicc_breakdown": {
+      "identifyPain": {
+        "key": "identifyPain",
+        "label": "Identify Pain",
+        "weight": 0.2,
+        "score": 9,
+        "status": "verified",
+        "confidence": 0.9,
+        "evidence": [
+          "Slow e-commerce storefront with poor LCP impacting Black Friday conversion rates"
+        ],
+        "gaps": []
+      },
+      "champion": {
+        "key": "champion",
+        "label": "Champion",
+        "weight": 0.15,
+        "score": 8,
+        "status": "verified",
+        "confidence": 0.9,
+        "evidence": [
+          "Head of Engineering actively championing Vercel + Next.js App Router"
+        ],
+        "gaps": []
+      },
+      "economicBuyer": {
+        "key": "economicBuyer",
+        "label": "Economic Buyer",
+        "weight": 0.15,
+        "score": 7,
+        "status": "partial",
+        "confidence": 0.85,
+        "evidence": [
+          "CMO and CEO have authorized $90k budget for Q4 launch"
+        ],
+        "gaps": [
+          "Sign-off dependent on meeting Nov 1 code freeze date"
+        ]
+      },
+      "decisionCriteria": {
+        "key": "decisionCriteria",
+        "label": "Decision Criteria",
+        "weight": 0.15,
+        "score": 3,
+        "status": "unaddressed",
+        "confidence": 0.8,
+        "evidence": [],
+        "gaps": [
+          "Akamai CDN edge caching parity and Core Web Vitals LCP < 1.5s benchmark unconfirmed"
+        ]
+      },
+      "decisionProcess": {
+        "key": "decisionProcess",
+        "label": "Decision Process",
+        "weight": 0.1,
+        "score": 3,
+        "status": "unaddressed",
+        "confidence": 0.8,
+        "evidence": [],
+        "gaps": [
+          "Pre-freeze testing window and Sanity CMS webhook integration timeline undefined"
+        ]
+      },
+      "metrics": {
+        "key": "metrics",
+        "label": "Metrics",
+        "weight": 0.1,
+        "score": 6,
+        "status": "partial",
+        "confidence": 0.8,
+        "evidence": [
+          "Targeting sub-1.5s Largest Contentful Paint (LCP) on mobile"
+        ],
+        "gaps": [
+          "Conversion uplift metrics need baseline measurement"
+        ]
+      },
+      "competition": {
+        "key": "competition",
+        "label": "Competition",
+        "weight": 0.1,
+        "score": 7,
+        "status": "verified",
+        "confidence": 0.85,
+        "evidence": [
+          "Evaluating legacy Akamai/Fastly CDN renewal vs Vercel Edge Network"
+        ],
+        "gaps": [
+          "Need migration playbook for legacy Varnish VCL rules"
+        ]
+      },
+      "paperProcess": {
+        "key": "paperProcess",
+        "label": "Paper Process",
+        "weight": 0.05,
+        "score": 6,
+        "status": "partial",
+        "confidence": 0.8,
+        "evidence": [
+          "Standard credit card billing or fast-track invoice pre-approved"
+        ],
+        "gaps": [
+          "Standard click-through or MSA review pending"
+        ]
+      }
+    },
+    "competitive_flags": [
+      "Akamai/Fastly"
+    ],
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "updated_at": "2026-10-01T00:00:00.000Z"
+  },
+  "baseline": {
+    "jevResult": {
+      "opportunityId": "opp_soylent_retail_003",
+      "overallScore": 52,
+      "dimensions": {
+        "identifyPain": {
+          "key": "identifyPain",
+          "label": "Identify Pain",
+          "weight": 0.2,
+          "score": 9,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "champion": {
+          "key": "champion",
+          "label": "Champion",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "economicBuyer": {
+          "key": "economicBuyer",
+          "label": "Economic Buyer",
+          "weight": 0.15,
+          "score": 7,
+          "status": "partial",
+          "confidence": 0.85
+        },
+        "decisionCriteria": {
+          "key": "decisionCriteria",
+          "label": "Decision Criteria",
+          "weight": 0.15,
+          "score": 3,
+          "status": "unaddressed",
+          "confidence": 0.8
+        },
+        "decisionProcess": {
+          "key": "decisionProcess",
+          "label": "Decision Process",
+          "weight": 0.1,
+          "score": 3,
+          "status": "unaddressed",
+          "confidence": 0.8
+        },
+        "metrics": {
+          "key": "metrics",
+          "label": "Metrics",
+          "weight": 0.1,
+          "score": 6,
+          "status": "partial",
+          "confidence": 0.8
+        },
+        "competition": {
+          "key": "competition",
+          "label": "Competition",
+          "weight": 0.1,
+          "score": 7,
+          "status": "verified",
+          "confidence": 0.85
+        },
+        "paperProcess": {
+          "key": "paperProcess",
+          "label": "Paper Process",
+          "weight": 0.05,
+          "score": 6,
+          "status": "partial",
+          "confidence": 0.8
+        }
+      },
+      "competitiveFlags": [
+        {
+          "name": "Akamai/Fastly",
+          "threatLevel": "medium"
+        }
+      ],
+      "stageGate": {
+        "gateReady": false,
+        "currentStage": "Stage 2 - Discovery",
+        "targetStage": "Stage 3 - Technical Validation",
+        "gateBlockers": [
+          "Decision Criteria score is 3/10 (Akamai edge caching parity and CWV SLA unconfirmed)",
+          "Decision Process score is 3/10 (Nov 1 freeze milestone timeline undefined)"
+        ],
+        "blockingDimensions": [
+          "decisionCriteria",
+          "decisionProcess"
+        ]
+      },
+      "evaluatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    "system2Result": {
+      "opportunityId": "opp_soylent_retail_003",
+      "modelUsed": "google/gemini-3.8-flash",
+      "dimensionFindings": {
+        "identifyPain": {
+          "citations": [
+            "Slow e-commerce storefront with poor LCP impacting Black Friday conversion rates"
+          ],
+          "gaps": []
+        },
+        "champion": {
+          "citations": [
+            "Head of Engineering actively championing Vercel + Next.js App Router"
+          ],
+          "gaps": []
+        },
+        "economicBuyer": {
+          "citations": [
+            "CMO and CEO have authorized $90k budget for Q4 launch"
+          ],
+          "gaps": [
+            "Sign-off dependent on meeting Nov 1 code freeze date"
+          ]
+        },
+        "decisionCriteria": {
+          "citations": [],
+          "gaps": [
+            "Akamai CDN edge caching parity and Core Web Vitals LCP < 1.5s benchmark unconfirmed"
+          ]
+        },
+        "decisionProcess": {
+          "citations": [],
+          "gaps": [
+            "Pre-freeze testing window and Sanity CMS webhook integration timeline undefined"
+          ]
+        },
+        "metrics": {
+          "citations": [
+            "Targeting sub-1.5s Largest Contentful Paint (LCP) on mobile"
+          ],
+          "gaps": [
+            "Conversion uplift metrics need baseline measurement"
+          ]
+        },
+        "competition": {
+          "citations": [
+            "Evaluating legacy Akamai/Fastly CDN renewal vs Vercel Edge Network"
+          ],
+          "gaps": [
+            "Need migration playbook for legacy Varnish VCL rules"
+          ]
+        },
+        "paperProcess": {
+          "citations": [
+            "Standard credit card billing or fast-track invoice pre-approved"
+          ],
+          "gaps": [
+            "Standard click-through or MSA review pending"
+          ]
+        }
+      },
+      "phase3Form": {
+        "opportunityId": "opp_soylent_retail_003",
+        "title": "Headless E-Commerce & Performance SLA Validation",
+        "summary": "Lock Core Web Vitals LCP benchmarks and the pre-freeze evaluation timeline to advance past Gate 2.",
+        "sections": [
+          {
+            "id": "section_performance_blockers",
+            "title": "Stage Gate Performance & Launch Blockers",
+            "description": "Resolve technical decision criteria and pre-freeze timeline milestones for Q4 launch.",
+            "calloutType": "warning",
+            "calloutText": "Sub-1.5s LCP verification and pre-freeze deployment plan are mandatory for Gate 2 clearance.",
+            "fields": [
+              {
+                "id": "cwv_lcp_target",
+                "name": "cwv_lcp_target",
+                "label": "Confirmed technical criteria for Core Web Vitals and edge caching:",
+                "type": "select",
+                "required": true,
+                "dimensionTarget": "decisionCriteria",
+                "helpCallout": "Benchmarks LCP and edge middleware caching against legacy Akamai rules",
+                "options": [
+                  {
+                    "label": "Confirmed LCP < 1.5s on mobile + Edge Middleware caching parity",
+                    "value": "lcp_under_1_5s_and_edge_caching"
+                  },
+                  {
+                    "label": "LCP < 2.5s acceptable",
+                    "value": "lcp_under_2_5s"
+                  },
+                  {
+                    "label": "Undefined",
+                    "value": "undefined"
+                  }
+                ]
+              },
+              {
+                "id": "pre_freeze_timeline",
+                "name": "pre_freeze_timeline",
+                "label": "Did Head of Engineering confirm pre-freeze POC schedule before Nov 1?",
+                "type": "radio",
+                "required": true,
+                "dimensionTarget": "decisionProcess",
+                "helpCallout": "Formal milestone roadmap to beat the Q4 holiday code freeze",
+                "options": [
+                  {
+                    "label": "Confirmed 2-week technical validation starting Oct 14",
+                    "value": "confirmed_timeline"
+                  },
+                  {
+                    "label": "Timeline pending leadership review",
+                    "value": "timeline_pending"
+                  },
+                  {
+                    "label": "Unaddressed",
+                    "value": "unaddressed"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "fatalBlocker": null,
+      "valueFocus": "Next.js App Router performance on Vercel Edge Network with sub-1.5s LCP",
+      "primaryRisk": "Nov 1 Q4 code freeze leaving zero margin for delays",
+      "nextMilestone": "Run 2-week POC on Next.js storefront before Nov 1 code freeze"
+    }
+  },
+  "feedback": {
+    "formResponses": {
+      "cwv_lcp_target": "lcp_under_1_5s_and_edge_caching",
+      "pre_freeze_timeline": "confirmed_timeline"
+    },
+    "notesDelta": "Decision Criteria verified: Head of Engineering confirmed technical requirement of LCP < 1.5s on mobile and Vercel Edge Middleware caching parity. Decision Process verified: 2-week technical validation schedule locked for Oct 14-28 ahead of Nov 1 code freeze.",
+    "rescoreJevResult": {
+      "opportunityId": "opp_soylent_retail_003",
+      "overallScore": 80,
+      "dimensions": {
+        "identifyPain": {
+          "key": "identifyPain",
+          "label": "Identify Pain",
+          "weight": 0.2,
+          "score": 9,
+          "status": "verified",
+          "confidence": 0.95
+        },
+        "champion": {
+          "key": "champion",
+          "label": "Champion",
+          "weight": 0.15,
+          "score": 9,
+          "status": "verified",
+          "confidence": 0.95
+        },
+        "economicBuyer": {
+          "key": "economicBuyer",
+          "label": "Economic Buyer",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "decisionCriteria": {
+          "key": "decisionCriteria",
+          "label": "Decision Criteria",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "decisionProcess": {
+          "key": "decisionProcess",
+          "label": "Decision Process",
+          "weight": 0.1,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "metrics": {
+          "key": "metrics",
+          "label": "Metrics",
+          "weight": 0.1,
+          "score": 7,
+          "status": "partial",
+          "confidence": 0.85
+        },
+        "competition": {
+          "key": "competition",
+          "label": "Competition",
+          "weight": 0.1,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9
+        },
+        "paperProcess": {
+          "key": "paperProcess",
+          "label": "Paper Process",
+          "weight": 0.05,
+          "score": 7,
+          "status": "partial",
+          "confidence": 0.85
+        }
+      },
+      "competitiveFlags": [
+        {
+          "name": "Akamai/Fastly",
+          "threatLevel": "low"
+        }
+      ],
+      "stageGate": {
+        "gateReady": true,
+        "currentStage": "Stage 2 - Discovery",
+        "targetStage": "Stage 3 - Technical Validation",
+        "gateBlockers": [],
+        "blockingDimensions": []
+      },
+      "evaluatedAt": "2026-10-01T12:05:00.000Z"
+    }
+  },
+  "verdict": {
+    "status": "written_back",
+    "opportunityId": "opp_soylent_retail_003",
+    "qualificationStatus": "qualified",
+    "baselineScore": 52,
+    "finalScore": 80,
+    "delta": 28,
+    "nextSteps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Liam Chen (SA). Action: Run Next.js App Router performance benchmark on Vercel Edge Middleware against Shopify Plus storefront before Nov 1 freeze.",
+    "writebackId": "wb_sim_soylent_003",
+    "feedback": "recorded",
+    "opportunity": {
+      "id": "opp_soylent_retail_003",
+      "name": "Soylent Retail - Headless Storefront",
+      "account_name": "Soylent Nutrition Inc.",
+      "stage_name": "Stage 2 - Discovery",
+      "amount": 90000,
+      "close_date": "2026-10-31",
+      "ae_name": "Elena Rostova",
+      "sa_name": "Liam Chen",
+      "ae_notes": "Need to launch before Q4 peak freeze (Nov 1). CEO and CMO sponsor. $90k ACV. Decision maker is Head of Engineering.",
+      "sa_notes": "Evaluation criteria: Core Web Vitals (LCP < 1.5s), automated preview branches for marketing team, Sanity CMS webhooks. Current architecture uses legacy Akamai/Fastly CDN edge rules that require migration or cache-control parity.\n\n[SA Discovery Update - 2026-10-01T12:05:00.000Z]\n• cwv_lcp_target: lcp_under_1_5s_and_edge_caching\n• pre_freeze_timeline: confirmed_timeline\n• Additional SA Notes: Decision Criteria verified: Head of Engineering confirmed technical requirement of LCP < 1.5s on mobile and Vercel Edge Middleware caching parity. Decision Process verified: 2-week technical validation schedule locked for Oct 14-28 ahead of Nov 1 code freeze.",
+      "suggested_next_steps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Liam Chen (SA). Action: Run Next.js App Router performance benchmark on Vercel Edge Middleware against Shopify Plus storefront before Nov 1 freeze.",
+      "qualification_status": "qualified",
+      "meddpicc_score": 80,
+      "meddpicc_breakdown": {
+        "identifyPain": {
+          "key": "identifyPain",
+          "label": "Identify Pain",
+          "weight": 0.2,
+          "score": 9,
+          "status": "verified",
+          "confidence": 0.95,
+          "evidence": [
+            "Slow e-commerce storefront with poor LCP impacting Black Friday conversion rates"
+          ],
+          "gaps": []
+        },
+        "champion": {
+          "key": "champion",
+          "label": "Champion",
+          "weight": 0.15,
+          "score": 9,
+          "status": "verified",
+          "confidence": 0.95,
+          "evidence": [
+            "Head of Engineering actively championing Vercel + Next.js App Router"
+          ],
+          "gaps": []
+        },
+        "economicBuyer": {
+          "key": "economicBuyer",
+          "label": "Economic Buyer",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9,
+          "evidence": [
+            "CMO and CEO have authorized $90k budget for Q4 launch"
+          ],
+          "gaps": []
+        },
+        "decisionCriteria": {
+          "key": "decisionCriteria",
+          "label": "Decision Criteria",
+          "weight": 0.15,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9,
+          "evidence": [
+            "Confirmed LCP < 1.5s on mobile + Edge Middleware caching parity"
+          ],
+          "gaps": []
+        },
+        "decisionProcess": {
+          "key": "decisionProcess",
+          "label": "Decision Process",
+          "weight": 0.1,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9,
+          "evidence": [
+            "Confirmed 2-week technical validation starting Oct 14"
+          ],
+          "gaps": []
+        },
+        "metrics": {
+          "key": "metrics",
+          "label": "Metrics",
+          "weight": 0.1,
+          "score": 7,
+          "status": "partial",
+          "confidence": 0.85,
+          "evidence": [
+            "Targeting sub-1.5s Largest Contentful Paint (LCP) on mobile"
+          ],
+          "gaps": []
+        },
+        "competition": {
+          "key": "competition",
+          "label": "Competition",
+          "weight": 0.1,
+          "score": 8,
+          "status": "verified",
+          "confidence": 0.9,
+          "evidence": [
+            "Evaluating legacy Akamai/Fastly CDN renewal vs Vercel Edge Network"
+          ],
+          "gaps": []
+        },
+        "paperProcess": {
+          "key": "paperProcess",
+          "label": "Paper Process",
+          "weight": 0.05,
+          "score": 7,
+          "status": "partial",
+          "confidence": 0.85,
+          "evidence": [
+            "Standard credit card billing or fast-track invoice pre-approved"
+          ],
+          "gaps": []
+        }
+      },
+      "competitive_flags": [
+        "Akamai/Fastly"
+      ],
+      "created_at": "2026-10-01T00:00:00.000Z",
+      "updated_at": "2026-10-01T12:05:00.000Z"
+    }
+  },
+  "capturedAt": "2026-10-01T12:05:00.000Z"
+}

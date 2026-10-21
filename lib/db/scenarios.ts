@@ -161,12 +161,12 @@ export const DEMO_SCENARIOS: Record<string, DealScenario> = {
       ae_notes:
         'Need to launch before Q4 peak freeze (Nov 1). CEO and CMO sponsor. $90k ACV. Decision maker is Head of Engineering.',
       sa_notes:
-        'Evaluation criteria: Core Web Vitals (LCP < 1.5s), automated preview branches for marketing team, Sanity CMS webhooks.',
+        'Evaluation criteria: Core Web Vitals (LCP < 1.5s), automated preview branches for marketing team, Sanity CMS webhooks. Current architecture uses legacy Akamai/Fastly CDN edge rules that require migration or cache-control parity.',
       suggested_next_steps: null,
       qualification_status: 'unqualified',
       meddpicc_score: null,
       meddpicc_breakdown: INITIAL_MEDDPICC_BREAKDOWN,
-      competitive_flags: [],
+      competitive_flags: ['Akamai/Fastly'],
     },
   },
 };

@@ -2,7 +2,7 @@
 
 Implementation detail for people working on this repository. For an overview of what the project does, see the [README](../README.md).
 
-A Next.js workbench plus an eve agent (`agent/`) that qualifies enterprise deals against MEDDPICC. System 1 is `typesafe-ai/jev` and System 2 is a Gateway language model, both called through Vercel AI Gateway. Both run as steps of one `run_assessment` workflow tool, which sequences the whole Assessment Session in code (no subagents). The root agent only starts it, so it runs on the cheap `google/gemini-3.8-flash` (`AGENT_MODEL_ID`; issue 19). System 2 defaults to the fast `google/gemini-3.8-flash` (`SYSTEM2_MODEL_ID`). Haiku 4.5 and Sonnet 5 are still selectable for System 2. Through the Gateway, Haiku 4.5 stops after the first property of the System 2 object, so it fails loudly if chosen (issue 18). The CRM is simulated in Postgres (Neon). Every failure is loud: there are no fallbacks. Configuration is described in `.env.example`.
+A Next.js workbench plus an eve agent (`agent/`) that qualifies enterprise deals against MEDDPICC. System 1 is `typesafe-ai/jev` and System 2 is a Gateway language model, both called through Vercel AI Gateway. Both run as steps of one `run_assessment` workflow tool, which sequences the whole Assessment Session in code (no subagents). The root agent only starts it, so it runs on the cheap `google/gemini-3.8-flash` (`AGENT_MODEL_ID`; issue 19). System 2 defaults to the fast `google/gemini-3.8-flash` (`SYSTEM2_MODEL_ID`), with `anthropic/claude-haiku-5.5` also selectable (`SYSTEM2_MODELS` in `lib/models.ts`). The CRM is simulated in Postgres (Neon). Every failure is loud: there are no fallbacks. Configuration is described in `.env.example`.
 
 ## Database
 
@@ -48,7 +48,7 @@ Runtime resets read the scenarios from `deal_scenarios`, and they fail loudly if
 
 | Eval | Proves |
 |---|---|
-| `acme/assess-then-qualify` | One session and one `run_assessment` call, answered through its discovery pause (`requireInputRequest` + `respond`), with `t.toolOrder` and `t.noFailedActions()`. The baseline composite is 50–58, Identify Pain is ≥ 8, Netlify is `high` and Gate 2 is blocked on Economic Buyer. The persisted composite and dimension statuses are consistent, and the form matches the render schema. After SA feedback the composite is ≥ 70, the status is `qualified`, the next step reads `[QUALIFIED] …`, there is exactly one writeback and `ae_notes` is unchanged. Judges grade citations and playbook. |
+| `acme/assess-then-qualify` | One session and one `run_assessment` call, answered through its discovery pause (`requireInputRequest` + `respond`), with `t.toolOrder` and `t.noFailedActions()`. The baseline composite is 50–58, Identify Pain is ≥ 8, Netlify is `high` and Gate 2 is blocked on Economic Buyer. The persisted composite and dimension statuses are consistent, and the form matches the render schema. After SA feedback the composite is ≥ 70, the status is `qualified`, the next step reads `[QUALIFIED] …`, there is exactly one writeback and `ae_notes` is unchanged. Judges grade citations. |
 | `globex/amplify-in-review` | AWS Amplify is detected, and the writeback is `[IN REVIEW]` in the standard format. |
 | `soylent/q4-freeze-headless` | The headless / Q4-freeze path: no high-threat competitor, no fatal blocker, and a standardized writeback. A judge checks that the Nov 1 freeze is addressed. |
 | `failure/gateway-failure-no-writeback` | An unknown Jev model (`JEV_MODEL_ID`) produces a **failed** `run_assessment` action and no CRM writeback. `t.noFailedActions()` is recorded tracked-only here, and scores 0 in the artifact. |
@@ -63,7 +63,7 @@ Artifacts are written to `.eve/evals/<timestamp>/`.
 
 ## How the UI reaches the agent
 
-The workbench (`components/workbench/WorkbenchShell.tsx`) talks to the eve agent directly with `useEveAgent` from `eve/react`, on the same origin `withEve` mounts (`/eve/v1/*`). There is no server-side bridge.
+The workbench (`components/workbench/LiveQualificationWorkbench.tsx`) talks to the eve agent directly with `useEveAgent` from `eve/react`, on the same origin `withEve` mounts (`/eve/v1/*`). There is no server-side bridge.
 
 - **Auth.** The browser sends the app's `deal_qual_session` cookie, which `agent/channels/eve.ts` accepts. The middleware also guards `/eve/v1` with it.
 - **One tool, sequenced in code.** Each Assessment Session is one durable eve session and one call to the `run_assessment` workflow tool (`agent/tools/run_assessment.ts`, `"use workflow"`). Its `"use step"` functions (`agent/lib/assessment-steps.ts`) score with Jev, run System 2, record the SA answers, re-score and write back. The root model only starts it (`assessTurnMessage`) and replies in one line.

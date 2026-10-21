@@ -17,8 +17,6 @@ function optionalPaths(schema: z.ZodTypeAny, path = '$'): string[] {
 const finding = { citations: [], gaps: [] };
 function output(fields: System2ModelOutput['phase3Form']['sections'][number]['fields']): System2ModelOutput {
   return {
-    phase1Gaps: [],
-    phase2Competitive: [],
     phase3Form: {
       title: 'Discovery',
       summary: 'Confirm the buyer.',
@@ -31,7 +29,6 @@ function output(fields: System2ModelOutput['phase3Form']['sections'][number]['fi
     valueFocus: 'Build speed',
     primaryRisk: 'No budget',
     nextMilestone: 'Meet the CFO.',
-    summary: 'Blocked on EB.',
   };
 }
 const field = { description: null, placeholder: null, helpCallout: null, required: true, dimensionTarget: 'economicBuyer' as const };
@@ -62,7 +59,7 @@ describe('System 2 structured output', () => {
           ],
         },
       ]),
-      { opportunityId: 'opp_acme_corp_001', model: 'anthropic/claude-sonnet-5' }
+      { opportunityId: 'opp_acme_corp_001', model: 'google/gemini-3.8-flash' }
     );
     expect(JsonRenderFormSchema.parse(result.phase3Form)).toEqual(result.phase3Form);
     const [text, select] = result.phase3Form.sections[0].fields;
@@ -71,23 +68,38 @@ describe('System 2 structured output', () => {
     expect(select.options).toHaveLength(2);
     expect(select.helpCallout).toBe('Ask Priya.');
     expect(result.phase3Form.sections[0]).not.toHaveProperty('calloutType');
-    expect(result).toMatchObject({ opportunityId: 'opp_acme_corp_001', modelUsed: 'anthropic/claude-sonnet-5' });
+    expect(result).toMatchObject({ opportunityId: 'opp_acme_corp_001', modelUsed: 'google/gemini-3.8-flash' });
   });
 
-  it('fails loudly when a choice field has no options', () => {
-    expect(() =>
-      toSystem2AnalysisResult(output([{ ...field, id: 'x', name: 'x', label: 'Pick', type: 'radio', options: [] }]), {
+  it('coerces choice fields with empty or whitespace-only options to text with options: undefined without throwing', () => {
+    const resultEmpty = toSystem2AnalysisResult(
+      output([{ ...field, id: 'x', name: 'x', label: 'Pick', type: 'radio', options: [] }]),
+      {
         opportunityId: 'opp_x',
-        model: 'anthropic/claude-sonnet-5',
-      })
-    ).toThrow(/"x".*options/);
+        model: 'google/gemini-3.8-flash',
+      }
+    );
+    const coercedEmpty = resultEmpty.phase3Form.sections[0].fields[0];
+    expect(coercedEmpty.type).toBe('text');
+    expect(coercedEmpty).not.toHaveProperty('options');
+
+    const resultWhitespace = toSystem2AnalysisResult(
+      output([{ ...field, id: 'y', name: 'y', label: 'Pick', type: 'select', options: [{ label: '   ', value: '   ' }] }]),
+      {
+        opportunityId: 'opp_y',
+        model: 'google/gemini-3.8-flash',
+      }
+    );
+    const coercedWhitespace = resultWhitespace.phase3Form.sections[0].fields[0];
+    expect(coercedWhitespace.type).toBe('text');
+    expect(coercedWhitespace).not.toHaveProperty('options');
   });
 
   it('fails loudly on an option without a value', () => {
     expect(() =>
       toSystem2AnalysisResult(
         output([{ ...field, id: 'x', name: 'x', label: 'Pick', type: 'radio', options: [{ label: 'A', value: 'a' }, { label: 'B' } as any] }]),
-        { opportunityId: 'opp_x', model: 'anthropic/claude-sonnet-5' }
+        { opportunityId: 'opp_x', model: 'google/gemini-3.8-flash' }
       )
     ).toThrow();
   });
