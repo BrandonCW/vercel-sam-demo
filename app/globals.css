@@ -6,6 +6,9 @@
 @tailwind utilities;
 
 :root {
+  --font-sans: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'General Sans', 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --bg: #F8F8F6;
   --surface: #FFFFFF;
   --surface-canvas: #F8F8F6;
@@ -27,11 +30,22 @@
   --score-unfilled: #E5E5E0;
 }
 
+html,
 body {
   background-color: var(--bg);
   color: var(--text);
   font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+.font-display {
+  font-family: 'General Sans', 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 /* Custom scrollbars */

@@ -97,10 +97,10 @@ export function TopNavBar({
             <Gauge className="size-5 text-[#FFFFFF]" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.05em] uppercase text-[#787C87]">
+            <p className="font-display text-[11px] font-semibold tracking-[0.05em] uppercase text-[#787C87]">
               DEAL OPERATIONS
             </p>
-            <h1 className="text-base font-semibold tracking-tight text-[#111215] sm:text-lg">
+            <h1 className="font-display text-base font-bold tracking-[-0.03em] text-[#111215] sm:text-lg">
               Qualification System
             </h1>
           </div>
