@@ -7,6 +7,7 @@ import { assessTurnMessage } from '@/lib/assessment-turns';
 import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 import { LEGACY_SESSION_ERROR } from '@/lib/assessment-results';
 import { loadSavedSession, saveSession } from '@/lib/ui/saved-assessment-session';
+import { DEFAULT_SYSTEM2_MODEL } from '@/lib/types/crm';
 import { jev, opportunity, system2 } from './fixtures/qualification';
 
 // The workbench drives the Assessment Session through useEveAgent only. The hook is stubbed at
@@ -83,6 +84,12 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     expect(screen.getAllByText('56').length).toBeGreaterThan(0);
     expect(screen.queryByText('Who signs?')).toBeNull();
     expect(screen.queryByRole('button', { name: /Submit Discovery Findings/ })).toBeNull();
+
+    // Bug 2 regression check: while System 2 is still analyzing with 0 citations/gaps extracted yet,
+    // the scorecard must display pending status instead of false-positive "Criteria verified"
+    expect(screen.getAllByText('Pending System 2 gap synthesis…').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pending System 2 citation extraction…').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Criteria verified, no blocking gaps.')).toBeNull();
   });
 
   it('shows no System 2 running indicator before Jev scores arrive or once the assessment settles', () => {
@@ -110,7 +117,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     expect(screen.getByText(/No confirmed sign-off authority/)).toBeTruthy();
 
     // Navigate to Stage 2 (Field Discovery Checklist) to inspect questions
-    fireEvent.click(screen.getByRole('button', { name: /Answer Discovery Questions/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Answer (\d+ )?Discovery Questions/i }));
     expect(screen.getByText('Who signs?')).toBeTruthy();
   });
 
@@ -118,7 +125,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     hook.state.status = 'streaming'; // a parked turn may still hold its stream open
     hook.state.data = view({ phase: 'awaiting_feedback', pendingInput: { requestId: 'req_1' }, jevResult: jev(), system2Result: system2(), opportunity: opportunity() });
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: /Answer Discovery Questions/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Answer (\d+ )?Discovery Questions/i }));
     fireEvent.change(screen.getByLabelText(/Who signs\?/), { target: { value: 'CFO Mark Ellis' } });
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /Submit Discovery Findings/ })));
     expect(hook.reset).not.toHaveBeenCalled();
@@ -167,6 +174,32 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/Assessment failed:.*HTTP 401 Unauthorized/);
   });
 
+  it('retrying from ProblemCauseFixBanner after failure resets agent and transitions to blank state', async () => {
+    hook.state.status = 'ready';
+    hook.state.data = view({
+      phase: 'failed',
+      error: 'Inference gateway timed out',
+    });
+    render(
+      <LiveQualificationWorkbench
+        initialOpportunity={base}
+        initialScenarioId="scenario_acme_netlify"
+        onModeChange={vi.fn()}
+        initialStageView="stage2"
+      />
+    );
+
+    expect(screen.getByRole('alert')).toBeTruthy();
+    const retryBtn = screen.getByRole('button', { name: /^Retry$/i });
+    await act(async () => {
+      fireEvent.click(retryBtn);
+    });
+
+    expect(hook.reset).toHaveBeenCalled();
+    expect(hook.send).toHaveBeenCalledWith(assessTurnMessage(base.id, DEFAULT_SYSTEM2_MODEL));
+    expect(screen.getByText(/Stage Gate 2 · Unassessed Opportunity/i)).toBeTruthy();
+  });
+
   it('locks Start while a turn is in flight', () => {
     hook.state.status = 'submitted';
     renderShell();
@@ -201,7 +234,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       hook.state.status = 'resuming';
       hook.state.data = view({ phase: 'awaiting_feedback', pendingInput: { requestId: 'req_1' }, jevResult: jev(), system2Result: system2(), opportunity: opportunity() });
       renderShell();
-      fireEvent.click(screen.getByRole('button', { name: /Answer Discovery Questions/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Answer (\d+ )?Discovery Questions/i }));
       expect(screen.getByRole('button', { name: /Submit Discovery Findings/ })).toHaveProperty('disabled', true);
     });
 
@@ -302,8 +335,8 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       expect(header.textContent).not.toContain('Salesforce connected');
 
       fireEvent.click(screen.getByRole('button', { name: /Workbench settings|Settings/i }));
-      expect(screen.getByText(/⚡ Simulation mode/i)).toBeTruthy();
-      expect(screen.getByText(/🌐 Live AI mode/i)).toBeTruthy();
+      expect(screen.getByText(/Simulation mode/i)).toBeTruthy();
+      expect(screen.getByText(/Live AI mode/i)).toBeTruthy();
       expect(screen.getByLabelText('Select Scenario')).toBeTruthy();
       expect(screen.getByLabelText('Select System 2 Model')).toBeTruthy();
       expect(screen.getByRole('button', { name: /Reset Demo/i })).toBeTruthy();

@@ -231,4 +231,190 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
 
     vi.useRealTimers();
   });
+
+  it('handles clipboard copy success in Stage 3', async () => {
+    vi.useFakeTimers();
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: writeTextMock },
+      configurable: true,
+      writable: true,
+    });
+
+    render(<QualificationWorkbench initialOpportunity={opportunity} />);
+
+    // Advance to Stage 1
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
+    });
+
+    // Advance to Stage 2 and fill required fields
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i }));
+    });
+    const radioOption = screen.getByRole('radio', {
+      name: /Confirmed sponsorship if build times drop <5 min/i,
+    });
+    fireEvent.click(radioOption);
+    const criteriaSelect = screen.getByLabelText(/Confirmed technical decision criteria/i);
+    fireEvent.change(criteriaSelect, { target: { value: 'build_speed_and_isr' } });
+
+    // Submit
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Submit Discovery Findings/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
+    });
+
+    const copyBtn = screen.getByRole('button', { name: /Copy Next Steps/i });
+    await act(async () => {
+      fireEvent.click(copyBtn);
+    });
+
+    expect(writeTextMock).toHaveBeenCalled();
+    expect(screen.getByText('✓ Copied to Clipboard')).toBeDefined();
+
+    vi.useRealTimers();
+  });
+
+  it('handles clipboard copy failure gracefully in Stage 3', async () => {
+    vi.useFakeTimers();
+    const writeTextMock = vi.fn().mockRejectedValue(new Error('Clipboard write rejected'));
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: writeTextMock },
+      configurable: true,
+      writable: true,
+    });
+
+    render(<QualificationWorkbench initialOpportunity={opportunity} />);
+
+    // Advance to Stage 1
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
+    });
+
+    // Advance to Stage 2 and fill required fields
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i }));
+    });
+    const radioOption = screen.getByRole('radio', {
+      name: /Confirmed sponsorship if build times drop <5 min/i,
+    });
+    fireEvent.click(radioOption);
+    const criteriaSelect = screen.getByLabelText(/Confirmed technical decision criteria/i);
+    fireEvent.change(criteriaSelect, { target: { value: 'build_speed_and_isr' } });
+
+    // Submit
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Submit Discovery Findings/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
+    });
+
+    const copyBtn = screen.getByRole('button', { name: /Copy Next Steps/i });
+    await act(async () => {
+      fireEvent.click(copyBtn);
+    });
+
+    expect(writeTextMock).toHaveBeenCalled();
+    expect(screen.getByText('Copy Failed — Select text below manually')).toBeDefined();
+
+    vi.useRealTimers();
+  });
+
+  it('switches simulation scenarios dynamically, updating Deal Context card, baseline scores, and discovery questions', async () => {
+    vi.useFakeTimers();
+    render(<QualificationWorkbench initialOpportunity={opportunity} />);
+
+    // Initial state: Acme Corp
+    expect(screen.getAllByText(/Acme Corp/i).length).toBeGreaterThan(0);
+
+    // Open settings and switch to Globex FinTech scenario
+    const settingsBtn = screen.getByRole('button', { name: /Workbench settings|Settings/i });
+    await act(async () => {
+      fireEvent.click(settingsBtn);
+    });
+
+    const scenarioSelect = screen.getByLabelText(/Select Scenario/i);
+    await act(async () => {
+      fireEvent.change(scenarioSelect, { target: { value: 'scenario_globex_amplify' } });
+    });
+
+    // Close settings dialog
+    const closeBtn = screen.getByRole('button', { name: /Close settings/i });
+    await act(async () => {
+      fireEvent.click(closeBtn);
+    });
+
+    // Deal Context card should reflect Globex FinTech ($240,000 ACV, AWS Amplify competitor)
+    expect(screen.getAllByText(/Globex/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/\$240,000/i)).toBeDefined();
+    expect(screen.getAllByText(/AWS Amplify/i).length).toBeGreaterThan(0);
+
+    // Workbench should be in blank unassessed state for the new scenario
+    expect(screen.getByText(/Stage Gate 2 · Unassessed Opportunity/i)).toBeDefined();
+
+    // Start assessment for Globex
+    const startBtn = screen.getByRole('button', { name: /Start assessment/i });
+    await act(async () => {
+      fireEvent.click(startBtn);
+    });
+
+    // Advance 1200ms timer to reach PENDING_FEEDBACK
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
+    });
+
+    // Globex baseline MEDDPICC score is 48
+    expect(screen.getAllByText('48').length).toBeGreaterThan(0);
+
+    // Advance to Stage 2: Field Discovery Checklist
+    const toStage2Btn = screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i });
+    await act(async () => {
+      fireEvent.click(toStage2Btn);
+    });
+
+    // Globex discovery questions target Secure Compute / VPC Peering and InfoSec SOC2
+    expect(
+      screen.getByText(/Confirmed Vercel Secure Compute VPC peering and dedicated egress IP architecture\?/i)
+    ).toBeDefined();
+
+    // Now open settings and switch scenario to Soylent Retail
+    await act(async () => {
+      fireEvent.click(settingsBtn);
+    });
+    const soylentSelect = screen.getByLabelText(/Select Scenario/i);
+    await act(async () => {
+      fireEvent.change(soylentSelect, { target: { value: 'scenario_soylent_headless' } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Close settings/i }));
+    });
+
+    // Deal Context card reflects Soylent Retail ($90,000 ACV)
+    expect(screen.getAllByText(/Soylent/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/\$90,000/i)).toBeDefined();
+
+    // Start assessment for Soylent
+    const startSoylentBtn = screen.getByRole('button', { name: /Start assessment/i });
+    await act(async () => {
+      fireEvent.click(startSoylentBtn);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1300);
+    });
+
+    // Soylent baseline MEDDPICC score is 52
+    expect(screen.getAllByText('52').length).toBeGreaterThan(0);
+
+    vi.useRealTimers();
+  });
 });
