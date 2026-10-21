@@ -6,16 +6,44 @@ import type {
   WorkflowState,
 } from './types';
 import type { SimulationFixture } from './fixture-schema';
+import acmeFixtureRaw from '@/lib/fixtures/simulation/acme_migration.json';
+import globexFixtureRaw from '@/lib/fixtures/simulation/globex_amplify.json';
+import soylentFixtureRaw from '@/lib/fixtures/simulation/soylent_retail.json';
+
+export const FIXTURES_BY_SCENARIO: Record<string, SimulationFixture> = {
+  scenario_acme_netlify: acmeFixtureRaw as SimulationFixture,
+  scenario_acme_nextjs: acmeFixtureRaw as SimulationFixture,
+  scenario_globex_amplify: globexFixtureRaw as SimulationFixture,
+  scenario_soylent_headless: soylentFixtureRaw as SimulationFixture,
+  scenario_soylent_monolith: soylentFixtureRaw as SimulationFixture,
+};
+
+export function getSimulationFixture(scenarioId: string = 'scenario_acme_netlify'): SimulationFixture {
+  return FIXTURES_BY_SCENARIO[scenarioId] || (acmeFixtureRaw as SimulationFixture);
+}
 
 function buildDimensions(
   dimensionsInput: Record<string, any>,
   findingsInput: Record<string, any>,
-  isCompleted: boolean
+  isCompleted: boolean,
+  fallbackBreakdown?: Record<string, any>
 ): Record<string, SimulationDimension> {
   const result: Record<string, SimulationDimension> = {};
   for (const [key, dim] of Object.entries(dimensionsInput)) {
     const finding = findingsInput[key] || { citations: [], gaps: [] };
-    const quotes = finding.citations || [];
+    const fb = fallbackBreakdown?.[key];
+    const quotes =
+      finding.citations?.length
+        ? finding.citations
+        : fb?.evidence?.length
+        ? fb.evidence
+        : dim.evidence?.length
+        ? dim.evidence
+        : dim.quote
+        ? [dim.quote]
+        : fb?.quote
+        ? [fb.quote]
+        : [];
     const gaps = isCompleted && (key === 'economicBuyer' || key === 'decisionCriteria')
       ? []
       : (finding.gaps || []);
@@ -217,7 +245,8 @@ export function getStateForWorkflow(
       const dimensions = buildDimensions(
         fixture.feedback.rescoreJevResult.dimensions,
         fixture.baseline.system2Result.dimensionFindings,
-        true
+        true,
+        fixture.verdict.opportunity.meddpicc_breakdown
       );
       const previousScore = fixture.baseline.jevResult.overallScore;
       const currentScore = fixture.feedback.rescoreJevResult.overallScore;
@@ -253,8 +282,8 @@ export function getStateForWorkflow(
   }
 }
 
-export function createSimulationState(fixture: SimulationFixture): SimulationState {
-  return getStateForWorkflow('READY_TO_ASSESS', fixture);
+export function createSimulationState(fixture?: SimulationFixture): SimulationState {
+  return getStateForWorkflow('READY_TO_ASSESS', fixture || getSimulationFixture());
 }
 
 function resolveTargetState(target?: WorkflowState | number): WorkflowState | null {
@@ -281,36 +310,43 @@ function resolveTargetState(target?: WorkflowState | number): WorkflowState | nu
 export function simulationReducer(
   state: SimulationState,
   action: SimulationAction,
-  fixture: SimulationFixture
+  fixture?: SimulationFixture
 ): SimulationState {
+  const actionFixture = 'fixture' in action ? action.fixture : undefined;
+  const activeFixture = actionFixture || fixture || getSimulationFixture();
   switch (action.type) {
+    case 'SWITCH_SCENARIO': {
+      const targetFixture = action.fixture || getSimulationFixture(action.scenarioId);
+      return createSimulationState(targetFixture);
+    }
+
     case 'START_ASSESSMENT':
       if (state.workflowState === 'READY_TO_ASSESS') {
-        return getStateForWorkflow('ANALYZING', fixture);
+        return getStateForWorkflow('ANALYZING', activeFixture);
       }
       return state;
 
     case 'ANALYSIS_COMPLETE':
       if (state.workflowState === 'ANALYZING') {
-        return getStateForWorkflow('PENDING_FEEDBACK', fixture);
+        return getStateForWorkflow('PENDING_FEEDBACK', activeFixture);
       }
       return state;
 
     case 'SUBMIT_FEEDBACK':
       if (state.workflowState === 'PENDING_FEEDBACK' || state.workflowState === 'COMPLETED') {
-        return getStateForWorkflow('EVALUATING', fixture);
+        return getStateForWorkflow('EVALUATING', activeFixture);
       }
       return state;
 
     case 'EVALUATION_COMPLETE':
       if (state.workflowState === 'EVALUATING') {
-        return getStateForWorkflow('COMPLETED', fixture);
+        return getStateForWorkflow('COMPLETED', activeFixture);
       }
       return state;
 
     case 'STEP_BACK': {
       if (state.workflowState === 'COMPLETED' || state.workflowState === 'EVALUATING') {
-        const nextState = getStateForWorkflow('PENDING_FEEDBACK', fixture);
+        const nextState = getStateForWorkflow('PENDING_FEEDBACK', activeFixture);
         return {
           ...nextState,
           previousScore: null,
@@ -318,7 +354,7 @@ export function simulationReducer(
         };
       }
       if (state.workflowState === 'PENDING_FEEDBACK' || state.workflowState === 'ANALYZING') {
-        const nextState = getStateForWorkflow('READY_TO_ASSESS', fixture);
+        const nextState = getStateForWorkflow('READY_TO_ASSESS', activeFixture);
         return {
           ...nextState,
           previousScore: null,
@@ -332,13 +368,15 @@ export function simulationReducer(
       const rawTarget = action.target ?? action.targetState;
       const target = resolveTargetState(rawTarget);
       if (target) {
-        return getStateForWorkflow(target, fixture);
+        return getStateForWorkflow(target, activeFixture);
       }
       return state;
     }
 
-    case 'RESET':
-      return createSimulationState(fixture);
+    case 'RESET': {
+      const targetFixture = action.fixture || activeFixture;
+      return createSimulationState(targetFixture);
+    }
 
     default:
       return state;

@@ -3,6 +3,7 @@ import acmeFixtureRaw from '@/lib/fixtures/simulation/acme_migration.json';
 import type { SimulationFixture } from '@/lib/simulation/fixture-schema';
 import {
   createSimulationState,
+  getSimulationFixture,
   simulationReducer,
 } from '@/lib/simulation/simulation-engine';
 
@@ -79,7 +80,7 @@ describe('simulation-engine state transitions, step-back, deltas & timers (Issue
 
   it('ensures timer cancellation safety on STEP_BACK and RESET', () => {
     vi.useFakeTimers();
-    let timerRef: { current: NodeJS.Timeout | null } = { current: null };
+    let timerRef: { current: any } = { current: null };
 
     // Simulate scheduling a transition timer
     const advanceSpy = vi.fn();
@@ -97,5 +98,54 @@ describe('simulation-engine state transitions, step-back, deltas & timers (Issue
     vi.advanceTimersByTime(1500);
     expect(advanceSpy).not.toHaveBeenCalled();
     vi.useRealTimers();
+  });
+
+  it('supports scenario switching across all 3 seed scenarios with authentic CRM data and flows', () => {
+    // 1. Initial Acme
+    let state = createSimulationState(getSimulationFixture('scenario_acme_netlify'));
+    expect(state.opportunity.name).toContain('Acme Corp');
+    expect(state.workflowState).toBe('READY_TO_ASSESS');
+
+    // 2. Switch to Globex FinTech
+    state = simulationReducer(state, { type: 'SWITCH_SCENARIO', scenarioId: 'scenario_globex_amplify' });
+    expect(state.opportunity.name).toContain('Globex FinTech');
+    expect(state.opportunity.amount).toBe(240000);
+    expect(state.workflowState).toBe('READY_TO_ASSESS');
+
+    // Run Globex flow
+    const globexFixture = getSimulationFixture('scenario_globex_amplify');
+    state = simulationReducer(state, { type: 'START_ASSESSMENT' }, globexFixture);
+    state = simulationReducer(state, { type: 'ANALYSIS_COMPLETE' }, globexFixture);
+    expect(state.score).toBe(48);
+    expect(state.workflowState).toBe('PENDING_FEEDBACK');
+
+    state = simulationReducer(state, { type: 'SUBMIT_FEEDBACK' }, globexFixture);
+    state = simulationReducer(state, { type: 'EVALUATION_COMPLETE' }, globexFixture);
+    expect(state.workflowState).toBe('COMPLETED');
+    expect(state.score).toBe(78);
+    expect(state.previousScore).toBe(48);
+    expect(state.delta).toBe(30);
+    expect(state.suggestedNextSteps).toContain('Secure Compute');
+
+    // 3. Switch to Soylent Retail
+    const soylentFixture = getSimulationFixture('scenario_soylent_headless');
+    state = simulationReducer(state, { type: 'SWITCH_SCENARIO', scenarioId: 'scenario_soylent_headless' });
+    expect(state.opportunity.name).toContain('Soylent Retail');
+    expect(state.opportunity.amount).toBe(90000);
+    expect(state.workflowState).toBe('READY_TO_ASSESS');
+
+    // Run Soylent flow
+    state = simulationReducer(state, { type: 'START_ASSESSMENT' }, soylentFixture);
+    state = simulationReducer(state, { type: 'ANALYSIS_COMPLETE' }, soylentFixture);
+    expect(state.score).toBe(52);
+    expect(state.workflowState).toBe('PENDING_FEEDBACK');
+
+    state = simulationReducer(state, { type: 'SUBMIT_FEEDBACK' }, soylentFixture);
+    state = simulationReducer(state, { type: 'EVALUATION_COMPLETE' }, soylentFixture);
+    expect(state.workflowState).toBe('COMPLETED');
+    expect(state.score).toBe(80);
+    expect(state.previousScore).toBe(52);
+    expect(state.delta).toBe(28);
+    expect(state.suggestedNextSteps).toContain('Shopify Plus');
   });
 });
