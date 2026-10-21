@@ -20,9 +20,9 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
     <div className="workbench-left flex flex-col gap-4 p-5 bg-[#FFFFFF] border-r border-[#E2E0D8]">
       {/* 2x2 Opportunity Metadata Box */}
       <div className="meta-box rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-3.5">
-        <h4 className="meta-box-title text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87] mb-3">
+        <h3 className="meta-box-title text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87] mb-3">
           Opportunity Metadata
-        </h4>
+        </h3>
         <div className="meta-data-grid grid grid-cols-2 gap-3 text-left">
           <div>
             <div className="meta-item-label text-[11px] text-[#787C87]">Account Executive</div>
@@ -59,7 +59,7 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
 
       {/* Mobile/Tablet (< lg) Collapsible Details */}
       <details className="lg:hidden rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-3 text-xs">
-        <summary className="cursor-pointer font-semibold text-xs uppercase tracking-[0.05em] text-[#787C87] hover:text-[#111215]">
+        <summary className="cursor-pointer font-semibold text-xs tracking-[0.02em] text-[#52545D] hover:text-[#111215]">
           AE Business &amp; SA Technical Briefs
         </summary>
         <div className="mt-3 space-y-3 pt-2 border-t border-[#E2E0D8]">

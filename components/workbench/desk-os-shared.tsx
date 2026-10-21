@@ -37,9 +37,9 @@ export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
           <span>DEAL DESK</span>
         </div>
         <div className="bar-divider h-4 w-px shrink-0 bg-[#E2E0D8]" aria-hidden="true" />
-        <div className="opp-title min-w-0 text-xs font-semibold text-[#111215] truncate">
+        <h2 className="opp-title min-w-0 text-xs font-semibold text-[#111215] truncate">
           {opportunity.name || 'Acme Corp — Platform Migration'}
-        </div>
+        </h2>
       </div>
 
       <div className="bar-right flex shrink-0 items-center gap-2">
