@@ -6,9 +6,7 @@ import { z } from 'zod';
  */
 export const SYSTEM2_MODELS = [
   { id: 'google/gemini-3.8-flash', label: 'Gemini 3.8 Flash', provider: 'Google', badge: 'Default' },
-  { id: 'anthropic/claude-haiku-4.5', label: 'Claude Haiku 4.5', provider: 'Anthropic', badge: 'Fast' },
-  { id: 'anthropic/claude-sonnet-5', label: 'Claude Sonnet 5', provider: 'Anthropic', badge: 'Deeper' },
-  { id: 'openai/gpt-5.5', label: 'GPT-5.5', provider: 'OpenAI', badge: 'Alternative' },
+  { id: 'anthropic/claude-haiku-5.5', label: 'Claude Haiku 5.5', provider: 'Anthropic', badge: 'Fast' },
 ] as const;
 
 export type System2ModelOption = (typeof SYSTEM2_MODELS)[number]['id'];
@@ -23,14 +21,12 @@ export interface ModelConfig {
 /**
  * Root agent: it calls run_assessment once and returns the structured turn outcome; the session's
  * steps are sequenced in code (issue 19). Gemini 3.8 Flash did this in 5/5 live sessions (one
- * Acme cycle and the four evals). Haiku 4.5 was not retried: through the Gateway it ended every
- * turn with prose instead of the outcome under the old per-step flow (6/6 sessions; issue 18).
+ * Acme cycle and the four evals).
  */
 export const DEFAULT_AGENT_MODEL: System2ModelOption = 'google/gemini-3.8-flash';
 
 /**
- * System 2 when a turn names none: a fast model with schema-constrained output. Not Haiku 4.5:
- * through the Gateway it stops after the first property of the System 2 object (issue 18).
+ * System 2 when a turn names none: a fast model with schema-constrained output.
  */
 export const DEFAULT_SYSTEM2_MODEL: System2ModelOption = 'google/gemini-3.8-flash';
 
@@ -43,19 +39,35 @@ function modelFromEnv(env: Record<string, string | undefined>, name: string, fal
   if (!raw) return fallback;
   const parsed = System2ModelSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new Error(`${name} "${raw}" is not a supported model. Use one of: ${System2ModelSchema.options.join(', ')}.`);
+    throw new Error(`Unknown System 2 model: ${raw} (${name}). Supported models: ${System2ModelSchema.options.join(', ')}.`);
   }
   return parsed.data;
 }
 
 /** Model for the root eve agent. AGENT_MODEL_ID may override it with one of SYSTEM2_MODELS; anything else throws. */
-export function resolveAgentModel(env: Record<string, string | undefined> = process.env): System2ModelOption {
-  return modelFromEnv(env, 'AGENT_MODEL_ID', DEFAULT_AGENT_MODEL);
+export function resolveAgentModel(input: string | Record<string, string | undefined> = process.env): System2ModelOption {
+  if (typeof input === 'string') {
+    const raw = input.trim();
+    const parsed = System2ModelSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error(`Unknown Agent model: ${raw}. Supported models: ${System2ModelSchema.options.join(', ')}.`);
+    }
+    return parsed.data;
+  }
+  return modelFromEnv(input, 'AGENT_MODEL_ID', DEFAULT_AGENT_MODEL);
 }
 
 /** System 2 model when a turn names none. SYSTEM2_MODEL_ID may override it with one of SYSTEM2_MODELS; anything else throws. */
-export function resolveSystem2Model(env: Record<string, string | undefined> = process.env): System2ModelOption {
-  return modelFromEnv(env, 'SYSTEM2_MODEL_ID', DEFAULT_SYSTEM2_MODEL);
+export function resolveSystem2Model(input: string | Record<string, string | undefined> = process.env): System2ModelOption {
+  if (typeof input === 'string') {
+    const raw = input.trim();
+    const parsed = System2ModelSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error(`Unknown System 2 model: ${raw}. Supported models: ${System2ModelSchema.options.join(', ')}.`);
+    }
+    return parsed.data;
+  }
+  return modelFromEnv(input, 'SYSTEM2_MODEL_ID', DEFAULT_SYSTEM2_MODEL);
 }
 
 export const DEFAULT_JEV_MODEL = 'typesafe-ai/jev';
