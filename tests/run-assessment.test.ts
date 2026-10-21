@@ -63,12 +63,9 @@ const modelOutput: System2ModelOutput = {
     ],
   },
   fatalBlocker: null,
-  phase1Gaps: [],
-  phase2Competitive: [],
   valueFocus: 'Build speed',
   primaryRisk: 'Budget',
   nextMilestone: 'Meet the CFO.',
-  summary: 'Blocked on the economic buyer.',
 };
 
 /** An SA answer, as the workbench sends it through `respond([{ requestId, text }])`. */
@@ -120,7 +117,7 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     const rowsAtYield: string[][] = [];
 
     const { partials, result, asks } = await drive(
-      { opportunityId: ACME, model: 'anthropic/claude-sonnet-5' },
+      { opportunityId: ACME, model: 'anthropic/claude-haiku-5.5' },
       async () => ({ text: await answerText({ eb: 'CFO Mark Ellis signs; $180k approved.' }, 'Paper process mapped.') }),
       async () => {
         rowsAtYield.push(await actions());
@@ -141,7 +138,7 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     expect(partials[1].opportunity.meddpicc_score).toBe(56);
     expect(rowsAtYield[1]).toEqual(['initial_scoring']);
     // The validated System 2 result, with its discovery form, before the pause.
-    expect(partials[2].system2Result.modelUsed).toBe('anthropic/claude-sonnet-5');
+    expect(partials[2].system2Result.modelUsed).toBe('anthropic/claude-haiku-5.5');
     expect(partials[2].system2Result.phase3Form.sections[0].fields[0].id).toBe('eb');
     expect(asks).toHaveLength(1);
     expect(asks[0]).toMatchObject({ display: 'text', allowFreeform: true });

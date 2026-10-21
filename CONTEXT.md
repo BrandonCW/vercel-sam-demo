@@ -63,3 +63,27 @@ _Avoid_: Re-evaluation, secondary grading, score update
 **Assessment Session**:
 The stateful, discrete evaluation lifecycle bounded between an initial assessment trigger and final CRM write-back, which pauses at zero compute cost while awaiting SA feedback. It is one durable eve session and one `run_assessment` workflow call, sequenced in code; the call's result (or its failure) is the session's verdict, decided in code.
 _Avoid_: Evaluation run, qualification job, agent thread
+
+## Architecture & Workbench Layout
+
+### Deal Desk OS Split-Workbench Architecture
+The Qualification Workbench adheres to a high-density, monochrome Deal Desk OS aesthetic with a 35% / 65% horizontal split layout (`DESIGN.md` "Warm Paper & Ink"):
+- **Left Pane (35%) — Opportunity Brief (`DealContextCard`)**: Persistent opportunity context, 2x2 metadata grid (ACV, Close Date, Target Framework, Incumbent), competitor threat callouts, and collapsible narrative discovery notes with custom desktop scroll containers.
+- **Right Pane (65%) — Stage Canvas Router**: High-density interactive canvas routing between blank start state, loading transitions, and the three qualification stages.
+- **Quiet Monochrome Top Bar (`MonochromeTopBar`)**: High-contrast, minimal top bar providing Deal Desk branding, Opportunity name, sales pipeline stage, and formatted deal amount without colored badges or noise.
+
+### Desk OS 3-Stage Lifecycle (`StepperBar`)
+The progression bar routes across three canonical Desk OS stages:
+1. **Stage 1 — Initial Deal Audit (`Initial Deal Audit (Gaps Identified)`)**: Baseline System 1 scoring and System 2 reasoning findings across all 8 MEDDPICC dimensions, highlighting blockers with recessed `#F1F0EC` row indicators and blocker counts.
+2. **Stage 2 — Field Discovery Checklist (`Field Discovery Checklist (In-Context)`)**: In-context discovery form (`DynamicDiscoveryForm`) embedding live 10-segment bars (`TenSegmentBar`) in question headers, live `Answered {K} of {N}` progression, and manual SA observations.
+3. **Stage 3 — Updated Assessment & Next Steps (`Updated Assessment & Next Steps (Qualified)`)**: Finalized deal posture displaying dynamic score deltas, Suggested Next Steps card with 1-click clipboard feedback, and full MEDDPICC ledger with staggered score animations.
+
+### Non-Destructive Navigation & State Preservation
+Stage switching via `StepperBar`, `← Back to Audit`, or `Cancel` is non-destructive. SA draft responses (`savedFormData`) and manual notes (`savedManualNotes`) are preserved in memory across stage changes until submitted or explicitly reset.
+
+### Retired & Superseded Components
+The following legacy sidebar and banner components have been fully superseded by the Desk OS split-workbench components and deleted:
+- `components/workbench/StageGateCard.tsx` (superseded by `StepperBar.tsx` and stage header lockups)
+- `components/workbench/DealSummaryCard.tsx` (superseded by `MonochromeTopBar` and `SuggestedNextStepsCard`)
+- `components/workbench/ActionPanel.tsx` (superseded by in-canvas stage CTAs and `DynamicDiscoveryForm.tsx`)
+- `components/workbench/Banners.tsx` (superseded by `ProblemCauseFixBanner` in `desk-os-shared.tsx`)

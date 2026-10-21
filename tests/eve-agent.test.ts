@@ -64,7 +64,7 @@ describe('eve agent tools', () => {
 
   it('run_assessment accepts current Gateway model IDs only', () => {
     const schema = runAssessmentTool.inputSchema as any;
-    expect(schema.safeParse({ opportunityId: ACME, model: 'anthropic/claude-haiku-4.5' }).success).toBe(true);
+    expect(schema.safeParse({ opportunityId: ACME, model: 'anthropic/claude-haiku-5.5' }).success).toBe(true);
     expect(schema.safeParse({ opportunityId: ACME, model: 'google/gemini-3.8-flash' }).success).toBe(true);
     expect(schema.safeParse({ opportunityId: ACME, model: 'claude-3-5-sonnet' }).success).toBe(false);
   });

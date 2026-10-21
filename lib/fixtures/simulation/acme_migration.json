@@ -341,44 +341,9 @@
         ]
       },
       "fatalBlocker": null,
-      "phase1Gaps": [
-        {
-          "dimension": "economicBuyer",
-          "dimensionLabel": "Economic Buyer",
-          "score": 3,
-          "status": "unaddressed",
-          "isStageGateBlocker": true,
-          "riskLevel": "high",
-          "verifiedFact": "VP Eng Jane Doe has not attended discovery calls",
-          "aeAssumption": "Assumed CFO or VP Eng will sign",
-          "riskAnalysis": "Deal cannot clear Gate 2 without economic sponsor"
-        },
-        {
-          "dimension": "decisionCriteria",
-          "dimensionLabel": "Decision Criteria",
-          "score": 3,
-          "status": "unaddressed",
-          "isStageGateBlocker": true,
-          "riskLevel": "high",
-          "verifiedFact": "No written technical SLA benchmarks documented",
-          "aeAssumption": "Assumed team wants standard Next.js performance",
-          "riskAnalysis": "Incumbent Netlify renewal discount will prevail without strict performance criteria"
-        }
-      ],
-      "phase2Competitive": [
-        {
-          "competitor": "Netlify",
-          "threatLevel": "high",
-          "competitorClaim": "Incumbent Netlify Enterprise offering 30% defensive renewal discount",
-          "vercelDifferentiator": "Sub-5 minute build pipelines, native Next.js App Router ISR, preview skew protection",
-          "tacticalAngle": "Highlight $400k Black Friday preview outage from deploy queues",
-          "trapQuestion": "How does Netlify plan to eliminate the 45-minute build queue bottleneck on major release days?"
-        }
-      ],
       "valueFocus": "Next.js App Router performance and Turborepo remote caching",
       "primaryRisk": "Defensive Netlify 30% renewal discount",
-      "nextMilestone": "Schedule POC architecture session with VP Eng Jane Doe",
-      "summary": "Acme Corp deal has acute pain around Netlify deploy times and strong champion in Lead Architect, but lacks Economic Buyer access."
+      "nextMilestone": "Schedule POC architecture session with VP Eng Jane Doe"
     }
   },
   "feedback": {

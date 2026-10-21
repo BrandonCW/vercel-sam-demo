@@ -2,7 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { DynamicFormRenderer } from '@/components/workbench/DynamicFormRenderer';
+import { DynamicDiscoveryForm } from '@/components/workbench/DynamicDiscoveryForm';
 import { JsonRenderForm } from '@/lib/ui/json-render-schema';
 
 const mockComprehensiveForm: JsonRenderForm = {
@@ -96,11 +96,11 @@ const mockComprehensiveForm: JsonRenderForm = {
   ],
 };
 
-describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-renderer.test.tsx)', () => {
+describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-renderer.test.tsx)', () => {
   describe('1. Input Generation & Layout Rendering', () => {
     it('renders all sections, callout banners, and schema fields with labels and badges', () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       // Form Header
       expect(screen.getByText('Technical Qualification & Discovery Validation')).toBeTruthy();
@@ -153,7 +153,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
   describe('2. Field Constraints & Validation Enforcement', () => {
     it('blocks submission and surfaces validation errors for all empty required fields', () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       const submitBtn = screen.getByRole('button', { name: /Submit Discovery Findings/i });
       fireEvent.click(submitBtn);
@@ -184,7 +184,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
 
     it('clears error messages dynamically when violating fields receive valid input', () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       // Trigger errors
       const submitBtn = screen.getByRole('button', { name: /Submit Discovery Findings/i });
@@ -215,7 +215,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
   describe('3. Payload Packaging & Submission', () => {
     it('packages all input types into expected dictionary and delivers manual notes delta', async () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       // 1. Select Radio option
       const radioOption = screen.getByText('Confirmed sole authority up to $250k');
@@ -264,7 +264,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
 
     it('submits without notesDelta when manual SA observations are not provided', async () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       // Radio
       fireEvent.click(screen.getByText('Confirmed sole authority up to $250k'));
@@ -295,7 +295,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
     it('disables input controls and hides submit button in readOnly mode', () => {
       const handleSubmit = vi.fn();
       render(
-        <DynamicFormRenderer
+        <DynamicDiscoveryForm
           form={mockComprehensiveForm}
           onSubmit={handleSubmit}
           readOnly={true}
@@ -320,7 +320,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
     it('disables submit button and shows loading spinner when isSubmitting is true', () => {
       const handleSubmit = vi.fn();
       render(
-        <DynamicFormRenderer
+        <DynamicDiscoveryForm
           form={mockComprehensiveForm}
           onSubmit={handleSubmit}
           isSubmitting={true}
@@ -330,6 +330,72 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
       const submitBtn = screen.getByRole('button');
       expect(submitBtn.getAttribute('disabled')).not.toBeNull();
       expect(screen.getByText('Executing Delta Re-scoring...')).toBeTruthy();
+    });
+  });
+
+  describe('5. 5-Type Completeness & Score Chips (Issue #23 / CEO-7, ENG-8)', () => {
+    it('renders formatted score chip "{targetDim.label}: {targetDim.score}/10" with 10-segment score bar', () => {
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={vi.fn()} />);
+
+      // Formatted score chips
+      expect(screen.getByText('Economic Buyer: 3/10')).toBeTruthy();
+      expect(screen.getByText('Identify Pain: 9/10')).toBeTruthy();
+      expect(screen.getByText('Competition: 7/10')).toBeTruthy();
+      expect(screen.getByText('Metrics: 6/10')).toBeTruthy();
+      expect(screen.getByText('Decision Criteria: 3/10')).toBeTruthy();
+    });
+
+    it('supports textarea field editing and updates formData', () => {
+      const handleSubmit = vi.fn();
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+
+      const textarea = screen.getByPlaceholderText('Enter dollar impact...');
+      fireEvent.change(textarea, { target: { value: '$500,000 lost in pipeline delays' } });
+      expect((textarea as HTMLTextAreaElement).value).toBe('$500,000 lost in pipeline delays');
+    });
+
+    it('supports checkbox_group multi-select toggling and aggregation', () => {
+      const handleSubmit = vi.fn();
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+
+      const opt1 = screen.getByLabelText(/App Router & RSC/i);
+      const opt2 = screen.getByLabelText(/Edge Middleware/i);
+
+      fireEvent.click(opt1);
+      fireEvent.click(opt2);
+
+      expect((opt1 as HTMLInputElement).checked).toBe(true);
+      expect((opt2 as HTMLInputElement).checked).toBe(true);
+
+      // Uncheck opt1
+      fireEvent.click(opt1);
+      expect((opt1 as HTMLInputElement).checked).toBe(false);
+      expect((opt2 as HTMLInputElement).checked).toBe(true);
+    });
+
+    it('supports radio option selection and value changes', () => {
+      const handleSubmit = vi.fn();
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+
+      const radio1 = screen.getByLabelText(/Confirmed sole authority up to \$250k/i);
+      const radio2 = screen.getByLabelText(/Requires CFO joint approval/i);
+
+      fireEvent.click(radio1);
+      expect((radio1 as HTMLInputElement).checked).toBe(true);
+      expect((radio2 as HTMLInputElement).checked).toBe(false);
+
+      fireEvent.click(radio2);
+      expect((radio1 as HTMLInputElement).checked).toBe(false);
+      expect((radio2 as HTMLInputElement).checked).toBe(true);
+    });
+
+    it('supports select option changes and updates form state', () => {
+      const handleSubmit = vi.fn();
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+
+      const select = screen.getByRole('combobox');
+      fireEvent.change(select, { target: { value: 'confirmed_switch' } });
+      expect((select as HTMLSelectElement).value).toBe('confirmed_switch');
     });
   });
 });
