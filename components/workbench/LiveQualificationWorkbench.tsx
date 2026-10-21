@@ -504,11 +504,13 @@ function LiveAssessmentSession({
               {activeStageView === 'blank' && workflowState === 'READY_TO_ASSESS' && (
                 <div className="space-y-4">
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="score-lockup flex items-center gap-3">
-                      <span className="font-mono text-2xl font-bold tracking-tight text-[#787C87]">
-                        --
-                      </span>
-                      <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                    <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                        <span className="font-mono text-2xl font-bold tracking-tight text-[#787C87]">
+                          --
+                        </span>
+                        <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                      </div>
                       <span className="mono-pill rounded border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-mono text-[11px] font-semibold text-[#52545D]">
                         Stage Gate 2 · Unassessed Opportunity
                       </span>

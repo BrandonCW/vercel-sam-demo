@@ -165,7 +165,7 @@ export function StepperBar({
                 }
               }}
               aria-current={isActive ? 'step' : undefined}
-              className={`flex-1 flex items-center justify-center md:justify-start gap-2.5 rounded-md px-3.5 py-2.5 text-xs font-medium transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F52BA] ${
+              className={`flex-1 min-w-0 flex items-center justify-center md:justify-start gap-2.5 rounded-md px-3.5 py-2.5 text-xs font-medium transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F52BA] ${
                 isActive
                   ? 'bg-[#F1F0EC] border border-[#E2E0D8] text-[#111215] font-semibold shadow-2xs'
                   : unlocked

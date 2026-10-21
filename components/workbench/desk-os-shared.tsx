@@ -20,9 +20,9 @@ export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
   const stageDisplay = opportunity.stage_name || 'Stage 2 · Discovery';
 
   return (
-    <div className="monochrome-top-bar flex h-12 items-center justify-between border-b border-[#E2E0D8] bg-[#FFFFFF] px-4.5">
-      <div className="bar-left flex items-center gap-3">
-        <div className="bar-logo flex items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.05em] text-[#111215]">
+    <div className="monochrome-top-bar flex flex-col sm:flex-row sm:min-h-12 items-start sm:items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#FFFFFF] px-4 py-2.5 sm:px-5 sm:py-2">
+      <div className="bar-left flex w-full sm:w-auto min-w-0 sm:flex-1 items-center gap-2.5 sm:gap-3">
+        <div className="bar-logo flex shrink-0 items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.05em] text-[#111215] whitespace-nowrap">
           <svg
             width="15"
             height="15"
@@ -36,17 +36,17 @@ export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
           </svg>
           <span>DEAL DESK</span>
         </div>
-        <div className="bar-divider h-4 w-px bg-[#E2E0D8]" aria-hidden="true" />
-        <div className="opp-title text-xs font-semibold text-[#111215] truncate">
+        <div className="bar-divider h-4 w-px shrink-0 bg-[#E2E0D8]" aria-hidden="true" />
+        <div className="opp-title min-w-0 text-xs font-semibold text-[#111215] truncate">
           {opportunity.name || 'Acme Corp — Platform Migration'}
         </div>
       </div>
 
-      <div className="bar-right flex items-center gap-2">
-        <span className="mono-pill rounded border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#52545D]">
+      <div className="bar-right flex shrink-0 items-center gap-2">
+        <span className="mono-pill whitespace-nowrap rounded border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#52545D]">
           {stageDisplay}
         </span>
-        <span className="mono-pill rounded border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#52545D]">
+        <span className="mono-pill whitespace-nowrap rounded border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#52545D]">
           {formattedAmount}
         </span>
       </div>
