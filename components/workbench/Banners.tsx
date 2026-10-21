@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, LockKeyhole, Clock3, Check } from 'lucide-react';
+import { Sparkles, Check } from 'lucide-react';
 import type { WorkflowState } from '@/lib/simulation/types';
 
 interface BannersProps {
@@ -21,8 +21,8 @@ export function WorkflowBanners({
 
   if (workflow === 'ANALYZING' || workflow === 'EVALUATING') {
     return (
-      <div className="mb-6 flex items-center gap-3 rounded-xl border border-[#cddcf0] bg-[#edf5ff] px-5 py-4 text-sm text-[#31567e]">
-        <Sparkles className="size-5 shrink-0 text-[#477fb8]" aria-hidden="true" />
+      <div className="mb-6 flex items-center gap-3 rounded-lg border border-[#E2E0D8] bg-[#F1F0EC] px-4 py-3 text-xs text-[#111215]">
+        <Sparkles className="size-4 shrink-0 text-[#0F52BA]" aria-hidden="true" />
         <span>
           <strong>
             {workflow === 'ANALYZING'
@@ -31,33 +31,22 @@ export function WorkflowBanners({
           </strong>{' '}
           Your assessment is being processed in {modeContext}.
         </span>
-        <span className="ml-auto size-4 shrink-0 animate-spin rounded-full border-2 border-[#477fb8] border-t-transparent" />
+        <span className="ml-auto size-4 shrink-0 animate-spin rounded-full border-2 border-[#0F52BA] border-t-transparent" />
       </div>
     );
   }
 
-  if (workflow === 'PENDING_FEEDBACK') {
-    return (
-      <div className="mb-6 flex items-center gap-3 rounded-xl border border-[#ead9b4] bg-[#fff8e7] px-5 py-4 text-sm text-[#795711]">
-        <LockKeyhole className="size-5 shrink-0" aria-hidden="true" />
-        <span>
-          <strong>Session paused at $0 compute.</strong> The workbench is waiting for field
-          discovery findings. No scoring resources are active.
-        </span>
-        <Clock3 className="ml-auto size-4 shrink-0 text-[#a66b08]" aria-hidden="true" />
-      </div>
-    );
-  }
+  // Yellow $0 compute banner removed per DESIGN-4 / CEO-2 / Issue #23
 
   if (isComplete) {
     return (
-      <div className="mb-6 flex items-center gap-3 rounded-xl border border-[#b9dfcf] bg-[#eaf8f1] px-5 py-4 text-sm text-[#256b50]">
-        <Check className="size-5 shrink-0 text-[#2d8a69]" aria-hidden="true" />
+      <div className="mb-6 flex items-center gap-3 rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] px-4 py-3 text-xs text-[#111215] shadow-xs">
+        <Check className="size-4 shrink-0 text-[#059669]" aria-hidden="true" />
         <span>
-          <strong>Stage Gate Passed — ready to advance to Stage 3.</strong> Qualification
-          writeback is prepared for Salesforce.
+          <strong className="text-[#059669]">Stage Gate Passed — ready to advance to Stage 3.</strong> Qualification
+          writeback is prepared for Salesforce CRM.
         </span>
-        <span className="ml-auto rounded-full bg-[#ccebdc] px-2.5 py-1 text-xs font-bold text-[#256b50]">
+        <span className="ml-auto rounded border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.05em] text-[#111215]">
           {statusLabel}
         </span>
       </div>
