@@ -14,9 +14,11 @@ describe('QualificationWorkbench Component & Flow', () => {
     // Header checks
     expect(screen.getByText('DEAL OPERATIONS')).toBeDefined();
     expect(screen.getByText('Qualification System')).toBeDefined();
-    expect(screen.getByText('⚡ Simulation mode')).toBeDefined();
-    expect(screen.getByText('🌐 Live AI mode')).toBeDefined();
-    expect(screen.getByText('Salesforce connected')).toBeDefined();
+    expect(screen.getByRole('button', { name: /Workbench settings|Settings/i })).toBeDefined();
+
+    // Zero raw enums or demo pill
+    const header = screen.getByRole('banner');
+    expect(header.textContent).not.toContain('Salesforce connected');
 
     // Context & Stepper
     expect(screen.getAllByText(/Acme Corp/i).length).toBeGreaterThan(0);
@@ -33,25 +35,24 @@ describe('QualificationWorkbench Component & Flow', () => {
   it('toggles between Simulation Mode and Live AI Mode without mocked state bleed', async () => {
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    const liveBtn = screen.getByText('🌐 Live AI mode');
+    const settingsBtn = screen.getByRole('button', { name: /Workbench settings|Settings/i });
+    await act(async () => {
+      fireEvent.click(settingsBtn);
+    });
+
+    const liveBtn = screen.getByText(/Live AI mode/i);
     await act(async () => {
       fireEvent.click(liveBtn);
     });
 
     expect(screen.getByText(/Live connected/i)).toBeDefined();
-    expect(screen.getByText('Live Mode')).toBeDefined();
-    expect(screen.getByText('AI Gateway & Salesforce')).toBeDefined();
-    // In Live Mode, the simulation JumpToState buttons (1, 2, 3, 4, 5) should not be present
-    expect(screen.queryByRole('button', { name: /Jump to 1/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Jump to 3/i })).toBeNull();
 
-    const simBtn = screen.getByText('⚡ Simulation mode');
+    const simBtn = screen.getByText(/Simulation mode/i);
     await act(async () => {
       fireEvent.click(simBtn);
     });
 
     expect(screen.getByText(/Deterministic simulation/i)).toBeDefined();
-    expect(screen.getByRole('button', { name: /Jump to 1/i })).toBeDefined();
   });
 
   it('jumps directly to State 3 (Discovery paused) and displays dynamic form', async () => {
@@ -100,7 +101,11 @@ describe('QualificationWorkbench Component & Flow', () => {
     });
     expect(screen.getAllByText('76').length).toBeGreaterThan(0);
 
-    // Reset
+    // Reset via Settings
+    const settingsBtn = screen.getByRole('button', { name: /Workbench settings|Settings/i });
+    await act(async () => {
+      fireEvent.click(settingsBtn);
+    });
     const resetBtn = screen.getByRole('button', { name: /Reset Demo/i });
     await act(async () => {
       fireEvent.click(resetBtn);

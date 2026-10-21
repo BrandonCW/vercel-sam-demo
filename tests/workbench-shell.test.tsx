@@ -53,6 +53,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
 
   it('starts the Assessment Session on a fresh session with the selected System 2 model, asking for no structured outcome', async () => {
     renderShell();
+    fireEvent.click(screen.getByRole('button', { name: /Workbench settings|Settings/i }));
     fireEvent.change(screen.getByLabelText('Select System 2 Model'), { target: { value: 'anthropic/claude-haiku-5.5' } });
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /Start Assessment|Start assessment/i })));
     expect(hook.reset).toHaveBeenCalled();
@@ -64,7 +65,8 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     hook.state.status = 'streaming';
     hook.state.data = view({ phase: 'assessing', runningTool: 'run_assessment' });
     renderShell();
-    expect(screen.getAllByText(/ANALYZING/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/System 1 scoring \+ System 2 reasoning in progress/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Workbench settings|Settings/i }));
     expect(screen.getByRole('button', { name: /Reset Demo/ })).toHaveProperty('disabled', true);
     expect(screen.getByLabelText('Select Scenario')).toHaveProperty('disabled', true);
   });
@@ -102,7 +104,6 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     });
     hook.state.data = view({ phase: 'awaiting_feedback', pendingInput: { requestId: 'req_1' }, jevResult: jev({ overallScore: 56 }), system2Result: system2(), opportunity: scored });
     renderShell();
-    expect(screen.getAllByText('PENDING_FEEDBACK').length).toBeGreaterThan(0);
     expect(screen.getByText('Who signs?')).toBeTruthy();
     expect(screen.getByText(/System 2 Reasoning Complete \(56\/100\)/)).toBeTruthy();
     // MeddpiccScorecard: System 2 evidence and gaps per dimension, from the persisted System 2 Opportunity.
@@ -197,7 +198,6 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       hook.state.status = 'resuming';
       hook.state.data = view({ phase: 'awaiting_feedback', pendingInput: { requestId: 'req_1' }, jevResult: jev(), system2Result: system2(), opportunity: opportunity() });
       renderShell();
-      expect(screen.getAllByText('RESUMING').length).toBeGreaterThan(0);
       expect(screen.getByRole('button', { name: /Submit Discovery Findings/ })).toHaveProperty('disabled', true);
     });
 
@@ -231,6 +231,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       saveSession(base, { sessionId: 'wrun_SAVED', streamIndex: 0 });
       vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ success: true, opportunity: base }), { status: 200 })));
       renderShell();
+      fireEvent.click(screen.getByRole('button', { name: /Workbench settings|Settings/i }));
       await act(async () => fireEvent.click(screen.getByRole('button', { name: /Reset Demo/ })));
       expect(loadSavedSession(base)).toBeUndefined();
       expect(hook.options.resume).toBe(false);
@@ -251,9 +252,57 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(globex), { status: 200 })));
       renderShell();
       expect(hook.options.initialSession).toBeUndefined();
+      fireEvent.click(screen.getByRole('button', { name: /Workbench settings|Settings/i }));
       await act(async () => fireEvent.change(screen.getByLabelText('Select Scenario'), { target: { value: 'scenario_globex_amplify' } }));
       expect(hook.options.initialSession).toEqual({ sessionId: 'wrun_GLOBEX', streamIndex: 0 });
       expect(hook.options.resume).toBe(true);
+    });
+  });
+
+  describe('Settings Popover & Controlled TopNavBar (Issue #23 / CEO-2, CEO-5, DESIGN-5, ENG-7)', () => {
+    it('opens settings popover with accessible dialog role and aria-label', () => {
+      renderShell();
+      expect(screen.queryByRole('dialog', { name: /Workbench settings/i })).toBeNull();
+      const settingsBtn = screen.getByRole('button', { name: /Workbench settings|Settings/i });
+      fireEvent.click(settingsBtn);
+      const dialog = screen.getByRole('dialog', { name: /Workbench settings/i });
+      expect(dialog).toBeTruthy();
+      expect(dialog.getAttribute('aria-modal')).toBe('true');
+    });
+
+    it('closes settings popover on Escape key and returns focus to trigger', () => {
+      renderShell();
+      const settingsBtn = screen.getByRole('button', { name: /Workbench settings|Settings/i });
+      fireEvent.click(settingsBtn);
+      expect(screen.getByRole('dialog', { name: /Workbench settings/i })).toBeTruthy();
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(screen.queryByRole('dialog', { name: /Workbench settings/i })).toBeNull();
+    });
+
+    it('closes settings popover on click outside', () => {
+      renderShell();
+      const settingsBtn = screen.getByRole('button', { name: /Workbench settings|Settings/i });
+      fireEvent.click(settingsBtn);
+      const dialog = screen.getByRole('dialog', { name: /Workbench settings/i });
+      expect(dialog).toBeTruthy();
+      const backdrop = dialog.parentElement!;
+      fireEvent.click(backdrop);
+      expect(screen.queryByRole('dialog', { name: /Workbench settings/i })).toBeNull();
+    });
+
+    it('renders mode toggle, model selector, scenario selector, and reset button without raw enums or Salesforce pill', () => {
+      renderShell();
+      // Zero raw enums in header / top nav
+      const header = screen.getByRole('banner');
+      expect(header.textContent).not.toContain('READY_TO_ASSESS');
+      expect(header.textContent).not.toContain('Salesforce connected');
+
+      fireEvent.click(screen.getByRole('button', { name: /Workbench settings|Settings/i }));
+      expect(screen.getByText(/⚡ Simulation mode/i)).toBeTruthy();
+      expect(screen.getByText(/🌐 Live AI mode/i)).toBeTruthy();
+      expect(screen.getByLabelText('Select Scenario')).toBeTruthy();
+      expect(screen.getByLabelText('Select System 2 Model')).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Reset Demo/i })).toBeTruthy();
     });
   });
 });

@@ -3,6 +3,7 @@
 import React, { useReducer, useState, useTransition } from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { Opportunity } from '@/lib/types/crm';
+import { DEFAULT_SYSTEM2_MODEL, type System2ModelOption } from '@/lib/types/crm';
 import type { WorkflowState, WorkbenchMode } from '@/lib/simulation/types';
 import acmeFixtureRaw from '@/lib/fixtures/simulation/acme_migration.json';
 import type { SimulationFixture } from '@/lib/simulation/fixture-schema';
@@ -34,32 +35,9 @@ export function QualificationWorkbench({
   initialScenarioId = 'scenario_acme_netlify',
 }: QualificationWorkbenchProps) {
   const [mode, setMode] = useState<WorkbenchMode>('simulation');
-
-  if (mode === 'live') {
-    return (
-      <LiveQualificationWorkbench
-        initialOpportunity={initialOpportunity}
-        initialScenarioId={initialScenarioId}
-        onModeChange={setMode}
-      />
-    );
-  }
-
-  return (
-    <SimulationQualificationWorkbench
-      initialOpportunity={initialOpportunity}
-      onModeChange={setMode}
-    />
-  );
-}
-
-function SimulationQualificationWorkbench({
-  initialOpportunity,
-  onModeChange,
-}: {
-  initialOpportunity: Opportunity;
-  onModeChange: (mode: WorkbenchMode) => void;
-}) {
+  const [scenarioId, setScenarioId] = useState<string>(initialScenarioId);
+  const [selectedModel, setSelectedModel] = useState<System2ModelOption>(DEFAULT_SYSTEM2_MODEL);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -71,6 +49,24 @@ function SimulationQualificationWorkbench({
   );
 
   const isComplete = simState.workflowState === 'COMPLETED';
+  const isBusy = simState.workflowState === 'ANALYZING' || simState.workflowState === 'EVALUATING';
+
+  function handleReset() {
+    setIsResetting(true);
+    if (mode === 'simulation') {
+      dispatch({ type: 'RESET' });
+      setTimeout(() => setIsResetting(false), 300);
+    } else {
+      fetch('/api/crm/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenarioId }),
+      })
+        .then((res) => res.json())
+        .catch(() => {})
+        .finally(() => setIsResetting(false));
+    }
+  }
 
   // State transitions with realistic simulated delays
   function handleAdvance() {
@@ -95,12 +91,6 @@ function SimulationQualificationWorkbench({
     dispatch({ type: 'JUMP_TO_STATE', targetState: target });
   }
 
-  function handleReset() {
-    setIsResetting(true);
-    dispatch({ type: 'RESET' });
-    setTimeout(() => setIsResetting(false), 300);
-  }
-
   function handleSubmitFeedback(
     responses: Record<string, string | string[]>,
     notesDelta?: string
@@ -113,103 +103,124 @@ function SimulationQualificationWorkbench({
     }, 1200);
   }
 
-  const currentOpportunity = simState.opportunity;
+  const currentOpportunity = mode === 'simulation' ? simState.opportunity : initialOpportunity;
 
   return (
-    <main className="min-h-screen bg-[#f5f7fa] text-[#152238]">
+    <main className="min-h-screen bg-[#F8F8F6] text-[#111215]">
       <TopNavBar
         opportunity={currentOpportunity}
-        mode="simulation"
-        onModeChange={onModeChange}
+        mode={mode}
+        onModeChange={setMode}
+        currentScenarioId={scenarioId}
+        onScenarioChange={setScenarioId}
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
         onReset={handleReset}
         isResetting={isResetting}
+        controlsLocked={isBusy}
+        settingsOpen={settingsOpen}
+        onSettingsOpenChange={setSettingsOpen}
       />
 
-      <div className="mx-auto max-w-[1500px] px-5 py-7 lg:px-8">
-        {/* Breadcrumbs and Title Header */}
-        <div className="mb-6 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[#718097]">
-              <span>PIPELINE</span>
-              <ChevronRight className="size-3" aria-hidden="true" />
-              <span>{currentOpportunity.account_name?.toUpperCase() || 'ACME CORP'}</span>
-              <ChevronRight className="size-3" aria-hidden="true" />
-              <span className="text-[#152238]">QUALIFICATION</span>
+      {mode === 'live' ? (
+        <LiveQualificationWorkbench
+          initialOpportunity={initialOpportunity}
+          initialScenarioId={scenarioId}
+          scenarioId={scenarioId}
+          onScenarioChange={setScenarioId}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          onModeChange={setMode}
+          hideTopNavBar={true}
+          settingsOpen={settingsOpen}
+          onSettingsOpenChange={setSettingsOpen}
+        />
+      ) : (
+        <div className="mx-auto max-w-[1500px] px-5 py-7 lg:px-8">
+          {/* Breadcrumbs and Title Header */}
+          <div className="mb-6 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[#787C87]">
+                <span>PIPELINE</span>
+                <ChevronRight className="size-3" aria-hidden="true" />
+                <span>{currentOpportunity.account_name?.toUpperCase() || 'ACME CORP'}</span>
+                <ChevronRight className="size-3" aria-hidden="true" />
+                <span className="text-[#111215]">QUALIFICATION</span>
+              </div>
+              <h2 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl text-[#111215]">
+                {currentOpportunity.name || 'Acme Corp — Platform Migration'}
+              </h2>
+              <p className="mt-1 text-sm text-[#787C87]">
+                MEDDPICC assessment workspace <span className="mx-2 text-[#E2E0D8]">•</span> Deterministic simulation (zero database leases, instant resets)
+              </p>
             </div>
-            <h2 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl text-[#152238]">
-              {currentOpportunity.name || 'Acme Corp — Platform Migration'}
-            </h2>
-            <p className="mt-1 text-sm text-[#718097]">
-              MEDDPICC assessment workspace <span className="mx-2 text-[#c4ccd7]">•</span>{' '}
-              Deterministic simulation (zero database leases, instant resets)
-            </p>
+
+            <JumpToStateButtons
+              currentWorkflow={simState.workflowState}
+              onJumpToState={handleJumpToState}
+              mode="simulation"
+            />
           </div>
 
-          <JumpToStateButtons
+          {/* 5-Step Stepper Bar */}
+          <StepperBar
             currentWorkflow={simState.workflowState}
             onJumpToState={handleJumpToState}
-            mode="simulation"
+            isComplete={isComplete}
           />
-        </div>
 
-        {/* 5-Step Stepper Bar */}
-        <StepperBar
-          currentWorkflow={simState.workflowState}
-          onJumpToState={handleJumpToState}
-          isComplete={isComplete}
-        />
+          {/* Status / Alert Banners ($0 compute, analyzing, completed) */}
+          <WorkflowBanners
+            workflow={simState.workflowState}
+            isComplete={isComplete}
+            statusLabel={simState.statusLabel}
+            isLive={false}
+          />
 
-        {/* Status / Alert Banners ($0 compute, analyzing, completed) */}
-        <WorkflowBanners
-          workflow={simState.workflowState}
-          isComplete={isComplete}
-          statusLabel={simState.statusLabel}
-          isLive={false}
-        />
+          {/* Main 2-Column Split Workbench */}
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            {/* Left Column: Deal Context + (Discovery Form OR MEDDPICC Scorecard) */}
+            <div className="min-w-0 space-y-6">
+              <DealContextCard opportunity={currentOpportunity} />
 
-        {/* Main 2-Column Split Workbench */}
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          {/* Left Column: Deal Context + (Discovery Form OR MEDDPICC Scorecard) */}
-          <div className="min-w-0 space-y-6">
-            <DealContextCard opportunity={currentOpportunity} />
+              {simState.workflowState === 'PENDING_FEEDBACK' ? (
+                <DynamicDiscoveryForm
+                  dynamicForm={simState.discoveryForm}
+                  onSubmit={handleSubmitFeedback}
+                />
+              ) : (
+                <MeddpiccScorecard
+                  score={simState.score}
+                  dimensions={simState.dimensions}
+                />
+              )}
+            </div>
 
-            {simState.workflowState === 'PENDING_FEEDBACK' ? (
-              <DynamicDiscoveryForm
-                dynamicForm={simState.discoveryForm}
-                onSubmit={handleSubmitFeedback}
-              />
-            ) : (
-              <MeddpiccScorecard
+            {/* Right Column: Stage Gate 2 + Summary + Workflow Controls */}
+            <aside className="space-y-6">
+              <StageGateCard
                 score={simState.score}
+                complete={isComplete}
+                stageGate={simState.stageGate}
                 dimensions={simState.dimensions}
               />
-            )}
+
+              <DealSummaryCard
+                score={simState.score}
+                statusLabel={simState.statusLabel}
+              />
+
+              <ActionPanel
+                workflow={simState.workflowState}
+                isComplete={isComplete}
+                nextSteps={simState.suggestedNextSteps}
+                onAdvance={handleAdvance}
+                onReset={handleReset}
+              />
+            </aside>
           </div>
-
-          {/* Right Column: Stage Gate 2 + Summary + Workflow Controls */}
-          <aside className="space-y-6">
-            <StageGateCard
-              score={simState.score}
-              complete={isComplete}
-              stageGate={simState.stageGate}
-              dimensions={simState.dimensions}
-            />
-
-            <DealSummaryCard
-              score={simState.score}
-              statusLabel={simState.statusLabel}
-            />
-
-            <ActionPanel
-              workflow={simState.workflowState}
-              isComplete={isComplete}
-              nextSteps={simState.suggestedNextSteps}
-              onAdvance={handleAdvance}
-              onReset={handleReset}
-            />
-          </aside>
         </div>
-      </div>
+      )}
     </main>
   );
 }

@@ -26,8 +26,15 @@ import { DynamicDiscoveryForm } from './DynamicDiscoveryForm';
 
 interface LiveQualificationWorkbenchProps {
   initialOpportunity: Opportunity;
-  initialScenarioId: string;
-  onModeChange: (mode: WorkbenchMode) => void;
+  initialScenarioId?: string;
+  onModeChange?: (mode: WorkbenchMode) => void;
+  hideTopNavBar?: boolean;
+  scenarioId?: string;
+  onScenarioChange?: (scenarioId: string) => void;
+  selectedModel?: System2ModelOption;
+  onModelChange?: (model: System2ModelOption) => void;
+  settingsOpen?: boolean;
+  onSettingsOpenChange?: (open: boolean) => void;
 }
 
 const ASSESS_FAILED = 'Assessment failed:';
@@ -114,15 +121,27 @@ function formatDimensionsForScorecard(
 
 export function LiveQualificationWorkbench({
   initialOpportunity,
-  initialScenarioId,
+  initialScenarioId = 'scenario_acme_netlify',
   onModeChange,
+  hideTopNavBar = false,
+  scenarioId: controlledScenarioId,
+  onScenarioChange: controlledOnScenarioChange,
+  selectedModel: controlledSelectedModel,
+  onModelChange: controlledOnModelChange,
+  settingsOpen,
+  onSettingsOpenChange,
 }: LiveQualificationWorkbenchProps) {
   const [opportunity, setOpportunity] = useState<Opportunity>(initialOpportunity);
-  const [scenarioId, setScenarioId] = useState<string>(initialScenarioId);
-  const [selectedModel, setSelectedModel] = useState<System2ModelOption>(DEFAULT_SYSTEM2_MODEL);
+  const [internalScenarioId, setInternalScenarioId] = useState<string>(initialScenarioId);
+  const [internalSelectedModel, setInternalSelectedModel] = useState<System2ModelOption>(DEFAULT_SYSTEM2_MODEL);
   const [generation, setGeneration] = useState(0);
   const [isResetting, setIsResetting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const scenarioId = controlledScenarioId !== undefined ? controlledScenarioId : internalScenarioId;
+  const setScenarioId = controlledOnScenarioChange || setInternalScenarioId;
+  const selectedModel = controlledSelectedModel !== undefined ? controlledSelectedModel : internalSelectedModel;
+  const setSelectedModel = controlledOnModelChange || setInternalSelectedModel;
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -176,6 +195,9 @@ export function LiveQualificationWorkbench({
       showToast={showToast}
       toastMessage={toastMessage}
       onModeChange={onModeChange}
+      hideTopNavBar={hideTopNavBar}
+      settingsOpen={settingsOpen}
+      onSettingsOpenChange={onSettingsOpenChange}
     />
   );
 }
@@ -190,7 +212,10 @@ interface LiveAssessmentSessionProps {
   isResetting: boolean;
   showToast: (msg: string) => void;
   toastMessage: string | null;
-  onModeChange: (mode: WorkbenchMode) => void;
+  onModeChange?: (mode: WorkbenchMode) => void;
+  hideTopNavBar?: boolean;
+  settingsOpen?: boolean;
+  onSettingsOpenChange?: (open: boolean) => void;
 }
 
 function LiveAssessmentSession({
@@ -204,6 +229,9 @@ function LiveAssessmentSession({
   showToast,
   toastMessage,
   onModeChange,
+  hideTopNavBar = false,
+  settingsOpen,
+  onSettingsOpenChange,
 }: LiveAssessmentSessionProps) {
   const [savedSession] = useState(() => loadSavedSession(baseOpportunity));
   const [resumeError, setResumeError] = useState<string | null>(null);
@@ -337,20 +365,24 @@ function LiveAssessmentSession({
     : 'READY_TO_ASSESS';
 
   return (
-    <main className="min-h-screen bg-[#f5f7fa] text-[#152238]">
-      <TopNavBar
-        opportunity={currentOpportunity}
-        mode="live"
-        onModeChange={onModeChange}
-        currentScenarioId={scenarioId}
-        onScenarioChange={onScenarioChange}
-        selectedModel={selectedModel}
-        onModelChange={onModelChange}
-        onReset={onReset}
-        isResetting={isResetting}
-        controlsLocked={turnInFlight}
-        runtimeStatus={runtimeStatus}
-      />
+    <main className="min-h-screen bg-[#F8F8F6] text-[#111215]">
+      {!hideTopNavBar && (
+        <TopNavBar
+          opportunity={currentOpportunity}
+          mode="live"
+          onModeChange={onModeChange}
+          currentScenarioId={scenarioId}
+          onScenarioChange={onScenarioChange}
+          selectedModel={selectedModel}
+          onModelChange={onModelChange}
+          onReset={onReset}
+          isResetting={isResetting}
+          controlsLocked={turnInFlight}
+          runtimeStatus={runtimeStatus}
+          settingsOpen={settingsOpen}
+          onSettingsOpenChange={onSettingsOpenChange}
+        />
+      )}
 
       <div className="mx-auto max-w-[1500px] px-5 py-7 lg:px-8">
         {failure && (
