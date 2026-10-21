@@ -12,7 +12,8 @@ import { loadTestEnv } from './test-env';
 export default async function setup() {
   const postgresUrl = loadTestEnv().POSTGRES_URL ?? process.env.POSTGRES_URL;
   if (!postgresUrl) {
-    throw new Error('pnpm test needs POSTGRES_URL for the Neon `test` branch (set it in .env.test.local).');
+    // Unit tests (simulation, schema, etc.) run purely client-side without Postgres.
+    return;
   }
   process.env.POSTGRES_URL = postgresUrl;
   const { acquireLiveRunLease } = await import('@/lib/db/live-run-lease');

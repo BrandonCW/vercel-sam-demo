@@ -98,8 +98,8 @@ export function WorkbenchShell({ initialOpportunity, initialScenarioId }: Workbe
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#18181b] border border-blue-500/50 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
-          <span className="w-2 h-2 rounded-full bg-[#0070f3]" />
+        <div className="fixed bottom-6 right-6 z-50 bg-zinc-900 border border-zinc-700/80 text-zinc-200 text-xs font-medium px-3.5 py-2 rounded-lg shadow-xl flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#0070f3]" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -235,12 +235,12 @@ function AssessmentWorkbench({
 
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 md:p-6">
         {failure && (
-          <div role="alert" className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/40 text-xs text-red-200">
-            <span className="font-bold text-red-300 mr-1.5">{failure.label}</span>
+          <div role="alert" className="mb-4 p-3 rounded-lg bg-red-500/5 border border-red-500/25 text-xs text-red-200">
+            <span className="font-semibold text-red-300 mr-1.5">{failure.label}</span>
             {failure.text}
           </div>
         )}
-        <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[440px_1fr] gap-6 items-start">
           <ContextColumn opportunity={opportunity} />
           <ActionStage
             opportunity={opportunity}

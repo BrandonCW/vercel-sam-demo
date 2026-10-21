@@ -118,9 +118,9 @@ export function DynamicFormRenderer({
 
     if (type === 'warning') {
       return (
-        <div className="mb-4 p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5">
-          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-200/90 leading-relaxed font-medium">
+        <div className="mb-3.5 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 flex items-start gap-2.5">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-200/90 leading-relaxed">
             {section.calloutText}
           </div>
         </div>
@@ -129,9 +129,9 @@ export function DynamicFormRenderer({
 
     if (type === 'tip') {
       return (
-        <div className="mb-4 p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-2.5">
-          <Lightbulb className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-          <div className="text-xs text-emerald-200/90 leading-relaxed font-medium">
+        <div className="mb-3.5 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 flex items-start gap-2.5">
+          <Lightbulb className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-emerald-200/90 leading-relaxed">
             {section.calloutText}
           </div>
         </div>
@@ -139,9 +139,9 @@ export function DynamicFormRenderer({
     }
 
     return (
-      <div className="mb-4 p-3.5 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-start gap-2.5">
-        <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-blue-200/90 leading-relaxed font-medium">
+      <div className="mb-3.5 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 flex items-start gap-2.5">
+        <Info className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
+        <div className="text-xs text-blue-200/90 leading-relaxed">
           {section.calloutText}
         </div>
       </div>
@@ -157,7 +157,7 @@ export function DynamicFormRenderer({
         <div className="flex items-baseline justify-between gap-2">
           <label
             htmlFor={field.id}
-            className="block text-xs font-semibold text-zinc-200"
+            className="block text-xs font-medium text-zinc-200"
           >
             {field.label}
             {field.required && (
@@ -166,7 +166,7 @@ export function DynamicFormRenderer({
               </span>
             )}
           </label>
-          <span className="text-[10px] uppercase font-mono tracking-wider text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+          <span className="text-[10px] font-mono tracking-wide text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
             {field.dimensionTarget}
           </span>
         </div>
@@ -189,9 +189,9 @@ export function DynamicFormRenderer({
             placeholder={field.placeholder}
             aria-invalid={Boolean(error)}
             aria-required={field.required}
-            className={`w-full bg-[#18181b] border ${
-              error ? 'border-red-500 focus:border-red-500' : 'border-[#27272a] focus:border-[#0070f3]'
-            } rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors disabled:opacity-60`}
+            className={`w-full bg-zinc-900/60 border ${
+              error ? 'border-red-500/80 focus:border-red-500' : 'border-zinc-800 focus:border-zinc-500'
+            } rounded-md px-3 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors disabled:opacity-50`}
           />
         )}
 
@@ -206,9 +206,9 @@ export function DynamicFormRenderer({
             placeholder={field.placeholder}
             aria-invalid={Boolean(error)}
             aria-required={field.required}
-            className={`w-full bg-[#18181b] border ${
-              error ? 'border-red-500 focus:border-red-500' : 'border-[#27272a] focus:border-[#0070f3]'
-            } rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors disabled:opacity-60 resize-y`}
+            className={`w-full bg-zinc-900/60 border ${
+              error ? 'border-red-500/80 focus:border-red-500' : 'border-zinc-800 focus:border-zinc-500'
+            } rounded-md px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors disabled:opacity-50 resize-y`}
           />
         )}
 
@@ -221,15 +221,15 @@ export function DynamicFormRenderer({
             onChange={(e) => handleTextChange(field.id, e.target.value)}
             aria-invalid={Boolean(error)}
             aria-required={field.required}
-            className={`w-full bg-[#18181b] border ${
-              error ? 'border-red-500 focus:border-red-500' : 'border-[#27272a] focus:border-[#0070f3]'
-            } rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none transition-colors cursor-pointer disabled:opacity-60`}
+            className={`w-full bg-zinc-900/60 border ${
+              error ? 'border-red-500/80 focus:border-red-500' : 'border-zinc-800 focus:border-zinc-500'
+            } rounded-md px-3 py-1.5 text-xs text-zinc-100 focus:outline-none transition-colors cursor-pointer disabled:opacity-50`}
           >
             <option value="" disabled className="text-zinc-500">
               Select an option...
             </option>
             {field.options?.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-[#18181b] text-zinc-200">
+              <option key={opt.value} value={opt.value} className="bg-zinc-900 text-zinc-200">
                 {opt.label}
               </option>
             ))}
@@ -237,17 +237,17 @@ export function DynamicFormRenderer({
         )}
 
         {field.type === 'radio' && (
-          <div className="space-y-2 pt-1" role="radiogroup" aria-required={field.required}>
+          <div className="space-y-1.5 pt-0.5" role="radiogroup" aria-required={field.required}>
             {field.options?.map((opt) => {
               const checked = value === opt.value;
               return (
                 <label
                   key={opt.value}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                  className={`flex items-start gap-2.5 p-2 rounded-md border cursor-pointer transition-colors ${
                     checked
-                      ? 'bg-blue-500/10 border-blue-500/50 text-white'
-                      : 'bg-[#18181b] border-[#27272a] hover:border-zinc-700 text-zinc-300'
-                  } ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      ? 'bg-zinc-800/80 border-zinc-600 text-white'
+                      : 'bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700 text-zinc-300'
+                  } ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <input
                     type="radio"
@@ -261,7 +261,7 @@ export function DynamicFormRenderer({
                   <div className="text-xs">
                     <div className="font-medium text-zinc-200">{opt.label}</div>
                     {opt.description && (
-                      <div className="text-[11px] text-zinc-400 mt-0.5">
+                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
                         {opt.description}
                       </div>
                     )}
@@ -273,18 +273,18 @@ export function DynamicFormRenderer({
         )}
 
         {field.type === 'checkbox_group' && (
-          <div className="space-y-2 pt-1">
+          <div className="space-y-1.5 pt-0.5">
             {field.options?.map((opt) => {
               const selectedList = (value as string[]) || [];
               const checked = selectedList.includes(opt.value);
               return (
                 <label
                   key={opt.value}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                  className={`flex items-start gap-2.5 p-2 rounded-md border cursor-pointer transition-colors ${
                     checked
-                      ? 'bg-blue-500/10 border-blue-500/50 text-white'
-                      : 'bg-[#18181b] border-[#27272a] hover:border-zinc-700 text-zinc-300'
-                  } ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      ? 'bg-zinc-800/80 border-zinc-600 text-white'
+                      : 'bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700 text-zinc-300'
+                  } ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <input
                     type="checkbox"
@@ -297,7 +297,7 @@ export function DynamicFormRenderer({
                   <div className="text-xs">
                     <div className="font-medium text-zinc-200">{opt.label}</div>
                     {opt.description && (
-                      <div className="text-[11px] text-zinc-400 mt-0.5">
+                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
                         {opt.description}
                       </div>
                     )}
@@ -310,8 +310,8 @@ export function DynamicFormRenderer({
 
         {/* Helper Callout */}
         {field.helpCallout && (
-          <div className="flex items-start gap-1.5 mt-1 text-[11px] text-blue-300/80 bg-blue-950/20 px-2 py-1 rounded border border-blue-900/30">
-            <HelpCircle className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-1.5 mt-1 text-[11px] text-zinc-400 bg-zinc-900/40 px-2.5 py-1.5 rounded border border-zinc-800/60">
+            <HelpCircle className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0 mt-0.5" />
             <span>{field.helpCallout}</span>
           </div>
         )}
@@ -327,10 +327,10 @@ export function DynamicFormRenderer({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {/* Form Header */}
-      <div className="bg-[#121215] border border-[#27272a] rounded-xl p-5 shadow-sm">
-        <h3 className="text-base font-bold text-white tracking-tight mb-1">
+      <div className="bg-zinc-950 border border-zinc-800/80 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-white tracking-tight mb-1">
           {form.title}
         </h3>
         <p className="text-xs text-zinc-400 leading-relaxed">
@@ -342,10 +342,10 @@ export function DynamicFormRenderer({
       {form.sections.map((section) => (
         <div
           key={section.id}
-          className="bg-[#121215] border border-[#27272a] rounded-xl p-5 shadow-sm space-y-4"
+          className="bg-zinc-950 border border-zinc-800/80 rounded-xl p-4 space-y-3.5"
         >
           <div>
-            <h4 className="text-sm font-bold text-white tracking-tight mb-1">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300 mb-0.5">
               {section.title}
             </h4>
             {section.description && (
@@ -357,7 +357,7 @@ export function DynamicFormRenderer({
 
           {renderCalloutBanner(section)}
 
-          <div className="space-y-4 pt-1">
+          <div className="space-y-3.5 pt-0.5">
             {section.fields.map(renderField)}
           </div>
         </div>
@@ -365,8 +365,8 @@ export function DynamicFormRenderer({
 
       {/* Optional Freeform SA Observations */}
       {!readOnly && (
-        <div className="bg-[#121215] border border-[#27272a] rounded-xl p-5 shadow-sm space-y-2">
-          <label htmlFor="sa_manual_notes" className="block text-xs font-semibold text-zinc-200">
+        <div className="bg-zinc-950 border border-zinc-800/80 rounded-xl p-4 space-y-2">
+          <label htmlFor="sa_manual_notes" className="block text-xs font-medium text-zinc-200">
             Additional SA Notes &amp; Observations <span className="text-zinc-500 font-normal">(Optional)</span>
           </label>
           <textarea
@@ -375,18 +375,18 @@ export function DynamicFormRenderer({
             placeholder="Document any additional customer architecture context or meeting observations..."
             value={manualNotes}
             onChange={(e) => setManualNotes(e.target.value)}
-            className="w-full bg-[#18181b] border border-[#27272a] focus:border-[#0070f3] rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors"
+            className="w-full bg-zinc-900/60 border border-zinc-800 focus:border-zinc-500 rounded-md px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors"
           />
         </div>
       )}
 
       {/* Submit Action */}
       {!readOnly && (
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-1">
           <button
             type="submit"
             disabled={isSubmitting || isLocked}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0070f3] hover:bg-[#0060df] disabled:opacity-50 text-white font-semibold text-xs rounded-lg shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[#0070f3] hover:bg-[#0060df] disabled:opacity-40 text-white font-medium text-xs rounded-lg transition-colors cursor-pointer"
           >
             {isSubmitting ? (
               <>
