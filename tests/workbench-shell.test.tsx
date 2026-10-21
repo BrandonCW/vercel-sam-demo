@@ -104,18 +104,21 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     });
     hook.state.data = view({ phase: 'awaiting_feedback', pendingInput: { requestId: 'req_1' }, jevResult: jev({ overallScore: 56 }), system2Result: system2(), opportunity: scored });
     renderShell();
-    expect(screen.getByText('Who signs?')).toBeTruthy();
     expect(screen.getByText(/System 2 Reasoning Complete \(56\/100\)/)).toBeTruthy();
-    // MeddpiccScorecard: System 2 evidence and gaps per dimension, from the persisted System 2 Opportunity.
-    fireEvent.click(screen.getByRole('button', { name: /Economic Buyer/ }));
+    // MeddpiccScorecard: System 2 evidence and gaps per dimension in Stage 1
     expect(screen.getByText(/VP of E-Commerce mentioned budget/)).toBeTruthy();
     expect(screen.getByText(/No confirmed sign-off authority/)).toBeTruthy();
+
+    // Navigate to Stage 2 (Field Discovery Checklist) to inspect questions
+    fireEvent.click(screen.getByRole('button', { name: /Answer Discovery Questions/i }));
+    expect(screen.getByText('Who signs?')).toBeTruthy();
   });
 
   it("answers run_assessment's pending question with the verbatim answers and their feedbackKey, as JSON text", async () => {
     hook.state.status = 'streaming'; // a parked turn may still hold its stream open
     hook.state.data = view({ phase: 'awaiting_feedback', pendingInput: { requestId: 'req_1' }, jevResult: jev(), system2Result: system2(), opportunity: opportunity() });
     renderShell();
+    fireEvent.click(screen.getByRole('button', { name: /Answer Discovery Questions/i }));
     fireEvent.change(screen.getByLabelText(/Who signs\?/), { target: { value: 'CFO Mark Ellis' } });
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /Submit Discovery Findings/ })));
     expect(hook.reset).not.toHaveBeenCalled();
@@ -198,6 +201,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       hook.state.status = 'resuming';
       hook.state.data = view({ phase: 'awaiting_feedback', pendingInput: { requestId: 'req_1' }, jevResult: jev(), system2Result: system2(), opportunity: opportunity() });
       renderShell();
+      fireEvent.click(screen.getByRole('button', { name: /Answer Discovery Questions/i }));
       expect(screen.getByRole('button', { name: /Submit Discovery Findings/ })).toHaveProperty('disabled', true);
     });
 
