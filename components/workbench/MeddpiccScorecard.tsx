@@ -62,7 +62,7 @@ export function TenSegmentBar({
   );
 }
 
-export type ScorecardMode = 'unassessed' | 'loading' | 'audit' | 'completed';
+export type ScorecardMode = 'unassessed' | 'loading' | 'analyzing' | 'audit' | 'completed';
 
 export interface MeddpiccScorecardProps {
   score?: number | null;
@@ -244,10 +244,11 @@ function ScorecardRow({
   const gaps = dimension.gaps || (dimension.gap ? [dimension.gap] : []);
   const isUnassessed = mode === 'unassessed';
   const isLoading = mode === 'loading';
+  const isAnalyzing = mode === 'analyzing';
   const isCompleted = mode === 'completed';
 
   // Blocker rows in Stage 1 have recessed #F1F0EC background
-  const isBlocker = mode === 'audit' && (dimension.score <= 3 || dimension.status === 'unaddressed');
+  const isBlocker = (mode === 'audit' || mode === 'analyzing') && (dimension.score <= 3 || dimension.status === 'unaddressed');
 
   return (
     <div
@@ -315,6 +316,8 @@ function ScorecardRow({
             </div>
           ) : isUnassessed ? (
             <p className="text-xs italic text-[#787C87]">— Awaiting initial assessment</p>
+          ) : isAnalyzing && quotes.length === 0 ? (
+            <p className="text-xs italic text-[#787C87]">Pending System 2 citation extraction…</p>
           ) : quotes.length ? (
             quotes.map((quote, idx) => (
               <p
@@ -342,7 +345,9 @@ function ScorecardRow({
             </div>
           ) : isUnassessed ? (
             <p className="text-xs text-[#787C87]">—</p>
-          ) : isCompleted ? (
+          ) : isAnalyzing && gaps.length === 0 ? (
+            <p className="text-xs italic text-[#787C87]">Pending System 2 gap synthesis…</p>
+          ) : isCompleted && (gaps.length === 0 || (dimension.delta !== undefined && dimension.delta !== null && dimension.delta > 0)) ? (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-[#059669] font-medium">
                 <CheckCircle2 className="size-3.5 shrink-0" />

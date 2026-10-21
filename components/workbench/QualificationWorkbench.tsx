@@ -4,10 +4,10 @@ import React, { useEffect, useReducer, useRef, useState, useTransition } from 'r
 import type { Opportunity } from '@/lib/types/crm';
 import { DEFAULT_SYSTEM2_MODEL, type System2ModelOption } from '@/lib/types/crm';
 import type { WorkflowState, WorkbenchMode } from '@/lib/simulation/types';
-import acmeFixtureRaw from '@/lib/fixtures/simulation/acme_migration.json';
 import type { SimulationFixture } from '@/lib/simulation/fixture-schema';
 import {
   createSimulationState,
+  getSimulationFixture,
   simulationReducer,
 } from '@/lib/simulation/simulation-engine';
 
@@ -20,16 +20,14 @@ import { LiveQualificationWorkbench } from './LiveQualificationWorkbench';
 import {
   MonochromeTopBar,
   SuggestedNextStepsCard,
+  Stage3HeaderLockup,
   STAGE_GATE_THRESHOLD,
 } from './desk-os-shared';
-import { ArrowLeft, RotateCcw, ArrowRight } from 'lucide-react';
 
 interface QualificationWorkbenchProps {
   initialOpportunity: Opportunity;
   initialScenarioId?: string;
 }
-
-const fixture = acmeFixtureRaw as SimulationFixture;
 
 export function QualificationWorkbench({
   initialOpportunity,
@@ -40,6 +38,9 @@ export function QualificationWorkbench({
   const [selectedModel, setSelectedModel] = useState<System2ModelOption>(DEFAULT_SYSTEM2_MODEL);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [activeFixture, setActiveFixture] = useState<SimulationFixture>(() =>
+    getSimulationFixture(initialScenarioId)
+  );
 
   // Desk OS 3-Stage State
   const [activeStageView, setActiveStageView] = useState<'blank' | 'stage1' | 'stage2' | 'stage3'>('blank');
@@ -55,8 +56,8 @@ export function QualificationWorkbench({
 
   // Simulation State Machine
   const [simState, dispatch] = useReducer(
-    (state: any, action: any) => simulationReducer(state, action, fixture),
-    fixture,
+    (state: any, action: any) => simulationReducer(state, action, activeFixture),
+    activeFixture,
     createSimulationState
   );
 
@@ -64,6 +65,30 @@ export function QualificationWorkbench({
 
   const isComplete = simState.workflowState === 'COMPLETED';
   const isBusy = simState.workflowState === 'ANALYZING' || simState.workflowState === 'EVALUATING';
+
+  function handleScenarioChange(newScenarioId: string) {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    const newFixture = getSimulationFixture(newScenarioId);
+    setScenarioId(newScenarioId);
+    setActiveFixture(newFixture);
+    setSavedFormData({});
+    setSavedManualNotes('');
+    setBaselineAssessment(null);
+    setActiveStageView('blank');
+
+    if (mode === 'simulation') {
+      dispatch({ type: 'SWITCH_SCENARIO', scenarioId: newScenarioId, fixture: newFixture });
+    }
+  }
+
+  useEffect(() => {
+    if (initialScenarioId && initialScenarioId !== scenarioId) {
+      handleScenarioChange(initialScenarioId);
+    }
+  }, [initialScenarioId]);
 
   // Synchronize activeStageView with WorkflowState transitions guarded by prevWorkflowStateRef
   useEffect(() => {
@@ -113,7 +138,7 @@ export function QualificationWorkbench({
     setActiveStageView('blank');
 
     if (mode === 'simulation') {
-      dispatch({ type: 'RESET' });
+      dispatch({ type: 'RESET', fixture: activeFixture });
       setTimeout(() => setIsResetting(false), 300);
     } else {
       fetch('/api/crm/reset', {
@@ -165,11 +190,15 @@ export function QualificationWorkbench({
   const currentOpportunity = mode === 'simulation' ? simState.opportunity : initialOpportunity;
 
   // Compute gap count for Stage 1 blocker pill
-  const gapCount = simState.dimensions
-    ? Object.values(simState.dimensions).filter(
-        (d: any) => d.score <= 3 || d.status === 'unaddressed' || (d.gaps && d.gaps.length > 0)
+  const gapCount = (baselineAssessment?.dimensions ?? simState.dimensions)
+    ? Object.values(baselineAssessment?.dimensions ?? simState.dimensions).filter(
+        (d: any) => d.score <= 3 || d.status === 'unaddressed'
       ).length
     : 3;
+
+  const discoveryQuestionCount = simState.discoveryForm?.sections
+    ? simState.discoveryForm.sections.reduce((acc: number, s: any) => acc + (s.fields?.length || 0), 0)
+    : 0;
 
   const currentScore =
     activeStageView === 'blank'
@@ -182,6 +211,23 @@ export function QualificationWorkbench({
     baselineAssessment?.score ?? simState.previousScore ?? 54;
   const scoreDeltaDisplay = simState.delta ?? (simState.score - previousScoreDisplay);
 
+  if (mode === 'live') {
+    return (
+      <LiveQualificationWorkbench
+        initialOpportunity={initialOpportunity}
+        initialScenarioId={scenarioId}
+        scenarioId={scenarioId}
+        onScenarioChange={handleScenarioChange}
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
+        onModeChange={setMode}
+        hideTopNavBar={false}
+        settingsOpen={settingsOpen}
+        onSettingsOpenChange={setSettingsOpen}
+      />
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#F8F8F6] text-[#111215]">
       <TopNavBar
@@ -189,7 +235,7 @@ export function QualificationWorkbench({
         mode={mode}
         onModeChange={setMode}
         currentScenarioId={scenarioId}
-        onScenarioChange={setScenarioId}
+        onScenarioChange={handleScenarioChange}
         selectedModel={selectedModel}
         onModelChange={setSelectedModel}
         onReset={handleReset}
@@ -199,21 +245,7 @@ export function QualificationWorkbench({
         onSettingsOpenChange={setSettingsOpen}
       />
 
-      {mode === 'live' ? (
-        <LiveQualificationWorkbench
-          initialOpportunity={initialOpportunity}
-          initialScenarioId={scenarioId}
-          scenarioId={scenarioId}
-          onScenarioChange={setScenarioId}
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
-          onModeChange={setMode}
-          hideTopNavBar={true}
-          settingsOpen={settingsOpen}
-          onSettingsOpenChange={setSettingsOpen}
-        />
-      ) : (
-        <div className="mx-auto max-w-[1440px] px-4 py-6">
+      <div className="mx-auto max-w-[1440px] px-4 py-6">
           {/* Desk OS 3-Stage Tactile Stepper */}
           <StepperBar
             activeStageView={activeStageView}
@@ -314,7 +346,7 @@ export function QualificationWorkbench({
                           onClick={() => setActiveStageView('stage2')}
                           className="btn-action-primary flex items-center justify-center gap-1.5 rounded-md bg-[#0F52BA] px-4 py-2 text-xs font-semibold text-[#FFFFFF] hover:bg-[#0C4196] cursor-pointer shadow-2xs"
                         >
-                          <span>Answer 3 Discovery Questions →</span>
+                          <span>Answer {discoveryQuestionCount > 0 ? `${discoveryQuestionCount} ` : ''}Discovery Questions →</span>
                         </button>
                       </div>
                     </div>
@@ -344,7 +376,7 @@ export function QualificationWorkbench({
                 )}
 
                 {/* 4. Stage 2: Field Discovery Checklist */}
-                {activeStageView === 'stage2' && (
+                {activeStageView === 'stage2' && simState.workflowState !== 'ANALYZING' && (
                   <div className="space-y-4">
                     {simState.workflowState === 'EVALUATING' ? (
                       <MeddpiccScorecard
@@ -389,43 +421,13 @@ export function QualificationWorkbench({
                 {activeStageView === 'stage3' && isComplete && (
                   <div className="space-y-5">
                     {/* Stage 3 Header Lockup */}
-                    <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                      <div className="score-lockup flex flex-wrap items-center gap-3">
-                        <div className="flex items-baseline gap-1 font-mono text-2xl font-bold tracking-tight text-[#111215] tabular-nums">
-                          <span className="text-sm font-medium text-[#787C87]">
-                            {previousScoreDisplay} →
-                          </span>
-                          <span>{simState.score}</span>
-                          <span className="text-sm font-normal text-[#787C87]">/ 100</span>
-                          {scoreDeltaDisplay > 0 && (
-                            <span className="text-base font-semibold text-[#059669]">
-                              (+{scoreDeltaDisplay})
-                            </span>
-                          )}
-                        </div>
-
-                        <span
-                          className={`mono-pill rounded border px-2.5 py-1 font-mono text-[11px] font-semibold ${
-                            simState.score >= STAGE_GATE_THRESHOLD
-                              ? 'border-[#059669]/30 bg-[#059669]/10 text-[#059669]'
-                              : 'border-[#D97706]/30 bg-[#D97706]/10 text-[#D97706]'
-                          }`}
-                        >
-                          {simState.score >= STAGE_GATE_THRESHOLD
-                            ? `Stage Gate 2 · Gate Criteria Satisfied (Score ≥ ${STAGE_GATE_THRESHOLD})`
-                            : `Stage Gate 2 · ${gapCount} Gaps Remaining (Score < ${STAGE_GATE_THRESHOLD})`}
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleReset}
-                        className="flex items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer"
-                      >
-                        <RotateCcw className="size-3" aria-hidden="true" />
-                        <span>Restart Walkthrough</span>
-                      </button>
-                    </div>
+                    <Stage3HeaderLockup
+                      score={simState.score}
+                      baselineScore={baselineAssessment?.score ?? simState.previousScore}
+                      scoreDelta={scoreDeltaDisplay}
+                      gapCount={gapCount}
+                      onReset={handleReset}
+                    />
 
                     {/* Suggested Next Steps Block Directly Above the Scorecard */}
                     <SuggestedNextStepsCard
@@ -449,7 +451,6 @@ export function QualificationWorkbench({
             </div>
           </div>
         </div>
-      )}
     </main>
   );
 }

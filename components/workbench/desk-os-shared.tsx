@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Clipboard, Check, AlertCircle, RefreshCw, XCircle } from 'lucide-react';
+import { Clipboard, Check, AlertCircle, RefreshCw, XCircle, RotateCcw } from 'lucide-react';
 import type { Opportunity } from '@/lib/types/crm';
 import { formatNextSteps, getNextStepsCopyText } from '@/lib/assessment-results';
 
@@ -13,9 +13,16 @@ interface MonochromeTopBarProps {
 }
 
 export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
-  const formattedAmount = opportunity.amount
-    ? `$${(Number(opportunity.amount) / 1000).toFixed(0)},000 ACV`
-    : '$180,000 ACV';
+  const formattedAmount =
+    opportunity.amount !== null &&
+    opportunity.amount !== undefined &&
+    !Number.isNaN(Number(opportunity.amount))
+      ? `${new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          maximumFractionDigits: 0,
+        }).format(Number(opportunity.amount))} ACV`
+      : '$180,000 ACV';
 
   const stageDisplay = opportunity.stage_name || 'Stage 2 · Discovery';
 
@@ -245,6 +252,70 @@ export function SuggestedNextStepsCard({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+export interface Stage3HeaderLockupProps {
+  score: number;
+  baselineScore?: number | null;
+  scoreDelta?: number | null;
+  gapCount?: number;
+  onReset: () => void | Promise<void>;
+  resetButtonText?: string;
+}
+
+export function Stage3HeaderLockup({
+  score,
+  baselineScore,
+  scoreDelta,
+  gapCount = 0,
+  onReset,
+  resetButtonText = 'Restart Walkthrough',
+}: Stage3HeaderLockupProps) {
+  const isSatisfied = score >= STAGE_GATE_THRESHOLD;
+
+  return (
+    <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
+      <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
+        <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono text-2xl font-bold tracking-tight text-[#111215] tabular-nums">
+          {baselineScore !== null && baselineScore !== undefined && (
+            <span className="text-sm font-medium text-[#787C87]">
+              {baselineScore} →{' '}
+            </span>
+          )}
+          <span>{score}</span>
+          <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+          {scoreDelta !== null && scoreDelta !== undefined && scoreDelta > 0 && (
+            <span className="text-base font-semibold text-[#059669]">
+              (+{scoreDelta})
+            </span>
+          )}
+        </div>
+
+        <span
+          className={`mono-pill rounded border px-2.5 py-1 font-mono text-[11px] font-semibold ${
+            isSatisfied
+              ? 'border-[#059669]/30 bg-[#059669]/10 text-[#059669]'
+              : 'border-[#D97706]/30 bg-[#D97706]/10 text-[#D97706]'
+          }`}
+        >
+          {isSatisfied
+            ? `Stage Gate 2 · Gate Criteria Satisfied (Score ≥ ${STAGE_GATE_THRESHOLD})`
+            : gapCount > 0
+            ? `Stage Gate 2 · ${gapCount} Gaps Remaining (Score < ${STAGE_GATE_THRESHOLD})`
+            : `Stage Gate 2 · Criteria Below Threshold (Score < ${STAGE_GATE_THRESHOLD})`}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={onReset}
+        className="flex items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer"
+      >
+        <RotateCcw className="size-3" aria-hidden="true" />
+        <span>{resetButtonText}</span>
+      </button>
     </div>
   );
 }

@@ -34,15 +34,6 @@ export const DESK_OS_STAGES: DeskOsStageDef[] = [
   },
 ];
 
-// Preserved for backward compatibility with legacy tests/imports
-export const STEPS: { state: WorkflowState; label: string }[] = [
-  { state: 'READY_TO_ASSESS', label: 'Baseline' },
-  { state: 'ANALYZING', label: 'Analyzing' },
-  { state: 'PENDING_FEEDBACK', label: 'Discovery' },
-  { state: 'EVALUATING', label: 'Re-scoring' },
-  { state: 'COMPLETED', label: 'Completed' },
-];
-
 export interface StepperBarProps {
   activeStageView?: 'blank' | 'stage1' | 'stage2' | 'stage3';
   currentWorkflow?: WorkflowState;
@@ -205,27 +196,4 @@ export function StepperBar({
       })}
     </nav>
   );
-}
-
-interface JumpToStateProps {
-  currentWorkflow?: WorkflowState;
-  onJumpToState?: (state: WorkflowState) => void;
-  mode?: WorkbenchMode;
-}
-
-export function JumpToStateButtons({
-  mode = 'simulation',
-}: JumpToStateProps) {
-  if (mode === 'live') {
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 shadow-xs text-xs">
-        <span className="size-2 rounded-full bg-[#059669]" />
-        <span className="font-medium text-[#111215]">Live Mode</span>
-        <span className="text-[#A6A7AD]">•</span>
-        <span className="text-[#787C87]">AI Gateway & Salesforce</span>
-      </div>
-    );
-  }
-
-  return null;
 }

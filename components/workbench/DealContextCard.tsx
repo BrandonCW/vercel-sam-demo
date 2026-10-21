@@ -8,10 +8,12 @@ interface DealContextCardProps {
 }
 
 export function DealContextCard({ opportunity }: DealContextCardProps) {
-  const competitorText =
-    opportunity.competitive_flags && opportunity.competitive_flags.length > 0
-      ? `${opportunity.competitive_flags.join(', ')} offered a 30% defensive renewal discount. Commercial counter-strategy required.`
-      : 'Netlify offered a 30% renewal discount to preserve legacy contract. Commercial counter-strategy required.';
+  const flags = opportunity.competitive_flags || [];
+  const competitorText = flags.includes('Netlify')
+    ? 'Netlify offered a 30% defensive renewal discount. Commercial counter-strategy required.'
+    : flags.length > 0
+    ? `Active competitive pressure from ${flags.join(', ')}. Commercial and technical counter-strategy required.`
+    : 'No active competitor flagged in discovery notes.';
 
   const targetClose = opportunity.close_date || 'Dec 15, 2026';
   const stageOrArch = opportunity.stage_name || 'Stage 2 — Discovery';

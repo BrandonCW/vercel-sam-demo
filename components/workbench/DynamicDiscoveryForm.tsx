@@ -60,10 +60,6 @@ export function DynamicDiscoveryForm({
   const [manualNotes, setManualNotes] = useState<string>(initialNotes);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Fallback simulation state
-  const [ebAnswer, setEbAnswer] = useState('Meeting pending');
-  const [criteria, setCriteria] = useState('Build speed <5m + Turborepo caching + ISR');
-
   useEffect(() => {
     if (initialValues && Object.keys(initialValues).length > 0) {
       setFormData(initialValues);
@@ -148,40 +144,30 @@ export function DynamicDiscoveryForm({
 
     if (!validate()) return;
 
-    if (activeForm && activeForm.sections) {
+    if (activeForm && activeForm.sections && activeForm.sections.length > 0) {
       if (manualNotes) {
         onSubmit(formData, manualNotes);
       } else {
         onSubmit(formData);
-      }
-    } else {
-      const fallbackData = {
-        eb: ebAnswer,
-        criteria: criteria,
-      };
-      if (manualNotes) {
-        onSubmit(fallbackData, manualNotes);
-      } else {
-        onSubmit(fallbackData);
       }
     }
   };
 
   // Compute live Answered {K} of {N}
   const totalFields = activeForm && activeForm.sections
-    ? activeForm.sections.reduce((acc, s) => acc + s.fields.length, 0)
-    : 2;
+    ? activeForm.sections.reduce((acc, s) => acc + (s.fields?.length || 0), 0)
+    : 0;
 
   const answeredCount = activeForm && activeForm.sections
     ? activeForm.sections
-        .flatMap((s) => s.fields)
+        .flatMap((s) => s.fields || [])
         .filter((f) => {
           const val = formData[f.id];
           if (typeof val === 'string') return val.trim().length > 0;
           if (Array.isArray(val)) return val.length > 0;
           return val !== undefined && val !== null;
         }).length
-    : (ebAnswer ? 1 : 0) + (criteria ? 1 : 0);
+    : 0;
 
   const renderCalloutBanner = (section: JsonRenderSection) => {
     if (!section.calloutText) return null;
@@ -484,59 +470,18 @@ export function DynamicDiscoveryForm({
             </div>
           ))
         ) : (
-          <>
-            <fieldset className="flex flex-col gap-3">
-              <legend className="text-sm font-semibold text-[#111215] mb-1">
-                Did Jane Doe (VP Engineering) formally confirm sponsorship?
-              </legend>
-              {[
-                'Confirmed sponsorship if build times drop <5 min',
-                'Meeting pending',
-                'No contact yet',
-              ].map((option) => (
-                <label
-                  key={option}
-                  className="flex cursor-pointer items-center gap-3 rounded-md border border-[#E2E0D8] px-4 py-3 text-sm text-[#52545D] transition has-[:checked]:border-[#111215] has-[:checked]:bg-[#F1F0EC]"
-                >
-                  <input
-                    type="radio"
-                    name="eb"
-                    value={option}
-                    checked={ebAnswer === option}
-                    disabled={readOnly}
-                    onChange={(e) => {
-                      setEbAnswer(e.target.value);
-                      onDraftChange?.({ ...formData, eb: e.target.value }, manualNotes);
-                    }}
-                    className="accent-[#0F52BA]"
-                  />
-                  <span>{option}</span>
-                </label>
-              ))}
-            </fieldset>
-
-            <label className="flex flex-col gap-2 text-sm font-semibold text-[#111215]">
-              <span>Confirmed technical decision criteria:</span>
-              <select
-                value={criteria}
-                disabled={readOnly}
-                onChange={(e) => {
-                  setCriteria(e.target.value);
-                  onDraftChange?.({ ...formData, criteria: e.target.value }, manualNotes);
-                }}
-                className="rounded-md border border-[#E2E0D8] bg-[#F1F0EC]/50 px-3 py-2.5 text-sm font-normal text-[#111215] outline-none focus:ring-1 focus:ring-[#111215] cursor-pointer disabled:opacity-50"
-              >
-                <option value="Build speed <5m + Turborepo caching + ISR">
-                  Build speed &lt;5m + Turborepo caching + ISR
-                </option>
-                <option value="Hosting cost parity only">Hosting cost parity only</option>
-                <option value="Undefined">Undefined</option>
-              </select>
-            </label>
-          </>
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-md border border-dashed border-[#E2E0D8] bg-[#FAFAF7]">
+            <Info className="size-6 text-[#787C87] mb-2" />
+            <p className="text-xs font-medium text-[#111215]">
+              No discovery questions generated for this opportunity.
+            </p>
+            <p className="text-[11px] text-[#787C87] mt-1 max-w-sm">
+              Discovery questions are automatically generated from System 2 analysis when gaps are identified in baseline scoring.
+            </p>
+          </div>
         )}
 
-        {!readOnly && (
+        {!readOnly && totalFields > 0 && (
           <div className="space-y-2 pt-2 border-t border-[#E2E0D8]">
             <label
               htmlFor="sa_manual_notes"
@@ -556,7 +501,7 @@ export function DynamicDiscoveryForm({
           </div>
         )}
 
-        {!readOnly && (
+        {!readOnly && totalFields > 0 && (
           <div className="pt-2 flex items-center justify-end gap-3 border-t border-[#E2E0D8]">
             {(onCancel || onBack) && (
               <button

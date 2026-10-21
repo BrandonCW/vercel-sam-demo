@@ -184,7 +184,7 @@ export function TopNavBar({
                       : 'text-[#52545D] hover:text-[#111215]'
                   }`}
                 >
-                  ⚡ Simulation mode
+                  Simulation mode
                 </button>
                 <button
                   type="button"
@@ -195,7 +195,7 @@ export function TopNavBar({
                       : 'text-[#52545D] hover:text-[#111215]'
                   }`}
                 >
-                  🌐 Live AI mode
+                  Live AI mode
                 </button>
               </div>
             </div>

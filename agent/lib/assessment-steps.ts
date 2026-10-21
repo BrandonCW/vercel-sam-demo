@@ -109,7 +109,7 @@ export async function analyzeWithSystem2(
     output: Output.object({
       schema: System2ModelOutputSchema,
       name: "system2_analysis",
-      description: "System 2 per-dimension citations, SA discovery form, gap synthesis and competitive playbook.",
+      description: "System 2 per-dimension citations, SA discovery form, and gap synthesis.",
     }),
     abortSignal: AbortSignal.timeout(SYSTEM2_TIMEOUT_MS),
   });
