@@ -297,7 +297,7 @@ export function simulationReducer(
       return state;
 
     case 'SUBMIT_FEEDBACK':
-      if (state.workflowState === 'PENDING_FEEDBACK') {
+      if (state.workflowState === 'PENDING_FEEDBACK' || state.workflowState === 'COMPLETED') {
         return getStateForWorkflow('EVALUATING', fixture);
       }
       return state;

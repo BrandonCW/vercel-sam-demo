@@ -37,6 +37,7 @@ export interface AssessmentView {
   sentFeedbackKey: string | null;
   opportunity: Opportunity | null;
   jevResult: JevScoringResult | null;
+  baselineJevResult: JevScoringResult | null;
   system2Result: System2AnalysisResult | null;
   feedback: { recorded: boolean; feedbackKey: string } | null;
   /** run_assessment's code-built verdict: set only when the action completed and its output parsed. */
@@ -72,6 +73,7 @@ const INITIAL: AssessmentView = {
   sentFeedbackKey: null,
   opportunity: null,
   jevResult: null,
+  baselineJevResult: null,
   system2Result: null,
   feedback: null,
   result: null,
@@ -102,9 +104,20 @@ function applyProgress(view: AssessmentView, output: unknown): AssessmentView {
   switch (p.stage) {
     case 'jev_scored':
       // Jev has answered; the CRM write is in flight. A failed write fails the action.
-      return { ...view, jevResult: p.jevResult, opportunity: view.opportunity && withJevScores(view.opportunity, p.jevResult) };
+      return {
+        ...view,
+        jevResult: p.jevResult,
+        baselineJevResult: p.round === 'baseline' ? p.jevResult : (view.baselineJevResult ?? p.jevResult),
+        opportunity: view.opportunity && withJevScores(view.opportunity, p.jevResult),
+      };
     case 'jev_saved':
-      return { ...view, jevResult: p.jevResult, opportunity: p.opportunity, system2Running: p.round === 'baseline' };
+      return {
+        ...view,
+        jevResult: p.jevResult,
+        baselineJevResult: p.round === 'baseline' ? p.jevResult : (view.baselineJevResult ?? p.jevResult),
+        opportunity: p.opportunity,
+        system2Running: p.round === 'baseline',
+      };
     case 'system2_saved':
       if (view.request && p.system2Result.modelUsed !== view.request.model) {
         return fail(view, `System 2 ran with ${p.system2Result.modelUsed}, not the requested model ${view.request.model}.`);
@@ -218,3 +231,34 @@ export const assessmentReducer: EveAgentReducer<AssessmentView> = {
   initial: () => INITIAL,
   reduce,
 };
+
+/**
+ * Normalizes suggested next steps into a list of strings, supporting string, string[],
+ * newline delimiters, or null/undefined without throwing.
+ */
+export function formatNextSteps(steps: string | string[] | null | undefined): string[] {
+  if (!steps) return [];
+  if (Array.isArray(steps)) {
+    return steps.map((s) => String(s).trim()).filter((s) => s.length > 0);
+  }
+  if (typeof steps === 'string') {
+    const trimmed = steps.trim();
+    if (!trimmed) return [];
+    if (trimmed.includes('\n')) {
+      return trimmed
+        .split('\n')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    }
+    return [trimmed];
+  }
+  return [];
+}
+
+export function getNextStepsCopyText(steps: string | string[] | null | undefined): string {
+  const items = formatNextSteps(steps);
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  return items.map((item, i) => `${i + 1}. ${item}`).join('\n');
+}
+
