@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deal Qualification System — Architectural Evolution & Vercel Primitives</title>
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: #12141c;
+      --card-border: #222634;
+      --card-hover: #1a1e2a;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent-blue: #38bdf8;
+      --accent-indigo: #6366f1;
+      --accent-purple: #a855f7;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Geist", "Inter", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      padding: 2rem 1.5rem 4rem;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 1.75rem;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      color: var(--accent-blue);
+      margin-bottom: 0.85rem;
+    }
+
+    .badge-pill::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      box-shadow: 0 0 8px var(--accent-blue);
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 840px;
+    }
+
+    /* Top Level View Switcher */
+    .view-switcher-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .view-toggle-group {
+      display: inline-flex;
+      background: #12141c;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.3rem;
+      gap: 0.35rem;
+    }
+
+    .view-toggle-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 0.6rem 1.15rem;
+      border-radius: 9px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .view-toggle-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .view-toggle-btn.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .view-toggle-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .env-tag {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--accent-emerald);
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 0.35rem 0.75rem;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .env-tag::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+    }
+
+    /* Views */
+    .view-content {
+      display: none;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .view-content.active {
+      display: block;
+    }
+
+    /* Navigation Tabs */
+    .tabs-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      position: sticky;
+      top: 1rem;
+      z-index: 50;
+      background: rgba(9, 10, 15, 0.85);
+      backdrop-filter: blur(12px);
+      padding: 0.5rem;
+      border-radius: 14px;
+      border: 1px solid var(--card-border);
+    }
+
+    .tab-button {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      text-align: left;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .tab-button:hover {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .tab-button[aria-selected="true"] {
+      background: var(--card-bg);
+      color: #fff;
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(56, 189, 248, 0.2);
+    }
+
+    .tab-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+    }
+
+    .tab-button[aria-selected="true"] .tab-label {
+      color: var(--accent-blue);
+    }
+
+    .tab-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Tab Content Panels */
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Stage Hero Section */
+    .stage-hero {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin-bottom: 2rem;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stage-hero::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .stage-headline {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    .stage-desc {
+      color: var(--text-muted);
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 1.25rem;
+    }
+
+    .meta-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .meta-badge {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+
+    .meta-badge.highlight {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+    }
+
+    .meta-badge.success {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    .meta-badge.warning {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: #fcd34d;
+    }
+
+    /* Key Metrics Grid */
+    .metrics-card {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .metric-name {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .metric-value.green { color: var(--accent-emerald); }
+    .metric-value.cyan { color: var(--accent-blue); }
+    .metric-value.amber { color: var(--accent-amber); }
+    .metric-value.rose { color: var(--accent-rose); }
+
+    /* Visual Diagram Section */
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-title svg {
+      width: 18px;
+      height: 18px;
+      color: var(--accent-blue);
+    }
+
+    .diagram-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      margin-bottom: 2rem;
+      overflow-x: auto;
+    }
+
+    .diagram-svg {
+      width: 100%;
+      min-width: 860px;
+      height: auto;
+      display: block;
+    }
+
+    /* 3-Column Info Cards */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .info-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .info-card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .info-card li {
+      position: relative;
+      padding-left: 1.25rem;
+    }
+
+    .info-card li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      top: -1px;
+      font-size: 1.1rem;
+      color: var(--accent-blue);
+    }
+
+    .info-card.benefits li::before { color: var(--accent-emerald); }
+    .info-card.persistence li::before { color: var(--accent-purple); }
+
+    /* Commit Log Section */
+    .commits-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .commit-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .commit-table th {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .commit-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+    }
+
+    .commit-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .commit-hash {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.08);
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      display: inline-block;
+    }
+
+    .commit-msg {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    /* Cross-Stage Comparison Section */
+    .comparison-strip {
+      background: linear-gradient(180deg, #161926 0%, #12141d 100%);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin-top: 2rem;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      margin-top: 1.25rem;
+    }
+
+    .comp-col {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+
+    .comp-col.highlighted {
+      border-color: rgba(56, 189, 248, 0.35);
+      background: rgba(56, 189, 248, 0.03);
+    }
+
+    .comp-stage-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+
+    .comp-metric {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 0.35rem;
+    }
+
+    .comp-metric span {
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* =========================================
+       PRIMITIVES VIEW STYLES
+       ========================================= */
+    .clarification-banner {
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .clarification-banner svg {
+      width: 22px;
+      height: 22px;
+      color: #818cf8;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .clarification-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e0e7ff;
+      margin-bottom: 0.35rem;
+    }
+
+    .clarification-text {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .clarification-text code {
+      font-family: var(--font-mono);
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      color: #c7d2fe;
+    }
+
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .filter-chip {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-chip:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      color: var(--text-main);
+    }
+
+    .filter-chip.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: var(--accent-blue);
+    }
+
+    .primitives-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+
+    .primitive-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.6rem;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .primitive-card:hover {
+      border-color: rgba(56, 189, 248, 0.35);
+      box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.5);
+    }
+
+    .prim-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 1rem;
+    }
+
+    .prim-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .prim-category {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+    }
+
+    .prim-category.nextjs { color: #f1f5f9; background: #000; border-color: #333; }
+    .prim-category.gateway { color: var(--accent-blue); background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.25); }
+    .prim-category.workflows { color: var(--accent-purple); background: rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.25); }
+    .prim-category.storage { color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.25); }
+    .prim-category.genui { color: var(--accent-amber); background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.25); }
+
+    .prim-section {
+      margin-bottom: 1.15rem;
+    }
+
+    .prim-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .prim-section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .prim-section-label::before {
+      content: "";
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+
+    .prim-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .code-chip {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 0.2rem 0.45rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 5px;
+      color: #cbd5e1;
+    }
+
+    .prim-prose {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .prim-benefits-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      font-size: 0.86rem;
+      color: var(--text-muted);
+    }
+
+    .prim-benefits-list li {
+      position: relative;
+      padding-left: 1.2rem;
+    }
+
+    .prim-benefits-list li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--accent-emerald);
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .tabs-nav { grid-template-columns: repeat(2, 1fr); }
+      .stage-hero { grid-template-columns: 1fr; }
+      .info-grid { grid-template-columns: 1fr; }
+      .comparison-grid { grid-template-columns: 1fr 1fr; }
+      .primitives-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .tabs-nav { grid-template-columns: 1fr; }
+      .comparison-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="badge-pill">Architectural Review • Git History & Platform Primitives</div>
+    <h1>Deal Qualification System Architecture</h1>
+    <p class="subtitle">
+      Explore the comprehensive technical walkthrough of how the system evolved from early simulated prototypes into a unified, deterministic Vercel Workflow with full AI Gateway integration.
+    </p>
+
+    <!-- Master View Switcher -->
+    <div class="view-switcher-bar">
+      <div class="view-toggle-group" role="tablist" aria-label="View Switcher">
+        <button class="view-toggle-btn active" id="btn-view-stages" role="tab" aria-selected="true" onclick="switchView('stages')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          Architectural Stages (4 Eras)
+        </button>
+        <button class="view-toggle-btn" id="btn-view-primitives" role="tab" aria-selected="false" onclick="switchView('primitives')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          Vercel & Next.js Primitives
+        </button>
+      </div>
+      <div class="env-tag">Runtime: Next.js 15.5.26 • React 19.3.0</div>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       VIEW 1: ARCHITECTURAL STAGES (4 TABS)
+       ========================================================================= -->
+  <div id="view-stages" class="view-content active">
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav" role="tablist" aria-label="Architecture Stages">
+      <button class="tab-button" role="tab" id="tab-stage1" aria-controls="panel-stage1" aria-selected="true" onclick="selectTab('stage1')">
+        <span class="tab-label">Stage 1</span>
+        <span class="tab-title">Mocked Foundation</span>
+      </button>
+      <button class="tab-button" role="tab" id="tab-stage2" aria-controls="panel-stage2" aria-selected="false" onclick="selectTab('stage2')">
+        <span class="tab-label">Stage 2</span>
+        <span class="tab-title">Direct API & Fail Loudly</span>
+      </button>
+      <button class="tab-button" role="tab" id="tab-stage3" aria-controls="panel-stage3" aria-selected="false" onclick="selectTab('stage3')">
+        <span class="tab-label">Stage 3</span>
+        <span class="tab-title">Eve Agent Orchestration</span>
+      </button>
+      <button class="tab-button" role="tab" id="tab-stage4" aria-controls="panel-stage4" aria-selected="false" onclick="selectTab('stage4')">
+        <span class="tab-label">Stage 4 (PR #2)</span>
+        <span class="tab-title">Unified Eve Workflow</span>
+      </button>
+    </nav>
+
+    <!-- STAGE 1 PANEL -->
+    <section class="tab-panel active" id="panel-stage1" role="tabpanel" aria-labelledby="tab-stage1">
+      <div class="stage-hero">
+        <div>
+          <h2 class="stage-headline">Stage 1: The Mocked & Simulated Foundation</h2>
+          <p class="stage-desc">
+            The prototype MVP established the Split Workbench UI and Next.js shell, but all AI evaluation and deep reasoning were heavily simulated. Jev MEDDPICC scores were generated by regular expression keyword matchers, System 2 used ~550 lines of hardcoded scenario pipelines, and database failures were silently swallowed into in-memory dictionaries.
+          </p>
+          <div class="meta-badges">
+            <span class="meta-badge warning">Regex Scoring</span>
+            <span class="meta-badge warning">Canned System 2 (~550 lines)</span>
+            <span class="meta-badge warning">In-Memory DB Fallback</span>
+            <span class="meta-badge">Next.js API Routes</span>
+          </div>
+        </div>
+        <div class="metrics-card">
+          <div class="metric-row">
+            <span class="metric-name">Turn 1 Latency</span>
+            <span class="metric-value amber">~0.5s – 1.2s (Instant/Fake)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">AI Cost per Run</span>
+            <span class="metric-value green">$0.00 (Mocks)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Real AI Evaluation</span>
+            <span class="metric-value rose">0% (Pure Heuristics)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Persistence Model</span>
+            <span class="metric-value">In-Memory + Postgres Catch</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Diagram Stage 1 -->
+      <div class="diagram-container">
+        <h3 class="section-title">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          Data Flow & Architectural Topology
+        </h3>
+        <svg class="diagram-svg" viewBox="0 0 920 280">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"/>
+            </marker>
+          </defs>
+
+          <!-- Browser / UI -->
+          <rect x="20" y="80" width="160" height="120" rx="10" fill="#181b26" stroke="#333a4d" stroke-width="1.5"/>
+          <text x="100" y="115" fill="#f1f5f9" font-size="14" font-weight="700" text-anchor="middle">Browser Client</text>
+          <text x="100" y="135" fill="#94a3b8" font-size="11" text-anchor="middle">Split Workbench UI</text>
+          <rect x="40" y="155" width="120" height="24" rx="4" fill="#2d3345"/>
+          <text x="100" y="171" fill="#f59e0b" font-size="10" font-family="monospace" text-anchor="middle">Fallback Pill Active</text>
+
+          <!-- Arrow to API -->
+          <line x1="180" y1="140" x2="250" y2="140" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+          <text x="215" y="130" fill="#64748b" font-size="10" text-anchor="middle">HTTP POST</text>
+
+          <!-- Next.js API Routes -->
+          <rect x="250" y="50" width="220" height="180" rx="10" fill="#181b26" stroke="#333a4d" stroke-width="1.5"/>
+          <text x="360" y="80" fill="#f1f5f9" font-size="14" font-weight="700" text-anchor="middle">Next.js API Layer</text>
+          <text x="360" y="100" fill="#94a3b8" font-size="11" text-anchor="middle">/api/qualification/assess</text>
+
+          <rect x="270" y="120" width="180" height="40" rx="6" fill="#222738" stroke="#f59e0b" stroke-dasharray="3 3"/>
+          <text x="360" y="145" fill="#fcd34d" font-size="11" text-anchor="middle">Regex Jev Scorer (Fake)</text>
+
+          <rect x="270" y="170" width="180" height="40" rx="6" fill="#222738" stroke="#f59e0b" stroke-dasharray="3 3"/>
+          <text x="360" y="195" fill="#fcd34d" font-size="11" text-anchor="middle">~550-line Mock Pipeline</text>
+
+          <!-- Arrow to Mock DB -->
+          <line x1="470" y1="140" x2="550" y2="140" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- In-Memory / Postgres box -->
+          <rect x="550" y="60" width="200" height="160" rx="10" fill="#181b26" stroke="#333a4d" stroke-width="1.5"/>
+          <text x="650" y="90" fill="#f1f5f9" font-size="14" font-weight="700" text-anchor="middle">Persistence Layer</text>
+          
+          <rect x="570" y="110" width="160" height="40" rx="6" fill="#24171d" stroke="#f43f5e" stroke-dasharray="4 2"/>
+          <text x="650" y="135" fill="#f43f5e" font-size="11" text-anchor="middle">Postgres (Try/Catch)</text>
+
+          <rect x="570" y="160" width="160" height="40" rx="6" fill="#2d281a" stroke="#f59e0b"/>
+          <text x="650" y="185" fill="#fcd34d" font-size="11" text-anchor="middle">In-Memory Fallback Map</text>
+
+          <!-- Gateway disconnected -->
+          <rect x="790" y="80" width="110" height="120" rx="10" fill="#12141c" stroke="#252a3a" stroke-dasharray="4 4"/>
+          <text x="845" y="130" fill="#64748b" font-size="12" font-weight="600" text-anchor="middle">AI Gateway</text>
+          <text x="845" y="150" fill="#f43f5e" font-size="10" text-anchor="middle">Unused / Mocked</text>
+        </svg>
+      </div>
+
+      <!-- 3-Column Info -->
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>What Changed & Architectural Setup</h3>
+          <ul>
+            <li>Scaffolded initial Next.js App Router project and Split Workbench layout.</li>
+            <li>System 1 "Jev" was simulated with regex pattern searches against AE/SA notes.</li>
+            <li>System 2 was a static ~550-line pipeline returning predetermined JSON forms.</li>
+            <li>Persistence caught DB errors and silently defaulted to in-memory maps.</li>
+          </ul>
+        </div>
+        <div class="info-card benefits">
+          <h3>Benefits & Limitations</h3>
+          <ul>
+            <li><strong>Pro:</strong> Zero API key dependency; enabled UI layout and UX testing offline.</li>
+            <li><strong>Pro:</strong> Defined canonical MEDDPICC rubric weights and stage gate bounds.</li>
+            <li><strong>Con:</strong> Completely dishonest demos; zero actual model intelligence.</li>
+            <li><strong>Con:</strong> Silent failure masking hid misconfigured environment variables.</li>
+          </ul>
+        </div>
+        <div class="info-card persistence">
+          <h3>State Persistence Deep Dive</h3>
+          <ul>
+            <li>Schema defined for Postgres (Neon), but wrapped in catch-and-continue logic.</li>
+            <li>When <code>POSTGRES_URL</code> failed, state quietly resided in an ephemeral dictionary.</li>
+            <li>Session state was represented as raw string flags passed over HTTP endpoints.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Commits Section -->
+      <div class="commits-section">
+        <h3 class="section-title">Key Commits to Reference</h3>
+        <table class="commit-table">
+          <thead>
+            <tr><th>Commit</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="commit-hash">c8016f9</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(foundation): initialize Next.js app, CRM persistence layer & Split Workbench shell</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">88ff4cd</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(system1): implement Jev baseline MEDDPICC scoring, competitive scanner, and rubric</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">8e67b8d</span></td><td>feat</td>
+              <td><span class="commit-msg">feat: implement System 2 deep reasoning, JSON Render dynamic form, and paused session</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">c5cd075</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(models): implement live model dispatch with deterministic fallback</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">c7fb63b</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(ai-gateway): route Jev and System 2 through Vercel AI SDK (PR #2 merge base)</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- STAGE 2 PANEL -->
+    <section class="tab-panel" id="panel-stage2" role="tabpanel" aria-labelledby="tab-stage2">
+      <div class="stage-hero">
+        <div>
+          <h2 class="stage-headline">Stage 2: Real API Integration & "Fail Loudly"</h2>
+          <p class="stage-desc">
+            Issue 06 & 07 eliminated all mocked data paths and heuristic fallbacks. The system adopted a strict "Fail Loudly" standard: missing keys or DB errors immediately throw. System 1 was wired directly to the real <code>typesafe-ai/jev</code> evaluation model via Vercel AI Gateway, and System 2 executed real live LLM generation.
+          </p>
+          <div class="meta-badges">
+            <span class="meta-badge success">Real typesafe-ai/jev Model</span>
+            <span class="meta-badge success">Live Vercel AI Gateway</span>
+            <span class="meta-badge success">Strict Postgres (Neon) Only</span>
+            <span class="meta-badge highlight">Fail Loudly Architecture</span>
+          </div>
+        </div>
+        <div class="metrics-card">
+          <div class="metric-row">
+            <span class="metric-name">Turn 1 Latency</span>
+            <span class="metric-value">~85s – 100s (Live Sequential)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Jev Scoring Time</span>
+            <span class="metric-value cyan">~0.6s – 1.5s</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">AI Cost per Run</span>
+            <span class="metric-value">~$0.05 – $0.08</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Persistence Model</span>
+            <span class="metric-value green">Mandatory Live PostgreSQL</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Diagram Stage 2 -->
+      <div class="diagram-container">
+        <h3 class="section-title">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          Data Flow & Architectural Topology
+        </h3>
+        <svg class="diagram-svg" viewBox="0 0 920 280">
+          <rect x="20" y="80" width="160" height="120" rx="10" fill="#181b26" stroke="#333a4d" stroke-width="1.5"/>
+          <text x="100" y="115" fill="#f1f5f9" font-size="14" font-weight="700" text-anchor="middle">Browser Client</text>
+          <text x="100" y="135" fill="#94a3b8" font-size="11" text-anchor="middle">Live Status Pills</text>
+          <rect x="40" y="155" width="120" height="24" rx="4" fill="#0f291e" stroke="#10b981"/>
+          <text x="100" y="171" fill="#6ee7b7" font-size="10" font-family="monospace" text-anchor="middle">Gateway Live Pill</text>
+
+          <line x1="180" y1="140" x2="250" y2="140" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+          <text x="215" y="130" fill="#64748b" font-size="10" text-anchor="middle">HTTP POST</text>
+
+          <rect x="250" y="50" width="220" height="180" rx="10" fill="#181b26" stroke="#38bdf8" stroke-width="1.5"/>
+          <text x="360" y="80" fill="#f1f5f9" font-size="14" font-weight="700" text-anchor="middle">Next.js API Orchestrator</text>
+          <text x="360" y="100" fill="#38bdf8" font-size="11" text-anchor="middle">Fail-Loud Enforcement</text>
+
+          <rect x="270" y="120" width="180" height="40" rx="6" fill="#1b2836" stroke="#38bdf8"/>
+          <text x="360" y="145" fill="#7dd3fc" font-size="11" text-anchor="middle">scoreOpportunityWithJevAI</text>
+
+          <rect x="270" y="170" width="180" height="40" rx="6" fill="#241b35" stroke="#a855f7"/>
+          <text x="360" y="195" fill="#d8b4fe" font-size="11" text-anchor="middle">executeSystem2Pipeline</text>
+
+          <line x1="470" y1="130" x2="540" y2="100" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="470" y1="180" x2="540" y2="160" stroke="#a855f7" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="540" y="40" width="200" height="190" rx="10" fill="#181b26" stroke="#333a4d" stroke-width="1.5"/>
+          <text x="640" y="65" fill="#f1f5f9" font-size="13" font-weight="700" text-anchor="middle">Vercel AI Gateway</text>
+
+          <rect x="555" y="80" width="170" height="60" rx="6" fill="#122333" stroke="#38bdf8"/>
+          <text x="640" y="105" fill="#38bdf8" font-size="11" font-weight="600" text-anchor="middle">typesafe-ai/jev</text>
+          <text x="640" y="125" fill="#94a3b8" font-size="10" text-anchor="middle">Evaluation API (Scores)</text>
+
+          <rect x="555" y="150" width="170" height="65" rx="6" fill="#20152e" stroke="#a855f7"/>
+          <text x="640" y="175" fill="#d8b4fe" font-size="11" font-weight="600" text-anchor="middle">System 2 Frontier LLM</text>
+          <text x="640" y="195" fill="#94a3b8" font-size="10" text-anchor="middle">Claude Sonnet 5 / GPT</text>
+
+          <line x1="360" y1="230" x2="360" y2="260" stroke="#10b981" stroke-width="2"/>
+          <line x1="360" y1="260" x2="800" y2="260" stroke="#10b981" stroke-width="2"/>
+          <line x1="800" y1="260" x2="800" y2="210" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="760" y="80" width="140" height="120" rx="10" fill="#181b26" stroke="#10b981" stroke-width="1.5"/>
+          <text x="830" y="115" fill="#f1f5f9" font-size="14" font-weight="700" text-anchor="middle">Neon Postgres</text>
+          <text x="830" y="135" fill="#6ee7b7" font-size="11" text-anchor="middle">Strict SQL Only</text>
+          <text x="830" y="165" fill="#94a3b8" font-size="10" text-anchor="middle">Atomic Writes</text>
+        </svg>
+      </div>
+
+      <!-- 3-Column Info -->
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>What Changed & Architectural Setup</h3>
+          <ul>
+            <li>Deleted ~600 lines of canned fallback generation and regex scorers.</li>
+            <li>System 1 adopted TypeSafe AI's dedicated evaluation model <code>typesafe-ai/jev</code>.</li>
+            <li>Stage Gate composite calculation (0–100) executed in deterministic math code.</li>
+            <li>Acme notes rewritten so live Jev passes baseline (Pain 9/10, EB 3/10 blocker).</li>
+          </ul>
+        </div>
+        <div class="info-card benefits">
+          <h3>Benefits & Limitations</h3>
+          <ul>
+            <li><strong>Benefit:</strong> 100% genuine AI evaluation; zero fabricated data reaches the CRM.</li>
+            <li><strong>Benefit:</strong> Objective scoring without conversational hallucination.</li>
+            <li><strong>Benefit:</strong> Instant feedback if keys or credentials fail.</li>
+            <li><strong>Drawback:</strong> High latency (~90s); Next.js API routes still held connections open.</li>
+          </ul>
+        </div>
+        <div class="info-card persistence">
+          <h3>State Persistence Deep Dive</h3>
+          <ul>
+            <li>Every state change was written directly to live PostgreSQL (Neon).</li>
+            <li>In-memory store completely deleted; missing DB connection threw descriptive errors.</li>
+            <li>API routes handled SQL transactions directly before returning JSON responses.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Commits Section -->
+      <div class="commits-section">
+        <h3 class="section-title">Key Commits to Reference</h3>
+        <table class="commit-table">
+          <thead>
+            <tr><th>Commit</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="commit-hash">16d9345</span></td><td>fix</td>
+              <td><span class="commit-msg">fix(runtime): fail loudly and remove all mock/fallback data paths (issue 06)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">31540e9</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(system1): score with typesafe-ai/jev evaluation model via eve/ai evaluate (issue 07)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">e201e8c</span></td><td>fix</td>
+              <td><span class="commit-msg">fix(system1): drop Jev ZDR on Pro Trial and use 3 band rungs (issue 07)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">2fdf2ae</span></td><td>fix</td>
+              <td><span class="commit-msg">fix(system1): use Jev's 10-level maximum mapped to 0-10 (issue 07)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">8e19f84</span></td><td>fix</td>
+              <td><span class="commit-msg">fix(fixtures): rewrite Acme notes to tell demo story; live Jev passes baseline</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- STAGE 3 PANEL -->
+    <section class="tab-panel" id="panel-stage3" role="tabpanel" aria-labelledby="tab-stage3">
+      <div class="stage-hero">
+        <div>
+          <h2 class="stage-headline">Stage 3: Eve Agent Orchestration & `useEveAgent`</h2>
+          <p class="stage-desc">
+            Shifted deal qualification from stateless Next.js routes into native Eve Agent architecture. A single Assessment Session persisted durably over 30 days, idling at zero cost while waiting for the Solutions Architect. The web UI adopted <code>useEveAgent</code> over same-origin <code>/eve/v1</code>, retiring redundant server bridges. Subagents were flattened into direct root tools with progressive streaming.
+          </p>
+          <div class="meta-badges">
+            <span class="meta-badge highlight">useEveAgent SSE Client</span>
+            <span class="meta-badge success">Zero-Cost Paused Session</span>
+            <span class="meta-badge success">Progressive Streaming (action.partial)</span>
+            <span class="meta-badge">Direct Root Tools</span>
+          </div>
+        </div>
+        <div class="metrics-card">
+          <div class="metric-row">
+            <span class="metric-name">Turn 1 Duration</span>
+            <span class="metric-value cyan">69.8s (down from 109.7s)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">First Score in UI</span>
+            <span class="metric-value green">6.8s (via action.partial)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Root LLM Steps</span>
+            <span class="metric-value amber">~8 steps (Claude Sonnet 5)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Root LLM Cost</span>
+            <span class="metric-value amber">~$0.10 / cycle</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Diagram Stage 3 -->
+      <div class="diagram-container">
+        <h3 class="section-title">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          Data Flow & Architectural Topology
+        </h3>
+        <svg class="diagram-svg" viewBox="0 0 920 280">
+          <rect x="20" y="60" width="180" height="160" rx="10" fill="#181b26" stroke="#38bdf8" stroke-width="1.5"/>
+          <text x="110" y="90" fill="#f1f5f9" font-size="14" font-weight="700" text-anchor="middle">Browser Client</text>
+          <text x="110" y="110" fill="#38bdf8" font-size="12" font-family="monospace" text-anchor="middle">useEveAgent()</text>
+          <rect x="35" y="130" width="150" height="30" rx="4" fill="#112233"/>
+          <text x="110" y="150" fill="#7dd3fc" font-size="10" text-anchor="middle">action.partial streaming</text>
+          <rect x="35" y="170" width="150" height="30" rx="4" fill="#18182b"/>
+          <text x="110" y="190" fill="#c084fc" font-size="10" text-anchor="middle">localStorage session ID</text>
+
+          <line x1="200" y1="140" x2="270" y2="140" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)"/>
+          <text x="235" y="130" fill="#38bdf8" font-size="10" text-anchor="middle">/eve/v1 SSE</text>
+
+          <rect x="270" y="40" width="310" height="200" rx="10" fill="#181b26" stroke="#6366f1" stroke-width="1.5"/>
+          <text x="425" y="70" fill="#f1f5f9" font-size="14" font-weight="700" text-anchor="middle">Eve Agent Runtime (Root Agent)</text>
+          <text x="425" y="90" fill="#818cf8" font-size="11" text-anchor="middle">Claude Sonnet 5 • Multi-Turn Orchestration (~8 steps)</text>
+
+          <rect x="290" y="110" width="130" height="50" rx="6" fill="#162335" stroke="#38bdf8"/>
+          <text x="355" y="132" fill="#7dd3fc" font-size="11" font-weight="600" text-anchor="middle">run_jev_scoring</text>
+          <text x="355" y="148" fill="#94a3b8" font-size="9" text-anchor="middle">Yields Jev Partial</text>
+
+          <rect x="435" y="110" width="130" height="50" rx="6" fill="#241b35" stroke="#a855f7"/>
+          <text x="500" y="132" fill="#d8b4fe" font-size="11" font-weight="600" text-anchor="middle">run_system2_analysis</text>
+          <text x="500" y="148" fill="#94a3b8" font-size="9" text-anchor="middle">Streams Drafts</text>
+
+          <rect x="290" y="175" width="275" height="45" rx="6" fill="#141c2c" stroke="#6366f1" stroke-dasharray="3 3"/>
+          <text x="425" y="195" fill="#a5b4fc" font-size="11" font-weight="600" text-anchor="middle">Zero-Cost Paused State</text>
+          <text x="425" y="210" fill="#64748b" font-size="9" text-anchor="middle">Session waiting for Turn 2 SA feedback</text>
+
+          <line x1="580" y1="120" x2="640" y2="90" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+          <rect x="640" y="45" width="120" height="90" rx="8" fill="#181b26" stroke="#333a4d"/>
+          <text x="700" y="75" fill="#f1f5f9" font-size="12" font-weight="700" text-anchor="middle">AI Gateway</text>
+          <text x="700" y="95" fill="#38bdf8" font-size="10" text-anchor="middle">typesafe-ai/jev</text>
+          <text x="700" y="115" fill="#a855f7" font-size="10" text-anchor="middle">Sonnet / Flash</text>
+
+          <line x1="580" y1="160" x2="640" y2="190" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
+          <rect x="640" y="150" width="120" height="90" rx="8" fill="#181b26" stroke="#10b981"/>
+          <text x="700" y="180" fill="#f1f5f9" font-size="12" font-weight="700" text-anchor="middle">Neon Postgres</text>
+          <text x="700" y="200" fill="#6ee7b7" font-size="10" font-family="monospace" text-anchor="middle">assessmentSessionId</text>
+          <text x="700" y="218" fill="#94a3b8" font-size="9" text-anchor="middle">Turn audit indexes</text>
+        </svg>
+      </div>
+
+      <!-- 3-Column Info -->
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>What Changed & Architectural Setup</h3>
+          <ul>
+            <li>Retired Next.js <code>/api/qualification/*</code> bridges and server Eve client.</li>
+            <li>UI connected straight to same-origin <code>/eve/v1</code> via <code>useEveAgent</code>.</li>
+            <li>Subagents flattened to direct root tools, dropping turn time from 110s to 70s.</li>
+            <li>Async generator tools streamed Jev partials to the UI before DB writes.</li>
+          </ul>
+        </div>
+        <div class="info-card benefits">
+          <h3>Benefits & Limitations</h3>
+          <ul>
+            <li><strong>Benefit:</strong> Zero-cost durable pause; SA can answer hours or days later.</li>
+            <li><strong>Benefit:</strong> First scores appeared in 6.8s instead of waiting ~110s.</li>
+            <li><strong>Benefit:</strong> Clean network topology; removed Vercel auth bypass headers.</li>
+            <li><strong>Drawback:</strong> Root model spent ~8 steps orchestrating; cost ~$0.10 on Sonnet 5.</li>
+          </ul>
+        </div>
+        <div class="info-card persistence">
+          <h3>State Persistence Deep Dive</h3>
+          <ul>
+            <li>Dual-state: Eve tracked session conversational stream; Postgres stored CRM data.</li>
+            <li>Indexed <code>deal_interactions</code> with <code>assessmentSessionId</code> and <code>turnId</code>.</li>
+            <li>Browser stored session ID in <code>localStorage</code> to resume across page reloads.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Commits Section -->
+      <div class="commits-section">
+        <h3 class="section-title">Key Commits to Reference</h3>
+        <table class="commit-table">
+          <thead>
+            <tr><th>Commit</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="commit-hash">8fc9859</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(eve): move every agent into eve and route through eve sessions (issue 08)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">9b7e932</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(eve): Assessment Session as one durable two-turn eve session (issue 09)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">493cf4c</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(ui): run the Assessment Session through useEveAgent (issue 14)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">3651bbd</span></td><td>refactor</td>
+              <td><span class="commit-msg">refactor(eve): retire the /api/qualification bridges and server-side eve client (issue 16)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">c33d861</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(eve): root calls Jev and System 2 directly, streams results before DB writes (issue 18)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">0748ee3</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(eve): Gemini 3.8 Flash System 2 default, Haiku root (issue 18)</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- STAGE 4 PANEL -->
+    <section class="tab-panel" id="panel-stage4" role="tabpanel" aria-labelledby="tab-stage4">
+      <div class="stage-hero">
+        <div>
+          <h2 class="stage-headline">Stage 4: Unified Eve Workflow Tool & Code Verdict (PR #2)</h2>
+          <p class="stage-desc">
+            PR #2 consolidated the multi-turn LLM reasoning into a single, deterministic <code>defineWorkflowTool</code> named <code>run_assessment</code>. Step sequence is guaranteed in code (Jev ➔ System 2 ➔ <code>ctx.ask</code> pause ➔ SA feedback ➔ rescore ➔ writeback). Pass/fail is determined deterministically in code via <code>AssessmentResult</code>. Root LLM role is reduced to a single call, enabling <strong>Gemini 3.8 Flash</strong> and slashing costs by 97%.
+          </p>
+          <div class="meta-badges">
+            <span class="meta-badge success">defineWorkflowTool("run_assessment")</span>
+            <span class="meta-badge highlight">Gemini 3.8 Flash Root Default</span>
+            <span class="meta-badge success">ctx.ask Native Pause</span>
+            <span class="meta-badge success">97% Root Cost Reduction</span>
+            <span class="meta-badge">Code-Decided Verdict</span>
+          </div>
+        </div>
+        <div class="metrics-card">
+          <div class="metric-row">
+            <span class="metric-name">Root Cost per Session</span>
+            <span class="metric-value green">$0.0025 (97% Reduction)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Total Cycle Cost</span>
+            <span class="metric-value green">~$0.017 (down from ~$0.10)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Turn 1 Reaches Pause</span>
+            <span class="metric-value cyan">36.3s (down from 69.8s & 109.7s)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Root LLM Steps</span>
+            <span class="metric-value green">2 steps (down from ~8 steps)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Diagram Stage 4 -->
+      <div class="diagram-container">
+        <h3 class="section-title">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          Data Flow & Architectural Topology
+        </h3>
+        <svg class="diagram-svg" viewBox="0 0 920 280">
+          <rect x="20" y="60" width="160" height="170" rx="10" fill="#181b26" stroke="#38bdf8" stroke-width="1.5"/>
+          <text x="100" y="90" fill="#f1f5f9" font-size="14" font-weight="700" text-anchor="middle">Browser UI</text>
+          <text x="100" y="110" fill="#38bdf8" font-size="11" font-family="monospace" text-anchor="middle">useEveAgent()</text>
+
+          <rect x="35" y="130" width="130" height="35" rx="4" fill="#112233"/>
+          <text x="100" y="152" fill="#7dd3fc" font-size="10" text-anchor="middle">Yield Projections</text>
+
+          <rect x="35" y="175" width="130" height="35" rx="4" fill="#20152e"/>
+          <text x="100" y="197" fill="#d8b4fe" font-size="10" text-anchor="middle">agent.respond()</text>
+
+          <line x1="180" y1="145" x2="240" y2="145" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="240" y="50" width="180" height="190" rx="10" fill="#181b26" stroke="#10b981" stroke-width="1.5"/>
+          <text x="330" y="80" fill="#f1f5f9" font-size="13" font-weight="700" text-anchor="middle">Root Eve Agent</text>
+          <text x="330" y="100" fill="#6ee7b7" font-size="11" text-anchor="middle">Gemini 3.8 Flash</text>
+
+          <rect x="255" y="125" width="150" height="95" rx="6" fill="#0f291e" stroke="#10b981"/>
+          <text x="330" y="150" fill="#a7f3d0" font-size="11" font-weight="600" text-anchor="middle">Single Responsibility:</text>
+          <text x="330" y="170" fill="#ffffff" font-size="10" text-anchor="middle">1. Call run_assessment</text>
+          <text x="330" y="190" fill="#ffffff" font-size="10" text-anchor="middle">2. Reply in 1 line</text>
+          <text x="330" y="208" fill="#6ee7b7" font-size="9" text-anchor="middle">(No schema generation)</text>
+
+          <line x1="420" y1="145" x2="470" y2="145" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="470" y="30" width="280" height="230" rx="10" fill="#181b26" stroke="#6366f1" stroke-width="1.5"/>
+          <text x="610" y="55" fill="#f1f5f9" font-size="13" font-weight="700" text-anchor="middle">run_assessment Workflow Tool</text>
+          <text x="610" y="72" fill="#a5b4fc" font-size="10" text-anchor="middle">defineWorkflowTool • Deterministic Code Sequencing</text>
+
+          <rect x="485" y="85" width="115" height="36" rx="4" fill="#1b2836" stroke="#38bdf8"/>
+          <text x="542" y="107" fill="#7dd3fc" font-size="10" text-anchor="middle">1. scoreWithJev</text>
+
+          <rect x="620" y="85" width="115" height="36" rx="4" fill="#241b35" stroke="#a855f7"/>
+          <text x="677" y="107" fill="#d8b4fe" font-size="10" text-anchor="middle">2. analyzeSystem2</text>
+
+          <rect x="485" y="130" width="250" height="38" rx="6" fill="#2a1e12" stroke="#f59e0b"/>
+          <text x="610" y="148" fill="#fcd34d" font-size="11" font-weight="700" text-anchor="middle">3. ctx.ask() Durable Pause</text>
+          <text x="610" y="162" fill="#fef3c7" font-size="9" text-anchor="middle">Zero-compute park waiting for SA form answers</text>
+
+          <rect x="485" y="178" width="115" height="36" rx="4" fill="#1b2836"/>
+          <text x="542" y="200" fill="#94a3b8" font-size="10" text-anchor="middle">4. recordFeedback</text>
+
+          <rect x="620" y="178" width="115" height="36" rx="4" fill="#0f291e" stroke="#10b981"/>
+          <text x="677" y="200" fill="#6ee7b7" font-size="10" text-anchor="middle">5. writeBack</text>
+
+          <text x="610" y="245" fill="#10b981" font-size="10" font-weight="600" text-anchor="middle">Code Decides Pass/Fail (AssessmentResult)</text>
+
+          <line x1="750" y1="145" x2="790" y2="145" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
+          <rect x="790" y="60" width="110" height="170" rx="10" fill="#181b26" stroke="#10b981" stroke-width="1.5"/>
+          <text x="845" y="90" fill="#f1f5f9" font-size="12" font-weight="700" text-anchor="middle">Neon Postgres</text>
+          <text x="845" y="110" fill="#6ee7b7" font-size="10" text-anchor="middle">CRM Authority</text>
+          
+          <rect x="800" y="125" width="90" height="26" rx="4" fill="#12231b"/>
+          <text x="845" y="142" fill="#a7f3d0" font-size="9" text-anchor="middle">Opportunity</text>
+
+          <rect x="800" y="160" width="90" height="26" rx="4" fill="#12231b"/>
+          <text x="845" y="177" fill="#a7f3d0" font-size="9" text-anchor="middle">sa_notes</text>
+
+          <rect x="800" y="195" width="90" height="26" rx="4" fill="#12231b"/>
+          <text x="845" y="212" fill="#a7f3d0" font-size="9" text-anchor="middle">Audit Rows</text>
+        </svg>
+      </div>
+
+      <!-- 3-Column Info -->
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>What Changed & Architectural Setup</h3>
+          <ul>
+            <li>Replaced multi-step LLM reasoning with a single <code>defineWorkflowTool</code>.</li>
+            <li>Steps sequenced deterministically in code via <code>"use step"</code> functions.</li>
+            <li>Parked human-in-the-loop state using native <code>ctx.ask</code>.</li>
+            <li>Completely removed fragile LLM turn schema outputs (<code>TurnOutcomeSchema</code>).</li>
+          </ul>
+        </div>
+        <div class="info-card benefits">
+          <h3>Benefits & Key Metrics</h3>
+          <ul>
+            <li><strong>97% Root Cost Reduction:</strong> Dropped from $0.10 to <strong>$0.0025</strong> per Acme run.</li>
+            <li><strong>Zero Step Hallucination:</strong> Models cannot misorder, loop, or skip steps.</li>
+            <li><strong>Fast Cycle Times:</strong> Turn 1 reaches pause in 36.3s; feedback turn takes 3.9s.</li>
+            <li><strong>Flawless Eval Pass:</strong> 28/28 Acme, 15/15 Globex, 15/15 Soylent live checks.</li>
+          </ul>
+        </div>
+        <div class="info-card persistence">
+          <h3>Dual-Layer State Model</h3>
+          <ul>
+            <li><strong>Eve Workflow Engine:</strong> Caches step execution results & pauses on <code>ctx.ask</code>.</li>
+            <li><strong>Postgres (Neon):</strong> Authoritative CRM store for Opportunity, SA notes, & audit rows.</li>
+            <li>Atomic SQL transactions with advisory locks prevent race conditions on feedback.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Commits Section -->
+      <div class="commits-section">
+        <h3 class="section-title">Key Commits to Reference</h3>
+        <table class="commit-table">
+          <thead>
+            <tr><th>Commit</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="commit-hash">c17d500</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(eve): run_assessment workflow tool sequences the Assessment Session (issue 19)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">0a34abd</span></td><td>fix</td>
+              <td><span class="commit-msg">fix(eve): keep pause open across parked turn.completed; settle on recorded feedback</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">91b54a8</span></td><td>refactor</td>
+              <td><span class="commit-msg">refactor(eve): one progress schema; root default moves to Gemini 3.8 Flash (issue 19)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">893efd7</span></td><td>feat</td>
+              <td><span class="commit-msg">feat(eve): code decides pass or fail from run_assessment action (issue 20)</span></td>
+            </tr>
+            <tr>
+              <td><span class="commit-hash">5b91215</span></td><td>merge</td>
+              <td><span class="commit-msg">Merge pull request #2 from BrandonCW/claude/eve-workflow-assessment</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Cross-Stage Comparison Section -->
+    <section class="comparison-strip">
+      <h3 class="section-title">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+        Architectural Progression at a Glance
+      </h3>
+      <div class="comparison-grid">
+        <div class="comp-col">
+          <div class="comp-stage-name">1. Mocked Foundation</div>
+          <div class="comp-metric">Orchestration: <span>Next.js API</span></div>
+          <div class="comp-metric">System 1: <span>Regex Heuristic</span></div>
+          <div class="comp-metric">System 2: <span>550-line Mock</span></div>
+          <div class="comp-metric">Turn 1 Time: <span>~1.0s (Fake)</span></div>
+          <div class="comp-metric">Root Cost: <span>$0.00</span></div>
+          <div class="comp-metric">Fidelity: <span>0%</span></div>
+        </div>
+        <div class="comp-col">
+          <div class="comp-stage-name">2. Direct API Calls</div>
+          <div class="comp-metric">Orchestration: <span>Next.js API</span></div>
+          <div class="comp-metric">System 1: <span>typesafe-ai/jev</span></div>
+          <div class="comp-metric">System 2: <span>Live AI Gateway</span></div>
+          <div class="comp-metric">Turn 1 Time: <span>~85s – 100s</span></div>
+          <div class="comp-metric">Root Cost: <span>~$0.05 – $0.08</span></div>
+          <div class="comp-metric">Fidelity: <span>100% (Fail-Loud)</span></div>
+        </div>
+        <div class="comp-col">
+          <div class="comp-stage-name">3. Eve Agent UI</div>
+          <div class="comp-metric">Orchestration: <span>Root LLM (~8 steps)</span></div>
+          <div class="comp-metric">System 1: <span>Jev Root Tool</span></div>
+          <div class="comp-metric">System 2: <span>Streamed Root Tool</span></div>
+          <div class="comp-metric">Turn 1 Time: <span>69.8s (First: 6.8s)</span></div>
+          <div class="comp-metric">Root Cost: <span>~$0.10 (Sonnet 5)</span></div>
+          <div class="comp-metric">Fidelity: <span>100% (2-turn Session)</span></div>
+        </div>
+        <div class="comp-col highlighted">
+          <div class="comp-stage-name" style="color: var(--accent-blue);">4. Eve Workflow (PR #2)</div>
+          <div class="comp-metric">Orchestration: <span>defineWorkflowTool</span></div>
+          <div class="comp-metric">System 1: <span>scoreWithJev step</span></div>
+          <div class="comp-metric">System 2: <span>analyzeSystem2 step</span></div>
+          <div class="comp-metric">Turn 1 Time: <span>36.3s (Feedback: 3.9s)</span></div>
+          <div class="comp-metric">Root Cost: <span style="color: var(--accent-emerald); font-weight: 700;">$0.0025 (-97%)</span></div>
+          <div class="comp-metric">Fidelity: <span>100% (Code Verdict)</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- =========================================================================
+       VIEW 2: VERCEL & NEXT.JS PRIMITIVES VIEW
+       ========================================================================= -->
+  <div id="view-primitives" class="view-content">
+    
+    <!-- Architectural Clarification Banner -->
+    <div class="clarification-banner">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <div>
+        <div class="clarification-title">Runtime & Generative UI Architecture Notes</div>
+        <div class="clarification-text">
+          <strong>Framework Version:</strong> Active production deployment runs <code>Next.js 15.5.26</code> with <code>React 19.3.0</code>.<br>
+          <strong>Generative UI:</strong> The application does <em>not</em> currently use an official <code>@vercel/json-render</code> npm package. Instead, it utilizes an in-house custom schema-driven dynamic component (<code>DynamicFormRenderer.tsx</code>) that follows the Vercel JSON Render pattern. Upgrading this to native Vercel JSON Render remains a clean, high-priority drop-in enhancement.
+        </div>
+      </div>
+    </div>
+
+    <!-- Category Filter Chips -->
+    <div class="filter-bar">
+      <button class="filter-chip active" onclick="filterPrimitives('all')">All Primitives (10)</button>
+      <button class="filter-chip" onclick="filterPrimitives('nextjs')">Next.js 15</button>
+      <button class="filter-chip" onclick="filterPrimitives('gateway')">AI SDK & Gateway</button>
+      <button class="filter-chip" onclick="filterPrimitives('workflows')">Workflows & Eve</button>
+      <button class="filter-chip" onclick="filterPrimitives('storage')">Storage & Security</button>
+      <button class="filter-chip" onclick="filterPrimitives('genui')">Generative UI</button>
+    </div>
+
+    <!-- Primitives Grid -->
+    <div class="primitives-grid">
+
+      <!-- 1. Next.js 15 App Router -->
+      <div class="primitive-card" data-category="nextjs">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">App Router & Server/Client Boundary</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">Next.js 15.5.26 • React 19.3.0</div>
+          </div>
+          <span class="prim-category nextjs">Next.js 15</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">app/layout.tsx</span>
+            <span class="code-chip">app/page.tsx</span>
+            <span class="code-chip">"use client" WorkbenchShell</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Hosts the two-column Split Workbench. The root layout and page provide server-rendered application scaffolding, while discrete interactive components (ContextColumn, ActionStage) mount as client components for real-time state manipulation.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>Instant initial server-side render (SSR) for the application frame.</li>
+            <li>Zero JavaScript bundle overhead for layout chrome and static labels.</li>
+            <li>Granular client-side interactivity where real-time SSE streaming is required.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 2. Next.js Edge Middleware -->
+      <div class="primitive-card" data-category="nextjs storage">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">Edge / Request Middleware</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">Edge Network Boundary</div>
+          </div>
+          <span class="prim-category nextjs">Next.js 15</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">middleware.ts</span>
+            <span class="code-chip">verifySessionToken()</span>
+            <span class="code-chip">matcher wildcard</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Acts as the perimeter security gatekeeper. It intercepts every request, validates the HMAC-SHA256 <code>deal_qual_session</code> cookie, returns <code>401 JSON</code> for unauthorized <code>/api/*</code> and <code>/eve/*</code> calls, and redirects human visitors to <code>/login</code>.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>Blocks unauthenticated traffic at the edge before spinning up serverless compute.</li>
+            <li>Shields costly AI Gateway and Jev endpoints from unauthenticated token burn.</li>
+            <li>Clean dual-behavior: JSON errors for agents, interactive redirects for users.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 3. Next.js NextConfig Plugin -->
+      <div class="primitive-card" data-category="nextjs workflows">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">NextConfig Plugin (`withEve`)</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">Compiler Integration</div>
+          </div>
+          <span class="prim-category workflows">Workflows / Eve</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">next.config.ts</span>
+            <span class="code-chip">import { withEve } from "eve/next"</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Embeds the Eve Agent execution engine, workflow listeners, and same-origin <code>/eve/v1/*</code> endpoints directly into Next.js compilation during both development and production builds.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>Single deployment artifact—no secondary agent microservice to host or manage.</li>
+            <li>Eliminates cross-origin CORS latency because the client connects to same-origin.</li>
+            <li>Enables shared configuration and TypeScript types between agent and UI.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 4. Next.js Deterministic Route Handlers -->
+      <div class="primitive-card" data-category="nextjs storage">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">Deterministic Route Handlers</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">app/api/crm/*</div>
+          </div>
+          <span class="prim-category nextjs">Next.js 15</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">app/api/crm/reset/route.ts</span>
+            <span class="code-chip">app/api/crm/opportunity/route.ts</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Executes model-free CRUD operations: resetting demo scenarios in PostgreSQL and fetching raw opportunity data when switching scenarios in the top navigation.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>Separates deterministic database operations from non-deterministic agent runs.</li>
+            <li>The demo "Reset" button always succeeds instantly with zero LLM billing.</li>
+            <li>Fast serverless execution (~15ms) for data fetching.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 5. Vercel AI SDK Core -->
+      <div class="primitive-card" data-category="gateway">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">Vercel AI SDK Primitives</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">ai: ^7.0.112</div>
+          </div>
+          <span class="prim-category gateway">AI Gateway</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">gateway()</span>
+            <span class="code-chip">Output.object()</span>
+            <span class="code-chip">generateText()</span>
+            <span class="code-chip">streamText()</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Executes System 2 deep reasoning. The <code>gateway(model)</code> helper routes to the selected provider, while <code>Output.object</code> enforces strict Zod schema compliance for generated discovery questions and competitive playbooks.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>Provider-agnostic interface across Google, Anthropic, and OpenAI.</li>
+            <li>Guarantees schema-valid structured JSON without manual parsing or repair code.</li>
+            <li>Native integration with standard AbortSignals and execution timeouts.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 6. Vercel AI Gateway Evaluation API -->
+      <div class="primitive-card" data-category="gateway">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">AI Gateway Evaluation Modality</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">typesafe-ai/jev</div>
+          </div>
+          <span class="prim-category gateway">AI Gateway</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">evaluate() from eve/ai</span>
+            <span class="code-chip">DEFAULT_JEV_MODEL</span>
+            <span class="code-chip">8 MEDDPICC questions</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Powers System 1 fast qualification. Queries TypeSafe AI's dedicated evaluation model over the Gateway's Evaluation API, evaluating AE/SA notes against 8 rubric dimensions and 5 competitor classification questions.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>Dedicated evaluation model eliminates conversational prompt drift and hallucination.</li>
+            <li>Blazing speed: scores all 8 dimensions in ~0.6s – 1.5s.</li>
+            <li>Returns mathematical probabilities and granular confidence metrics.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 7. Vercel Workflows (via Eve Engine) -->
+      <div class="primitive-card" data-category="workflows">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">Durable Workflows & Step Memoization</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">defineWorkflowTool</div>
+          </div>
+          <span class="prim-category workflows">Workflows / Eve</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">"use workflow"</span>
+            <span class="code-chip">"use step" (assessment-steps.ts)</span>
+            <span class="code-chip">ctx.ask()</span>
+            <span class="code-chip">maxRetries = 0</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Sequences the entire <code>run_assessment</code> execution DAG in deterministic code (Jev ➔ System 2 ➔ Pause ➔ SA feedback ➔ rescore ➔ writeback). Parks execution durably during discovery at zero compute cost.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>Step memoization: Replaying the workflow never repeats billed API calls or DB writes.</li>
+            <li>Durable zero-cost pause: Session idles for days awaiting human input without burning serverless compute.</li>
+            <li>Slashed root model cost by 97% ($0.10 ➔ $0.0025) by eliminating multi-turn LLM reasoning.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 8. useEveAgent Client Hook -->
+      <div class="primitive-card" data-category="workflows nextjs">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">Client-Side Streaming (`useEveAgent`)</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">SSE Real-Time Stream</div>
+          </div>
+          <span class="prim-category workflows">Workflows / Eve</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">useEveAgent()</span>
+            <span class="code-chip">agent.respond()</span>
+            <span class="code-chip">action.partial</span>
+            <span class="code-chip">assessmentReducer</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Connects the React workbench directly to <code>/eve/v1</code> via Server-Sent Events. Progressively renders yielded Jev scores and System 2 status, and transmits SA discovery responses to resume parked workflows.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>First Jev score appears in the UI in 5.4s before database writes settle.</li>
+            <li>Eliminates polling infrastructure, custom WebSocket gateways, and intermediate state APIs.</li>
+            <li>Enables session resumption across browser reloads via <code>localStorage</code> mapping.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 9. Serverless PostgreSQL (Neon) -->
+      <div class="primitive-card" data-category="storage">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">Serverless PostgreSQL (Neon)</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">@neondatabase/serverless</div>
+          </div>
+          <span class="prim-category storage">Storage & Security</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">db/schema.sql</span>
+            <span class="code-chip">pg_advisory_xact_lock</span>
+            <span class="code-chip">assessmentSessionId index</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Serves as the authoritative CRM persistence layer. Stores Opportunity records, AE/SA discovery notes, pre-seeded scenarios, and the immutable <code>deal_interactions</code> audit log.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>True serverless scale-to-zero with sub-10ms pooled connection latency.</li>
+            <li>Database branching: isolated <code>test</code> branch for CI evals without corrupting demo state.</li>
+            <li>Advisory transaction locks guarantee SA notes are appended exactly once.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 10. Dynamic Form Generator (JSON Render Pattern) -->
+      <div class="primitive-card" data-category="genui">
+        <div class="prim-header">
+          <div>
+            <div class="prim-title">Generative UI (JSON Render Pattern)</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">Custom React Component</div>
+          </div>
+          <span class="prim-category genui">Generative UI</span>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Which parts are used</div>
+          <div class="prim-chips">
+            <span class="code-chip">DynamicFormRenderer.tsx</span>
+            <span class="code-chip">json-render-schema.ts</span>
+            <span class="code-chip">JsonRenderFormSchema</span>
+          </div>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">What it is used for</div>
+          <p class="prim-prose">
+            Converts System 2's structured output into interactive form controls (radios, textareas, selects, callout banners) so Solutions Architects can validate technical blockers and competitors.
+          </p>
+        </div>
+        <div class="prim-section">
+          <div class="prim-section-label">Benefits of using it</div>
+          <ul class="prim-benefits-list">
+            <li>Structured data capture: Solutions Architects answer targeted UI inputs rather than unformatted text.</li>
+            <li>Client-side form validation before submitting responses to the agent.</li>
+            <li><strong>Implementation Status:</strong> Built as a custom React component following the JSON Render pattern, ready for seamless migration to native <code>@vercel/json-render</code>.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // Stage tab selection
+  function selectTab(stageId) {
+    const tabs = document.querySelectorAll('.tab-button');
+    const panels = document.querySelectorAll('.tab-panel');
+
+    tabs.forEach(tab => {
+      const isCurrent = tab.id === `tab-${stageId}`;
+      tab.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+    });
+
+    panels.forEach(panel => {
+      const isCurrent = panel.id === `panel-${stageId}`;
+      panel.classList.toggle('active', isCurrent);
+    });
+  }
+
+  // Master view switching (Stages vs Primitives)
+  function switchView(viewName) {
+    const btnStages = document.getElementById('btn-view-stages');
+    const btnPrimitives = document.getElementById('btn-view-primitives');
+    const viewStages = document.getElementById('view-stages');
+    const viewPrimitives = document.getElementById('view-primitives');
+
+    if (viewName === 'stages') {
+      btnStages.classList.add('active');
+      btnStages.setAttribute('aria-selected', 'true');
+      btnPrimitives.classList.remove('active');
+      btnPrimitives.setAttribute('aria-selected', 'false');
+
+      viewStages.classList.add('active');
+      viewPrimitives.classList.remove('active');
+    } else {
+      btnPrimitives.classList.add('active');
+      btnPrimitives.setAttribute('aria-selected', 'true');
+      btnStages.classList.remove('active');
+      btnStages.setAttribute('aria-selected', 'false');
+
+      viewPrimitives.classList.add('active');
+      viewStages.classList.remove('active');
+    }
+  }
+
+  // Filter primitives by category
+  function filterPrimitives(category) {
+    const chips = document.querySelectorAll('.filter-chip');
+    chips.forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const cards = document.querySelectorAll('.primitive-card');
+    cards.forEach(card => {
+      const categories = card.getAttribute('data-category');
+      if (category === 'all' || categories.includes(category)) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  // Keyboard navigation for accessible tabs
+  const tablist = document.querySelector('.tabs-nav');
+  if (tablist) {
+    tablist.addEventListener('keydown', (e) => {
+      const tabs = Array.from(document.querySelectorAll('.tab-button'));
+      const currentIndex = tabs.findIndex(t => t.getAttribute('aria-selected') === 'true');
+      let nextIndex = null;
+
+      if (e.key === 'ArrowRight') {
+        nextIndex = (currentIndex + 1) % tabs.length;
+      } else if (e.key === 'ArrowLeft') {
+        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      } else if (e.key === 'Home') {
+        nextIndex = 0;
+      } else if (e.key === 'End') {
+        nextIndex = tabs.length - 1;
+      }
+
+      if (nextIndex !== null) {
+        e.preventDefault();
+        tabs[nextIndex].click();
+        tabs[nextIndex].focus();
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
