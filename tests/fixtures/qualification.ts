@@ -46,9 +46,7 @@ const emptyFinding = { citations: [], gaps: [] };
 export function system2(overrides: Partial<System2AnalysisResult> = {}): System2AnalysisResult {
   return {
     opportunityId: 'opp_acme_corp_001',
-    modelUsed: 'anthropic/claude-sonnet-5',
-    phase1Gaps: [],
-    phase2Competitive: [],
+    modelUsed: 'google/gemini-3.8-flash',
     phase3Form: {
       opportunityId: 'opp_acme_corp_001',
       title: 'Technical Qualification & Discovery Validation',
@@ -80,7 +78,6 @@ export function system2(overrides: Partial<System2AnalysisResult> = {}): System2
     valueFocus: 'Turborepo Remote Caching & ISR',
     primaryRisk: 'Budget freeze before Q4',
     nextMilestone: 'Run a 2-week POC on Vercel Enterprise.',
-    summary: 'summary',
     ...overrides,
   } as System2AnalysisResult;
 }

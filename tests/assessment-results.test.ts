@@ -10,8 +10,8 @@ import { jev, opportunity, system2 } from './fixtures/qualification';
 
 let seq = 0;
 const ev = (type: string, data: Record<string, unknown>) => ({ type, data: { turnId: 'turn_0', sequence: 0, ...data }, meta: { id: `evt_${seq++}` } }) as any;
-const ASSESS = assessTurnMessage('opp_acme_corp_001', 'anthropic/claude-sonnet-5');
-const INPUT = { opportunityId: 'opp_acme_corp_001', model: 'anthropic/claude-sonnet-5' };
+const ASSESS = assessTurnMessage('opp_acme_corp_001', 'google/gemini-3.8-flash');
+const INPUT = { opportunityId: 'opp_acme_corp_001', model: 'google/gemini-3.8-flash' };
 const submitted = (message = ASSESS) => ({ type: 'client.message.submitted', data: { createdAt: 0, message, submissionId: 's1' } }) as any;
 const requested = (toolName: string, input: Record<string, unknown> = {}) =>
   ev('actions.requested', { actions: [{ callId: `c_${toolName}`, kind: 'tool-call', toolName, input }], stepIndex: 0 });
@@ -133,7 +133,7 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
     });
     expect(closed.opportunity?.qualification_status).toBe('qualified');
     expect(closed.jevResult?.overallScore).toBe(89);
-    expect(closed.system2Result?.modelUsed).toBe('anthropic/claude-sonnet-5');
+    expect(closed.system2Result?.modelUsed).toBe('google/gemini-3.8-flash');
   });
 
   it('closes without a pause when the writeback without SA feedback was requested', () => {
@@ -145,7 +145,7 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
       ok('run_assessment', verdict({ qualificationStatus: 'in_review', feedback: 'skipped', delta: 0 })),
       turnCompleted(),
     ]);
-    expect(view).toMatchObject({ phase: 'closed', request: { model: 'anthropic/claude-sonnet-5', writebackWithoutFeedback: true } });
+    expect(view).toMatchObject({ phase: 'closed', request: { model: 'google/gemini-3.8-flash', writebackWithoutFeedback: true } });
   });
 
   it('a reload after the SA answered replays to submitting, not back to an open form', () => {
@@ -179,8 +179,8 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
   });
 
   it('reads the requested model and writeback flag from the run_assessment input, not the message text', () => {
-    const view = run([submitted('please assess acme'), requested('run_assessment', { opportunityId: 'x', model: 'openai/gpt-5.5' })]);
-    expect(view.request).toEqual({ model: 'openai/gpt-5.5', writebackWithoutFeedback: false });
+    const view = run([submitted('please assess acme'), requested('run_assessment', { opportunityId: 'x', model: 'anthropic/claude-haiku-5.5' })]);
+    expect(view.request).toEqual({ model: 'anthropic/claude-haiku-5.5', writebackWithoutFeedback: false });
   });
 
   it('fails when run_assessment was called without a System 2 model', () => {
@@ -214,9 +214,9 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
   });
 
   it('fails when System 2 ran with a model other than the one the turn asked for', () => {
-    const view = run([submitted(), ev('turn.started', {}), requested('run_assessment', { ...INPUT, model: 'openai/gpt-5.5' }), ...toPause.slice(3, 6)]);
+    const view = run([submitted(), ev('turn.started', {}), requested('run_assessment', { ...INPUT, model: 'anthropic/claude-haiku-5.5' }), ...toPause.slice(3, 6)]);
     expect(view.phase).toBe('failed');
-    expect(view.error).toMatch(/System 2 ran with anthropic\/claude-sonnet-5, not the requested model openai\/gpt-5.5/);
+    expect(view.error).toMatch(/System 2 ran with google\/gemini-3.8-flash, not the requested model anthropic\/claude-haiku-5.5/);
   });
 
   it('fails on turn.failed, session.failed and a failed submission', () => {

@@ -5,8 +5,8 @@ import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 
 describe('Assessment Session turn contract', () => {
   it('asks the root agent for one run_assessment call with the opportunity and model', () => {
-    const message = assessTurnMessage('opp_acme_corp_001', 'anthropic/claude-sonnet-5');
-    expect(message).toMatch(/call run_assessment with opportunityId opp_acme_corp_001 and model anthropic\/claude-sonnet-5/);
+    const message = assessTurnMessage('opp_acme_corp_001', 'anthropic/claude-haiku-5.5');
+    expect(message).toMatch(/call run_assessment with opportunityId opp_acme_corp_001 and model anthropic\/claude-haiku-5.5/);
     expect(message).not.toMatch(/writebackWithoutFeedback/);
   });
 
