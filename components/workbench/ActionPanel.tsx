@@ -16,7 +16,7 @@ interface ActionPanelProps {
 
 const labels: Record<WorkflowState, string> = {
   READY_TO_ASSESS: 'Start assessment',
-  ANALYZING: 'Processing...',
+  ANALYZING: 'Evaluating Opportunity...',
   PENDING_FEEDBACK: 'Awaiting discovery findings',
   EVALUATING: 'Re-scoring...',
   COMPLETED: 'Assessment complete',
@@ -87,8 +87,17 @@ export function ActionPanel({
             disabled={workflow === 'ANALYZING' || workflow === 'EVALUATING' || isBusy}
             className="mt-5 w-full bg-[#f3b547] text-[#14233b] hover:bg-[#f7c66c] font-semibold cursor-pointer disabled:opacity-50"
           >
-            {workflow === 'READY_TO_ASSESS' && <Play className="size-3.5 mr-1 fill-current" />}
-            {labels[workflow]}
+            {isBusy || workflow === 'ANALYZING' ? (
+              <>
+                <span className="inline-block size-3.5 border-2 border-[#14233b]/30 border-t-[#14233b] rounded-full animate-spin mr-1.5" />
+                <span>Evaluating Opportunity...</span>
+              </>
+            ) : (
+              <>
+                {workflow === 'READY_TO_ASSESS' && <Play className="size-3.5 mr-1 fill-current" />}
+                <span>{labels[workflow]}</span>
+              </>
+            )}
           </Button>
         </>
       )}

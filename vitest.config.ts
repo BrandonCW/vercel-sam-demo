@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig({
   test: {
+    include: ["tests/**/*.test.{ts,tsx}"],
     environment: "node",
     globals: true,
     // Live tests share one Postgres test branch; run files serially to avoid row races.

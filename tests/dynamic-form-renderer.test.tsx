@@ -2,7 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { DynamicFormRenderer } from '@/components/workbench/DynamicFormRenderer';
+import { DynamicDiscoveryForm } from '@/components/workbench/DynamicDiscoveryForm';
 import { JsonRenderForm } from '@/lib/ui/json-render-schema';
 
 const mockComprehensiveForm: JsonRenderForm = {
@@ -96,11 +96,11 @@ const mockComprehensiveForm: JsonRenderForm = {
   ],
 };
 
-describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-renderer.test.tsx)', () => {
+describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-renderer.test.tsx)', () => {
   describe('1. Input Generation & Layout Rendering', () => {
     it('renders all sections, callout banners, and schema fields with labels and badges', () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       // Form Header
       expect(screen.getByText('Technical Qualification & Discovery Validation')).toBeTruthy();
@@ -153,7 +153,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
   describe('2. Field Constraints & Validation Enforcement', () => {
     it('blocks submission and surfaces validation errors for all empty required fields', () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       const submitBtn = screen.getByRole('button', { name: /Submit Discovery Findings/i });
       fireEvent.click(submitBtn);
@@ -184,7 +184,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
 
     it('clears error messages dynamically when violating fields receive valid input', () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       // Trigger errors
       const submitBtn = screen.getByRole('button', { name: /Submit Discovery Findings/i });
@@ -215,7 +215,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
   describe('3. Payload Packaging & Submission', () => {
     it('packages all input types into expected dictionary and delivers manual notes delta', async () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       // 1. Select Radio option
       const radioOption = screen.getByText('Confirmed sole authority up to $250k');
@@ -264,7 +264,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
 
     it('submits without notesDelta when manual SA observations are not provided', async () => {
       const handleSubmit = vi.fn();
-      render(<DynamicFormRenderer form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       // Radio
       fireEvent.click(screen.getByText('Confirmed sole authority up to $250k'));
@@ -295,7 +295,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
     it('disables input controls and hides submit button in readOnly mode', () => {
       const handleSubmit = vi.fn();
       render(
-        <DynamicFormRenderer
+        <DynamicDiscoveryForm
           form={mockComprehensiveForm}
           onSubmit={handleSubmit}
           readOnly={true}
@@ -320,7 +320,7 @@ describe('DynamicFormRenderer Component Contract Seam (tests/dynamic-form-render
     it('disables submit button and shows loading spinner when isSubmitting is true', () => {
       const handleSubmit = vi.fn();
       render(
-        <DynamicFormRenderer
+        <DynamicDiscoveryForm
           form={mockComprehensiveForm}
           onSubmit={handleSubmit}
           isSubmitting={true}

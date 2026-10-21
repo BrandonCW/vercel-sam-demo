@@ -49,23 +49,60 @@ function failureLabel(view: AssessmentView): string {
   return view.feedback || view.sentFeedbackKey !== null ? WRITEBACK_FAILED : ASSESS_FAILED;
 }
 
+const DIMENSION_LABELS: Record<string, string> = {
+  identifyPain: 'Identify Pain',
+  champion: 'Champion',
+  economicBuyer: 'Economic Buyer',
+  decisionCriteria: 'Decision Criteria',
+  decisionProcess: 'Decision Process',
+  metrics: 'Metrics',
+  competition: 'Competition',
+  paperProcess: 'Paper Process',
+};
+
 function formatDimensionsForScorecard(
   dimensionsInput?: Record<string, any>,
-  findingsInput?: Record<string, any>
+  findingsInput?: Record<string, any>,
+  fallbackBreakdown?: Record<string, any>
 ) {
-  if (!dimensionsInput) return {};
+  if (!dimensionsInput && !fallbackBreakdown) return {};
+  const source = dimensionsInput || fallbackBreakdown || {};
   const result: Record<string, any> = {};
-  for (const [key, dim] of Object.entries(dimensionsInput)) {
+  for (const [key, dim] of Object.entries(source)) {
+    if (key === 'stageGate') continue;
+    const fb = fallbackBreakdown?.[key];
     const finding = findingsInput ? findingsInput[key] : null;
-    const quotes = finding?.citations || dim.evidence || (dim.quote ? [dim.quote] : []);
-    const gaps = finding?.gaps || dim.gaps || (dim.gap ? [dim.gap] : []);
+    const quotes =
+      finding?.citations?.length
+        ? finding.citations
+        : dim.evidence?.length
+        ? dim.evidence
+        : fb?.evidence?.length
+        ? fb.evidence
+        : dim.quote
+        ? [dim.quote]
+        : fb?.quote
+        ? [fb.quote]
+        : [];
+    const gaps =
+      finding?.gaps?.length
+        ? finding.gaps
+        : dim.gaps?.length
+        ? dim.gaps
+        : fb?.gaps?.length
+        ? fb.gaps
+        : dim.gap
+        ? [dim.gap]
+        : fb?.gap
+        ? [fb.gap]
+        : [];
     result[key] = {
       key,
-      label: dim.label || key,
-      weight: dim.weight ?? 0.1,
-      score: dim.score ?? 0,
-      status: dim.status || 'unaddressed',
-      confidence: dim.confidence ?? 0,
+      label: DIMENSION_LABELS[key] || dim.label || fb?.label || key,
+      weight: dim.weight ?? fb?.weight ?? 0.1,
+      score: dim.score ?? fb?.score ?? 0,
+      status: dim.status || fb?.status || 'unaddressed',
+      confidence: dim.confidence ?? fb?.confidence ?? 0,
       quote: quotes[0],
       quotes,
       gap: gaps[0],
@@ -265,12 +302,11 @@ function LiveAssessmentSession({
   // Live score and dimensions
   const liveScore = currentOpportunity.meddpicc_score ?? (isComplete ? 76 : 0);
 
-  const liveDimensions = view.jevResult
-    ? formatDimensionsForScorecard(
-        view.jevResult.dimensions,
-        view.system2Result?.dimensionFindings
-      )
-    : formatDimensionsForScorecard(currentOpportunity.meddpicc_breakdown);
+  const liveDimensions = formatDimensionsForScorecard(
+    view.jevResult?.dimensions,
+    view.system2Result?.dimensionFindings,
+    currentOpportunity.meddpicc_breakdown
+  );
 
   const liveStageGate = view.jevResult?.stageGate ?? currentOpportunity.stage_gate;
 
@@ -367,24 +403,35 @@ function LiveAssessmentSession({
           isLive={true}
         />
 
+        {view.system2Running && (
+          <div
+            role="status"
+            className="mb-6 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-800"
+          >
+            <span className="inline-block size-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <span className="font-medium text-blue-900">System 2 analysis running…</span>
+            <span className="text-blue-700">Scoring complete; formulating targeted discovery questions.</span>
+          </div>
+        )}
+
         {/* Main 2-Column Split Workbench */}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          {/* Left Column: Deal Context + (Discovery Form OR MEDDPICC Scorecard) */}
+          {/* Left Column: Deal Context + (Discovery Form AND/OR MEDDPICC Scorecard) */}
           <div className="min-w-0 space-y-6">
             <DealContextCard opportunity={currentOpportunity} />
 
-            {workflowState === 'PENDING_FEEDBACK' && dynamicForm ? (
+            {workflowState === 'PENDING_FEEDBACK' && dynamicForm && (
               <DynamicDiscoveryForm
                 dynamicForm={dynamicForm}
                 onSubmit={handleSubmitFeedback}
                 isSubmitting={turnInFlight}
               />
-            ) : (
-              <MeddpiccScorecard
-                score={liveScore}
-                dimensions={liveDimensions}
-              />
             )}
+
+            <MeddpiccScorecard
+              score={liveScore}
+              dimensions={liveDimensions}
+            />
           </div>
 
           {/* Right Column: Stage Gate 2 + Summary + Workflow Controls */}

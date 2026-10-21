@@ -21,7 +21,7 @@ const DIMENSION_ORDER = [
 ];
 
 export function MeddpiccScorecard({ score, dimensions }: MeddpiccScorecardProps) {
-  const [expandedKey, setExpandedKey] = useState<string | null>('economicBuyer');
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   const dimensionList: Array<SimulationDimension & { key: string; weightLabel: string }> = Array.isArray(dimensions)
     ? dimensions.map((d) => ({

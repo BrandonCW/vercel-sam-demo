@@ -21,7 +21,13 @@ export function DealSummaryCard({ score, statusLabel }: DealSummaryCardProps) {
     <section className="rounded-xl border border-[#dfe5ed] bg-white shadow-xs">
       <div className="border-b border-[#e8edf3] px-5 py-5">
         <h3 className="font-semibold text-[#152238]">Assessment summary</h3>
-        <p className="mt-1 text-sm text-[#718097]">Current qualification posture</p>
+        <p className="mt-1 text-sm text-[#718097]">
+          {isQualified
+            ? `Qualification Finalized (${score}/100)`
+            : isInReview
+            ? `System 2 Reasoning Complete (${score}/100)`
+            : 'Current qualification posture'}
+        </p>
       </div>
       <div className="grid grid-cols-2 gap-3 p-5">
         <div className="rounded-lg bg-[#f7f9fb] p-3">

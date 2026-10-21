@@ -25,13 +25,13 @@ vi.mock('eve/react', () => ({
   },
 }));
 
-const { WorkbenchShell } = await import('@/components/workbench/WorkbenchShell');
+const { LiveQualificationWorkbench } = await import('@/components/workbench/LiveQualificationWorkbench');
 
 const base = opportunity({ meddpicc_score: null, qualification_status: 'unqualified' });
 const view = (patch: Partial<AssessmentView>): AssessmentView => ({ ...assessmentReducer.initial(), ...patch });
-const renderShell = () => render(<WorkbenchShell initialOpportunity={base} initialScenarioId="scenario_acme_netlify" />);
+const renderShell = () => render(<LiveQualificationWorkbench initialOpportunity={base} initialScenarioId="scenario_acme_netlify" onModeChange={vi.fn()} />);
 
-describe('WorkbenchShell on useEveAgent', () => {
+describe('LiveQualificationWorkbench on useEveAgent', () => {
   beforeEach(() => {
     hook.state = { data: undefined, status: 'ready', error: undefined, session: undefined };
     hook.send.mockClear();
@@ -53,10 +53,10 @@ describe('WorkbenchShell on useEveAgent', () => {
 
   it('starts the Assessment Session on a fresh session with the selected System 2 model, asking for no structured outcome', async () => {
     renderShell();
-    fireEvent.change(screen.getByLabelText('Select System 2 Model'), { target: { value: 'openai/gpt-5.5' } });
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Start Assessment/ })));
+    fireEvent.change(screen.getByLabelText('Select System 2 Model'), { target: { value: 'anthropic/claude-haiku-5.5' } });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Start Assessment|Start assessment/i })));
     expect(hook.reset).toHaveBeenCalled();
-    expect(hook.send).toHaveBeenCalledWith(assessTurnMessage(base.id, 'openai/gpt-5.5'));
+    expect(hook.send).toHaveBeenCalledWith(assessTurnMessage(base.id, 'anthropic/claude-haiku-5.5'));
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -78,7 +78,7 @@ describe('WorkbenchShell on useEveAgent', () => {
     hook.state.data = view({ phase: 'assessing', runningTool: 'run_assessment', jevResult: jev({ overallScore: 56 }), system2Running: true, opportunity: scored });
     renderShell();
     expect(screen.getByRole('status').textContent).toMatch(/System 2 analysis running/);
-    expect(screen.getByText('56')).toBeTruthy();
+    expect(screen.getAllByText('56').length).toBeGreaterThan(0);
     expect(screen.queryByText('Who signs?')).toBeNull();
     expect(screen.queryByRole('button', { name: /Submit Discovery Findings/ })).toBeNull();
   });
@@ -105,8 +105,8 @@ describe('WorkbenchShell on useEveAgent', () => {
     expect(screen.getAllByText('PENDING_FEEDBACK').length).toBeGreaterThan(0);
     expect(screen.getByText('Who signs?')).toBeTruthy();
     expect(screen.getByText(/System 2 Reasoning Complete \(56\/100\)/)).toBeTruthy();
-    // ContextColumn: System 2 evidence and gaps per dimension, from the persisted System 2 Opportunity.
-    fireEvent.click(screen.getByText('Economic Buyer'));
+    // MeddpiccScorecard: System 2 evidence and gaps per dimension, from the persisted System 2 Opportunity.
+    fireEvent.click(screen.getByRole('button', { name: /Economic Buyer/ }));
     expect(screen.getByText(/VP of E-Commerce mentioned budget/)).toBeTruthy();
     expect(screen.getByText(/No confirmed sign-off authority/)).toBeTruthy();
   });
@@ -146,20 +146,20 @@ describe('WorkbenchShell on useEveAgent', () => {
     renderShell();
     expect(screen.getByRole('alert').textContent).toMatch(/Writeback failed:.*Jev 402 payment required/);
     expect(screen.queryByRole('button', { name: /Submit Discovery Findings/ })).toBeNull();
-    expect(screen.getByRole('button', { name: /Start Assessment|Re-run Assessment/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Start Assessment|Re-run Assessment/i })).toBeTruthy();
   });
 
   it('shows a failed assessment error verbatim and offers to start again', () => {
     hook.state.data = view({ phase: 'failed', error: 'System 2 ran with a, not the requested model b.' });
     renderShell();
     expect(screen.getByText(/System 2 ran with a, not the requested model b\./)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Start Assessment/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Start Assessment/i })).toBeTruthy();
   });
 
   it('shows a send that never reached eve (e.g. 401) as a failure instead of dropping it', async () => {
     hook.send.mockRejectedValueOnce(new Error('HTTP 401 Unauthorized'));
     renderShell();
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Start Assessment/ })));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Start Assessment/i })));
     expect(screen.getByRole('alert').textContent).toMatch(/Assessment failed:.*HTTP 401 Unauthorized/);
   });
 
@@ -216,7 +216,7 @@ describe('WorkbenchShell on useEveAgent', () => {
       renderShell();
       expect(loadSavedSession(base)).toBeUndefined();
       expect(screen.getByRole('alert').textContent).toMatch(/older version of the agent.*Start a new assessment/);
-      expect(screen.getByRole('button', { name: /Start Assessment/ })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Start Assessment/i })).toBeTruthy();
     });
 
     it("forgets the saved session when eve no longer has the paused run's workflow", () => {
