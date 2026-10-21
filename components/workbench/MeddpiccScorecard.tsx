@@ -258,18 +258,14 @@ function ScorecardRow({
       <div className="grid grid-cols-1 md:grid-cols-[150px_160px_1fr_1fr] gap-3 items-start">
         {/* Column 1: Dimension Letter + Label + Weight */}
         <div>
-          <button
-            type="button"
-            aria-label={`Dimension: ${dimension.label}`}
-            className="flex items-baseline gap-1.5 text-left cursor-default focus:outline-none"
-          >
+          <div className="flex items-baseline gap-1.5 text-left">
             <span className="font-mono text-xs font-bold text-[#787C87] uppercase">
               [{dimension.letter}]
             </span>
             <span className="text-xs font-semibold text-[#111215]">
               {dimension.label}
             </span>
-          </button>
+          </div>
           <div className="text-[11px] text-[#787C87] font-mono mt-0.5">
             Weight {dimension.weightLabel}
           </div>
