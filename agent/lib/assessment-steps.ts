@@ -57,10 +57,8 @@ saveJevScoring.maxRetries = 0;
 
 const SYSTEM2_PROMPT = `You are the Vercel Enterprise System 2 Deal Qualification Reasoning Engine.
 System 1 (the Jev evaluation model) has already scored the opportunity; it returns scores only, no text.
-Reason over the opportunity notes and the System 1 result in three phases:
-1. Gap Synthesis (phase1Gaps): one entry per unaddressed or partial MEDDPICC dimension and per Stage Gate blocker. Separate verified facts from AE assumptions.
-2. Competitive Playbook (phase2Competitive): one entry per competitor in System 1's competitiveFlags (Netlify, AWS Amplify, Cloudflare Pages, Akamai/Fastly, DIY Kubernetes / AWS ECS), with counter-positioning from Vercel enterprise differentiators and one trap question.
-3. Discovery Form (phase3Form): 3 to 5 questions in total for the Solutions Architect, grouped into 1 to 3 sections (e.g. Stage Gate Blockers, Competitive Validation, Architecture & Metrics). Stage Gate blockers come first.
+Reason over the opportunity notes and the System 1 result to produce discovery and synthesis:
+1. Discovery Form (phase3Form): 3 to 5 questions in total for the Solutions Architect, grouped into 1 to 3 sections (e.g. Stage Gate Blockers, Competitive Validation, Architecture & Metrics). Stage Gate blockers come first.
 
 Form rules (the form is rendered as-is):
 - Every property in the schema is required. Use null for a description, placeholder, helpCallout, calloutType or calloutText that does not apply; never omit a key.

@@ -41,7 +41,7 @@ export default defineEval({
     t.check(after.qualification_status, satisfies((s: string) => s === "in_review" || s === "qualified", "in review or qualified"));
     t.check(after.suggested_next_steps, includes(NEXT_STEPS_FORMAT)).label("standardized next steps");
     t.judge("The gap analysis, playbook or discovery questions account for the hard Nov 1 Q4 peak freeze deadline.", {
-      on: { phase1Gaps: system2.phase1Gaps, phase2Competitive: system2.phase2Competitive, form: system2.phase3Form, nextMilestone: system2.nextMilestone },
+      on: { form: system2.phase3Form, nextMilestone: system2.nextMilestone },
     }).atLeast(0.6);
   },
 });
