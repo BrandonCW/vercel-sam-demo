@@ -159,7 +159,7 @@ export function MeddpiccScorecard({
               {loadingStatus || 'Synthesizing Discovery Findings & Re-Scoring Deal...'}
             </span>
             {elapsedSeconds !== undefined && (
-              <span className="rounded bg-[#E2E0D8] px-1.5 py-0.5 font-mono text-[10px] text-[#52545D]">
+              <span className="rounded bg-[#E2E0D8] px-1.5 py-0.5 font-mono text-[11px] text-[#52545D]">
                 {elapsedSeconds}s
               </span>
             )}
@@ -204,7 +204,7 @@ export function MeddpiccScorecard({
                 </span>
               ) : null}
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-[#787C87]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87]">
               Composite score
             </p>
           </div>
@@ -270,10 +270,10 @@ function ScorecardRow({
               {dimension.label}
             </span>
           </button>
-          <div className="text-[10px] text-[#787C87] font-mono mt-0.5">
+          <div className="text-[11px] text-[#787C87] font-mono mt-0.5">
             Weight {dimension.weightLabel}
           </div>
-          <span className="mt-1 inline-block rounded border border-[#E2E0D8] bg-[#F1F0EC] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#52545D]">
+          <span className="mt-1 inline-block rounded border border-[#E2E0D8] bg-[#F1F0EC] px-1.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.05em] text-[#52545D]">
             {isUnassessed ? 'unassessed' : dimension.status}
           </span>
         </div>
@@ -309,7 +309,7 @@ function ScorecardRow({
 
         {/* Column 3: Verified Evidence */}
         <div className="text-xs leading-relaxed text-[#52545D]">
-          <div className="md:hidden font-semibold text-[10px] uppercase text-[#787C87] mb-1">
+          <div className="md:hidden font-semibold text-[11px] uppercase text-[#787C87] mb-1">
             Buyer Evidence
           </div>
           {isLoading ? (
@@ -335,7 +335,7 @@ function ScorecardRow({
 
         {/* Column 4: Open Gap / Blind Spot OR Resolved Status */}
         <div className="text-xs leading-relaxed text-[#52545D]">
-          <div className="md:hidden font-semibold text-[10px] uppercase text-[#787C87] mb-1">
+          <div className="md:hidden font-semibold text-[11px] uppercase text-[#787C87] mb-1">
             {isCompleted ? 'Resolved Status' : 'Open Gaps / Blind Spots'}
           </div>
 
@@ -359,7 +359,7 @@ function ScorecardRow({
           ) : gaps.length ? (
             <div className="space-y-1.5">
               {isBlocker && (
-                <span className="inline-block rounded bg-[#DC2626]/10 text-[#DC2626] font-mono text-[9px] font-bold px-1.5 py-0.5 uppercase tracking-wide">
+                <span className="inline-block rounded bg-[#DC2626]/10 text-[#DC2626] font-mono text-[11px] font-bold px-1.5 py-0.5 uppercase tracking-wide">
                   BLOCKER
                 </span>
               )}

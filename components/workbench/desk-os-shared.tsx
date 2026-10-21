@@ -187,11 +187,11 @@ export function SuggestedNextStepsCard({
               Suggested Next Steps
             </h3>
             {isQualified ? (
-              <span className="rounded border border-[#059669]/30 bg-[#059669]/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.05em] text-[#059669]">
+              <span className="rounded border border-[#059669]/30 bg-[#059669]/10 px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-[0.05em] text-[#059669]">
                 Qualification Finalized ({score ?? 76}/100)
               </span>
             ) : (
-              <span className="rounded border border-[#D97706]/30 bg-[#D97706]/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.05em] text-[#D97706]">
+              <span className="rounded border border-[#D97706]/30 bg-[#D97706]/10 px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-[0.05em] text-[#D97706]">
                 Sub-Threshold ({score ?? 0}/100)
               </span>
             )}
