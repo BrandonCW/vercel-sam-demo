@@ -240,11 +240,12 @@ export function DynamicDiscoveryForm({
         {/* Desk OS Q-Card Header with Target Dimension & Embedded TenSegmentBar */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#F8F8F6] px-4 py-2.5">
           <div className="flex items-center gap-1.5">
+            {targetKey && <span className="sr-only">{targetKey}</span>}
             <span className="font-mono text-xs font-bold text-[#787C87] uppercase">
               [{defaultMeta.code}]
             </span>
-            <span className="text-xs font-semibold text-[#111215]">
-              {defaultMeta.label}: <span className="font-mono tabular-nums">{currentDimScore}/10</span>
+            <span className="text-xs font-semibold text-[#111215] tabular-nums">
+              {defaultMeta.label}: {currentDimScore}/10
             </span>
           </div>
 
