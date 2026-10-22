@@ -37,4 +37,21 @@ describe('eve channel auth (non-dev environment)', () => {
     expect(result).not.toBeInstanceOf(Response);
     expect(result).toMatchObject({ authenticator: 'deal_qual_session', principalType: 'user' });
   });
+
+  it('admits callers in development mode without throwing when APP_PASSWORD is unset', async () => {
+    process.env = { ...saved, NODE_ENV: 'development' };
+    delete process.env.APP_PASSWORD;
+    delete process.env.AUTH_SECRET;
+
+    const resultWithStaleCookie = await routeAuth(
+      sessionRequest(`${COOKIE_NAME}=stale.token`),
+      EVE_CHANNEL_AUTH
+    );
+    expect(resultWithStaleCookie).not.toBeInstanceOf(Response);
+    expect(resultWithStaleCookie).toMatchObject({ authenticator: 'deal_qual_session', principalType: 'user' });
+
+    const resultAnonymous = await routeAuth(sessionRequest(), EVE_CHANNEL_AUTH);
+    expect(resultAnonymous).not.toBeInstanceOf(Response);
+    expect(resultAnonymous).toMatchObject({ authenticator: 'deal_qual_session', principalType: 'user' });
+  });
 });
