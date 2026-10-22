@@ -148,6 +148,7 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     // Pass or fail and the next steps are decided in code; the session closes with one writeback.
     const finalScore = partials[5].jevResult.overallScore;
     const [writebackRow] = (await getSessionInteractions(ACME, 'wrun_A')).filter((i) => i.action === 'writeback');
+    expect(writebackRow.actor).toBe('system2_llm');
     expect(AssessmentResultSchema.parse(result)).toMatchObject({
       status: 'written_back',
       opportunityId: ACME,
@@ -163,7 +164,7 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     expect(await actions()).toEqual(['initial_scoring', 'questions_generated', 'sa_feedback', 'initial_scoring', 'writeback']);
     const after = (await getOpportunity(ACME))!;
     expect(after.ae_notes).toBe(before.ae_notes);
-    expect(after.sa_notes).toContain('CFO Mark Ellis signs');
+    expect(after.sa_notes).toContain('• Who signs?: CFO Mark Ellis signs; $180k approved.');
   });
 
   it('writes back right after System 2 without pausing when asked to skip SA feedback', async () => {
@@ -174,6 +175,10 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     expect(result).toMatchObject({ status: 'written_back', qualificationStatus: 'in_review', delta: 0, feedback: 'skipped' });
     expect(result.nextSteps).toMatch(/^\[IN REVIEW\] /);
     expect(await actions()).toEqual(['initial_scoring', 'questions_generated', 'writeback']);
+    const [questionsRow] = (await getSessionInteractions(ACME, 'wrun_A')).filter((i) => i.action === 'questions_generated');
+    expect((questionsRow.payload as any).sessionState).toBe('skipped_feedback');
+    const [writebackRow] = (await getSessionInteractions(ACME, 'wrun_A')).filter((i) => i.action === 'writeback');
+    expect(writebackRow.actor).toBe('system2_llm');
   });
 
   it('fails loudly when Jev fails: nothing is written and nothing is asked', async () => {
@@ -204,5 +209,49 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     await expect(drive({ opportunityId: ACME }, async () => ({ text }))).rejects.toThrow(error);
     expect(await actions()).toEqual(['initial_scoring', 'questions_generated']);
     expect((await getOpportunity(ACME))!.sa_notes).toBe(before.sa_notes);
+  });
+
+  it('retries ctx.ask when parseSaAnswer fails on attempt 1 and recovers on attempt 2', async () => {
+    gatewayCalls.evaluate.mockResolvedValueOnce(jevAnswers(2.61, 1.44)).mockResolvedValueOnce(jevAnswers(9.5, 9));
+    gatewayCalls.generateText.mockResolvedValue({ output: modelOutput });
+
+    let attempts = 0;
+    const { result, asks } = await drive({ opportunityId: ACME }, async () => {
+      attempts++;
+      if (attempts === 1) {
+        return { text: 'invalid not-json' };
+      }
+      return { text: await answerText({ eb: 'CFO Mark Ellis signs' }, 'Approved.') };
+    });
+
+    expect(attempts).toBe(2);
+    expect(asks).toHaveLength(2);
+    expect(asks[1].prompt).toContain('Previous response invalid: The SA discovery answer is not JSON');
+    expect(result.status).toBe('written_back');
+    expect(result.opportunity.qualification_status).toBe('qualified');
+  });
+
+  it('forwards ctx.abortSignal to System 1 evaluate() and System 2 generateText()', async () => {
+    gatewayCalls.evaluate.mockResolvedValue(jevAnswers(2.61, 1.44));
+    gatewayCalls.generateText.mockResolvedValue({ output: modelOutput });
+
+    await drive({ opportunityId: ACME, writebackWithoutFeedback: true }, async () => ({}));
+
+    expect(gatewayCalls.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ abortSignal: expect.any(AbortSignal) })
+    );
+    expect(gatewayCalls.generateText).toHaveBeenCalledWith(
+      expect.objectContaining({ abortSignal: expect.any(AbortSignal) })
+    );
+  });
+
+  it('throws a FatalError with fatal=true when the opportunity does not exist in CRM', async () => {
+    await expect(
+      drive({ opportunityId: 'opp_nonexistent_999' }, async () => ({}))
+    ).rejects.toMatchObject({
+      name: 'FatalError',
+      fatal: true,
+      message: expect.stringContaining('opp_nonexistent_999'),
+    });
   });
 });

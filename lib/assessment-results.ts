@@ -44,6 +44,8 @@ export interface AssessmentView {
   result: AssessmentResult | null;
   /** The session was started by an older deployment this one cannot continue: start a fresh one. */
   legacySession: boolean;
+  /** True when the latest turn in the stream was cancelled via turn.cancelled. */
+  turnCancelled?: boolean;
   error: string | null;
 }
 
@@ -78,6 +80,7 @@ const INITIAL: AssessmentView = {
   feedback: null,
   result: null,
   legacySession: false,
+  turnCancelled: false,
   error: null,
 };
 
@@ -160,7 +163,9 @@ function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentVi
       if (view.phase === 'closed') {
         return fail(view, 'This Assessment Session is already closed (written back); start a new assessment.');
       }
-      return view.phase === 'ready' ? { ...view, phase: 'assessing', error: null } : view;
+      return view.phase === 'ready'
+        ? { ...view, phase: 'assessing', turnCancelled: false, error: null }
+        : { ...view, turnCancelled: false };
     case 'actions.requested': {
       const call = event.data.actions.find((a) => a.kind === 'tool-call');
       if (!call || !('toolName' in call)) return view;
@@ -178,7 +183,14 @@ function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentVi
       const request = event.data.requests.find((r) => r.kind === 'question' && r.action.toolName === TOOL);
       if (!request || view.phase === 'failed') return view;
       if (!view.system2Result) return fail(view, `${TOOL} asked for SA answers before it produced a discovery form.`);
-      return { ...view, phase: 'awaiting_feedback', runningTool: null, pendingInput: { requestId: request.requestId } };
+      return {
+        ...view,
+        phase: 'awaiting_feedback',
+        runningTool: null,
+        pendingInput: { requestId: request.requestId },
+        sentFeedbackKey: null,
+        turnCancelled: false,
+      };
     }
     case 'client.input.responded': {
       const pending = view.pendingInput;
@@ -191,7 +203,12 @@ function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentVi
         // Not JSON: run_assessment rejects it and fails the action with the reason.
       }
       const key = SentAnswerSchema.safeParse(sent);
-      return { ...view, phase: 'submitting_feedback', sentFeedbackKey: key.success ? key.data.feedbackKey : null };
+      return {
+        ...view,
+        phase: 'submitting_feedback',
+        sentFeedbackKey: key.success ? key.data.feedbackKey : null,
+        turnCancelled: false,
+      };
     }
     case 'input.resolved': {
       const pending = view.pendingInput;
@@ -217,6 +234,29 @@ function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentVi
       if (view.phase === 'awaiting_feedback' && view.pendingInput) return view;
       if (view.result) return { ...view, phase: 'closed', runningTool: null };
       return fail(view, `The Assessment Session ended without a CRM writeback (${TOOL} did not complete).`);
+    case 'turn.cancelled': {
+      if (view.phase === 'failed' || view.phase === 'closed') return view;
+      const hasAwaitingDiscovery = Boolean(
+        view.pendingInput || (view.system2Result && (!view.feedback || !view.feedback.recorded))
+      );
+      return {
+        ...view,
+        phase: hasAwaitingDiscovery ? 'awaiting_feedback' : 'ready',
+        runningTool: null,
+        system2Running: false,
+        sentFeedbackKey: hasAwaitingDiscovery ? null : view.sentFeedbackKey,
+        turnCancelled: true,
+        error: null,
+      };
+    }
+    case 'session.completed':
+      return {
+        ...view,
+        phase: 'closed',
+        runningTool: null,
+        system2Running: false,
+        pendingInput: null,
+      };
     case 'turn.failed':
     case 'session.failed':
       return fail(view, event.data.message);

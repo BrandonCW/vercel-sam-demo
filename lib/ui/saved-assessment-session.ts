@@ -17,6 +17,7 @@ import type { Opportunity } from '@/lib/types/crm';
 type OpportunityRef = Pick<Opportunity, 'id' | 'last_reset_at'>;
 
 const PREFIX = 'deal-qual:assessment-session:';
+const SUBMITTING_PREFIX = 'deal-qual:submitting-request:';
 const SavedSessionSchema = z.object({ sessionId: z.string().min(1), resetMarker: z.string().nullable() });
 
 function storage(action: string, run: () => string | null | void): string | null | void {
@@ -64,4 +65,18 @@ export function saveSession(opportunity: OpportunityRef, session: ClientSessionS
 
 export function clearSavedSession(opportunityId: string): void {
   storage('clear', () => localStorage.removeItem(PREFIX + opportunityId));
+  clearSubmittingRequestId(opportunityId);
+}
+
+export function saveSubmittingRequestId(opportunityId: string, requestId: string): void {
+  storage('saveSubmitting', () => localStorage.setItem(SUBMITTING_PREFIX + opportunityId, requestId));
+}
+
+export function loadSubmittingRequestId(opportunityId: string): string | null {
+  const raw = storage('loadSubmitting', () => localStorage.getItem(SUBMITTING_PREFIX + opportunityId));
+  return typeof raw === 'string' && raw.length > 0 ? raw : null;
+}
+
+export function clearSubmittingRequestId(opportunityId: string): void {
+  storage('clearSubmitting', () => localStorage.removeItem(SUBMITTING_PREFIX + opportunityId));
 }

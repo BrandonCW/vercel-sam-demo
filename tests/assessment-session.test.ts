@@ -50,6 +50,7 @@ describe('Assessment Session: run_assessment steps are scoped to the root eve se
 
     const writebacks = (await getInteractions(ACME)).filter((i) => i.action === 'writeback');
     expect(writebacks).toHaveLength(1);
+    expect(writebacks[0].actor).toBe('system2_llm');
     expect(writebacks[0].payload).toMatchObject({
       assessmentSessionId: 'wrun_A',
       turnId: 'turn_2',

@@ -252,4 +252,57 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
     const paused = run(toPause);
     expect(run([ev('message.appended', { messageDelta: 'hi' }), ev('session.waiting', {})], paused)).toEqual(paused);
   });
+
+  it('handles turn.cancelled during Turn 1 by returning to ready without trapping in error', () => {
+    const inFlight = run([submitted(), ev('turn.started', {}), requested('run_assessment', INPUT)]);
+    expect(inFlight.phase).toBe('assessing');
+    expect(inFlight.runningTool).toBe('run_assessment');
+
+    const cancelled = run([ev('turn.cancelled', {})], inFlight);
+    expect(cancelled.phase).toBe('ready');
+    expect(cancelled.runningTool).toBeNull();
+    expect(cancelled.system2Running).toBe(false);
+    expect(cancelled.error).toBeNull();
+  });
+
+  it('handles turn.cancelled during Turn 2 by preserving discovery and returning to awaiting_feedback', () => {
+    const paused = run(toPause);
+    expect(paused.phase).toBe('awaiting_feedback');
+
+    // Simulate sending feedback and then cancelling before feedback_recorded
+    const submitting = run([responded(answer)], paused);
+    expect(submitting.phase).toBe('submitting_feedback');
+
+    const cancelled = run([ev('turn.cancelled', {})], submitting);
+    expect(cancelled.phase).toBe('awaiting_feedback');
+    expect(cancelled.runningTool).toBeNull();
+    expect(cancelled.system2Running).toBe(false);
+    expect(cancelled.error).toBeNull();
+    expect(cancelled.system2Result).toBeDefined();
+    expect(cancelled.pendingInput?.requestId).toBe('req_1');
+    expect(cancelled.turnCancelled).toBe(true);
+  });
+
+  // Regression: ISSUE-001 — clear stale submittingRequestId on replayed turn.cancelled or ctx.ask retry requestId
+  // Found by /qa on 2026-10-22
+  // Report: .gstack/qa-reports/run-20261022T072000Z/qa-report-eve-alignment-hardening-2026-10-22.md
+  it('marks turnCancelled on replayed turn.cancelled and resets sentFeedbackKey on retry input.requested', () => {
+    const replayedCancel = run([...toPause, ev('turn.started', {}), ev('turn.cancelled', {})]);
+    expect(replayedCancel.phase).toBe('awaiting_feedback');
+    expect(replayedCancel.turnCancelled).toBe(true);
+
+    const retriedAsk = run([responded(answer), question('req_2')], run(toPause));
+    expect(retriedAsk.phase).toBe('awaiting_feedback');
+    expect(retriedAsk.pendingInput).toEqual({ requestId: 'req_2' });
+    expect(retriedAsk.sentFeedbackKey).toBeNull();
+  });
+
+  it('handles session.completed by transitioning to closed', () => {
+    const paused = run(toPause);
+    const completed = run([ev('session.completed', {})], paused);
+    expect(completed.phase).toBe('closed');
+    expect(completed.runningTool).toBeNull();
+    expect(completed.system2Running).toBe(false);
+    expect(completed.pendingInput).toBeNull();
+  });
 });

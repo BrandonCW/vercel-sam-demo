@@ -6,6 +6,7 @@ import type {
   WorkflowState,
 } from './types';
 import type { SimulationFixture } from './fixture-schema';
+import { formatSaDiscoveryDelta } from '@/lib/agents/feedback-schema';
 import acmeFixtureRaw from '@/lib/fixtures/simulation/acme_migration.json';
 import globexFixtureRaw from '@/lib/fixtures/simulation/globex_amplify.json';
 import soylentFixtureRaw from '@/lib/fixtures/simulation/soylent_retail.json';
@@ -334,13 +335,39 @@ export function simulationReducer(
 
     case 'SUBMIT_FEEDBACK':
       if (state.workflowState === 'PENDING_FEEDBACK' || state.workflowState === 'COMPLETED') {
-        return getStateForWorkflow('EVALUATING', activeFixture);
+        const nextState = getStateForWorkflow('EVALUATING', activeFixture);
+        const submittedResponses = action.formResponses ?? activeFixture.feedback.formResponses;
+        const submittedNotes =
+          action.notesDelta !== undefined ? action.notesDelta : activeFixture.feedback.notesDelta;
+        const deltaBlock = formatSaDiscoveryDelta(
+          submittedResponses,
+          submittedNotes,
+          activeFixture.feedback.rescoreJevResult.evaluatedAt,
+          activeFixture.baseline.system2Result.phase3Form
+        );
+        return {
+          ...nextState,
+          opportunity: {
+            ...nextState.opportunity,
+            sa_notes: `${activeFixture.opportunity.sa_notes.trim()}\n\n${deltaBlock}`.trim(),
+          },
+        };
       }
       return state;
 
     case 'EVALUATION_COMPLETE':
       if (state.workflowState === 'EVALUATING') {
-        return getStateForWorkflow('COMPLETED', activeFixture);
+        const nextState = getStateForWorkflow('COMPLETED', activeFixture);
+        const hasDiscoveryUpdate = state.opportunity.sa_notes.includes('[SA Discovery Update -');
+        return hasDiscoveryUpdate
+          ? {
+              ...nextState,
+              opportunity: {
+                ...nextState.opportunity,
+                sa_notes: state.opportunity.sa_notes,
+              },
+            }
+          : nextState;
       }
       return state;
 
