@@ -50,7 +50,8 @@ export async function recordSystem2Analysis(
   opportunity: Opportunity,
   jevResult: JevScoringResult,
   system2Result: System2AnalysisResult,
-  scope: AssessmentScope
+  scope: AssessmentScope,
+  sessionState: 'pending_feedback' | 'skipped_feedback' | 'ready_for_writeback' = 'pending_feedback'
 ): Promise<RecordedStep> {
   return recordAssessmentStep(
     opportunity.id,
@@ -63,7 +64,7 @@ export async function recordSystem2Analysis(
         system2Result,
         form: system2Result.phase3Form,
         model: system2Result.modelUsed,
-        sessionState: 'pending_feedback',
+        sessionState: sessionState ?? 'pending_feedback',
         checkpointTimestamp: new Date().toISOString(),
       },
     }
@@ -172,7 +173,7 @@ export async function writebackQualification(
     meddpicc_breakdown: mergeSystem2Findings(jevResult, system2Result),
     sessionId: scope.sessionId,
     audit: {
-      actor: 'system1_jev',
+      actor: 'system2_llm',
       payload: {
         ...stamp(scope),
         previousScore: baseline.overallScore,

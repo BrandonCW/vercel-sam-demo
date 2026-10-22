@@ -148,6 +148,7 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     // Pass or fail and the next steps are decided in code; the session closes with one writeback.
     const finalScore = partials[5].jevResult.overallScore;
     const [writebackRow] = (await getSessionInteractions(ACME, 'wrun_A')).filter((i) => i.action === 'writeback');
+    expect(writebackRow.actor).toBe('system2_llm');
     expect(AssessmentResultSchema.parse(result)).toMatchObject({
       status: 'written_back',
       opportunityId: ACME,
@@ -174,6 +175,10 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     expect(result).toMatchObject({ status: 'written_back', qualificationStatus: 'in_review', delta: 0, feedback: 'skipped' });
     expect(result.nextSteps).toMatch(/^\[IN REVIEW\] /);
     expect(await actions()).toEqual(['initial_scoring', 'questions_generated', 'writeback']);
+    const [questionsRow] = (await getSessionInteractions(ACME, 'wrun_A')).filter((i) => i.action === 'questions_generated');
+    expect((questionsRow.payload as any).sessionState).toBe('skipped_feedback');
+    const [writebackRow] = (await getSessionInteractions(ACME, 'wrun_A')).filter((i) => i.action === 'writeback');
+    expect(writebackRow.actor).toBe('system2_llm');
   });
 
   it('fails loudly when Jev fails: nothing is written and nothing is asked', async () => {

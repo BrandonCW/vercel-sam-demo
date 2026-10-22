@@ -1,7 +1,7 @@
 import { evaluate } from "eve/ai";
 import { gateway, generateText, Output } from "ai";
 import { z } from "zod";
-import { requireOpportunity } from "@/lib/db/crm";
+import { getOpportunity, requireOpportunity } from "@/lib/db/crm";
 import { buildJevEvaluationRequest, interpretJevEvaluation } from "@/lib/agents/jev-scorer";
 import {
   recordJevScoring,
@@ -17,6 +17,13 @@ import type { JevScoringResult } from "@/lib/agents/jev-schema";
 import type { Opportunity } from "@/lib/types/crm";
 import { AssessmentResultSchema, type AssessmentResult } from "@/lib/assessment-progress";
 
+export class FatalError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'FatalError';
+  }
+}
+
 /**
  * The durable steps of `run_assessment`. Each is a `"use step"` function: eve records its
  * result, so a replayed workflow body never repeats a Gateway call or a CRM write. Every
@@ -31,7 +38,10 @@ export async function scoreWithJev(
 ): Promise<{ opportunity: Opportunity; jevResult: JevScoringResult }> {
   "use step";
   assertAiGatewayConfigured();
-  const opportunity = await requireOpportunity(opportunityId);
+  const opportunity = await getOpportunity(opportunityId);
+  if (!opportunity) {
+    throw new FatalError(`Opportunity "${opportunityId}" not found in CRM.`);
+  }
   const input = {
     opportunityId: opportunity.id,
     name: opportunity.name,
@@ -89,10 +99,31 @@ export async function analyzeWithSystem2(
   jevResult: JevScoringResult,
   model: System2ModelOption,
   scope: AssessmentScope,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  writebackWithoutFeedback?: boolean
+): Promise<{ system2Result: System2AnalysisResult; opportunity: Opportunity }>;
+export async function analyzeWithSystem2(
+  opportunity: Opportunity,
+  jevResult: JevScoringResult,
+  model: System2ModelOption,
+  scope: AssessmentScope,
+  options?: { signal?: AbortSignal; writebackWithoutFeedback?: boolean }
+): Promise<{ system2Result: System2AnalysisResult; opportunity: Opportunity }>;
+export async function analyzeWithSystem2(
+  opportunity: Opportunity,
+  jevResult: JevScoringResult,
+  model: System2ModelOption,
+  scope: AssessmentScope,
+  signalOrOptions?: AbortSignal | { signal?: AbortSignal; writebackWithoutFeedback?: boolean },
+  writebackWithoutFeedbackParam?: boolean
 ): Promise<{ system2Result: System2AnalysisResult; opportunity: Opportunity }> {
   "use step";
   assertAiGatewayConfigured();
+  const signal = signalOrOptions instanceof AbortSignal ? signalOrOptions : signalOrOptions?.signal;
+  const writebackWithoutFeedback =
+    signalOrOptions instanceof AbortSignal
+      ? Boolean(writebackWithoutFeedbackParam)
+      : Boolean(signalOrOptions?.writebackWithoutFeedback ?? writebackWithoutFeedbackParam);
   const prompt = JSON.stringify({
     opportunity: {
       id: opportunity.id,
@@ -124,9 +155,15 @@ export async function analyzeWithSystem2(
     }),
     abortSignal,
   });
-  if (!result.output) throw new Error(`System 2 model ${model} returned no structured output`);
+  if (!result.output) throw new FatalError(`System 2 model ${model} returned no structured output`);
   const system2Result = toSystem2AnalysisResult(result.output, { opportunityId: opportunity.id, model });
-  const { opportunity: updated } = await recordSystem2Analysis(opportunity, jevResult, system2Result, scope);
+  const { opportunity: updated } = await recordSystem2Analysis(
+    opportunity,
+    jevResult,
+    system2Result,
+    scope,
+    writebackWithoutFeedback ? 'skipped_feedback' : 'pending_feedback'
+  );
   return { system2Result, opportunity: updated };
 }
 analyzeWithSystem2.maxRetries = 0;
@@ -184,7 +221,10 @@ export async function writeBack(
   feedback: AssessmentResult["feedback"]
 ): Promise<AssessmentResult> {
   "use step";
-  const opportunity = await requireOpportunity(opportunityId);
+  const opportunity = await getOpportunity(opportunityId);
+  if (!opportunity) {
+    throw new FatalError(`Opportunity "${opportunityId}" not found in CRM.`);
+  }
   const written = await writebackQualification(opportunity, scope);
   // The verdict is built here, in code, and validated before it leaves the step.
   return AssessmentResultSchema.parse({

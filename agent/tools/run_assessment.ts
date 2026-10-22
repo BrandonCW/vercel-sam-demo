@@ -46,8 +46,9 @@ export default defineWorkflowTool({
     const { status, qualificationStatus, finalScore, delta } = output;
     return { type: "json", value: { status, qualificationStatus, finalScore, delta } };
   },
-  async *execute({ opportunityId, model, writebackWithoutFeedback }, ctx): AsyncGenerator<AssessmentProgress, AssessmentResult> {
+  async *execute(input, ctx): AsyncGenerator<AssessmentProgress, AssessmentResult> {
     "use workflow";
+    const { opportunityId, model, writebackWithoutFeedback } = input;
     const scope = assessmentScopeOf(ctx);
     const system2Model = model ?? (await defaultSystem2Model());
 
@@ -56,7 +57,14 @@ export default defineWorkflowTool({
     const scored = await saveJevScoring(baseline.opportunity, baseline.jevResult, scope);
     yield { stage: "jev_saved", round: "baseline", jevResult: baseline.jevResult, opportunity: scored };
 
-    const analysis = await analyzeWithSystem2(scored, baseline.jevResult, system2Model, scope, ctx.abortSignal);
+    const analysis = await analyzeWithSystem2(
+      scored,
+      baseline.jevResult,
+      system2Model,
+      scope,
+      ctx.abortSignal,
+      Boolean(input.writebackWithoutFeedback)
+    );
     yield { stage: "system2_saved", system2Result: analysis.system2Result, opportunity: analysis.opportunity };
 
     if (!writebackWithoutFeedback) {
