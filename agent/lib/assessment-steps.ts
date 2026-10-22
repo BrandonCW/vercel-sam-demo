@@ -1,7 +1,7 @@
 import { evaluate } from "eve/ai";
 import { gateway, generateText, Output } from "ai";
 import { z } from "zod";
-import { getOpportunity, requireOpportunity } from "@/lib/db/crm";
+import { getOpportunity } from "@/lib/db/crm";
 import { buildJevEvaluationRequest, interpretJevEvaluation } from "@/lib/agents/jev-scorer";
 import {
   recordJevScoring,
@@ -18,9 +18,10 @@ import type { Opportunity } from "@/lib/types/crm";
 import { AssessmentResultSchema, type AssessmentResult } from "@/lib/assessment-progress";
 
 export class FatalError extends Error {
+  readonly fatal = true;
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
-    this.name = 'FatalError';
+    this.name = "FatalError";
   }
 }
 

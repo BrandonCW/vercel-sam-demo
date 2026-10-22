@@ -230,4 +230,28 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     expect(result.status).toBe('written_back');
     expect(result.opportunity.qualification_status).toBe('qualified');
   });
+
+  it('forwards ctx.abortSignal to System 1 evaluate() and System 2 generateText()', async () => {
+    gatewayCalls.evaluate.mockResolvedValue(jevAnswers(2.61, 1.44));
+    gatewayCalls.generateText.mockResolvedValue({ output: modelOutput });
+
+    await drive({ opportunityId: ACME, writebackWithoutFeedback: true }, async () => ({}));
+
+    expect(gatewayCalls.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ abortSignal: expect.any(AbortSignal) })
+    );
+    expect(gatewayCalls.generateText).toHaveBeenCalledWith(
+      expect.objectContaining({ abortSignal: expect.any(AbortSignal) })
+    );
+  });
+
+  it('throws a FatalError with fatal=true when the opportunity does not exist in CRM', async () => {
+    await expect(
+      drive({ opportunityId: 'opp_nonexistent_999' }, async () => ({}))
+    ).rejects.toMatchObject({
+      name: 'FatalError',
+      fatal: true,
+      message: expect.stringContaining('opp_nonexistent_999'),
+    });
+  });
 });

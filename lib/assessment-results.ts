@@ -227,6 +227,7 @@ function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentVi
         phase: hasAwaitingDiscovery ? 'awaiting_feedback' : 'ready',
         runningTool: null,
         system2Running: false,
+        sentFeedbackKey: hasAwaitingDiscovery ? null : view.sentFeedbackKey,
         error: null,
       };
     }

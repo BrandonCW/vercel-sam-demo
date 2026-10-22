@@ -306,14 +306,14 @@ function LiveAssessmentSession({
   statusRef.current = agent.status;
   const view = agent.data;
   const isResuming = agent.status === 'resuming';
-  const turnInFlight =
-    ((agent.status === 'submitted' || agent.status === 'streaming') &&
-      view.phase !== 'awaiting_feedback') ||
-    isResuming;
-
   const [submittingRequestId, setSubmittingRequestId] = useState<string | null>(() =>
     loadSubmittingRequestId(baseOpportunity.id)
   );
+
+  const turnInFlight =
+    ((agent.status === 'submitted' || agent.status === 'streaming') &&
+      (view.phase !== 'awaiting_feedback' || Boolean(submittingRequestId))) ||
+    isResuming;
 
   const currentOpportunity = view.opportunity ?? baseOpportunity;
 
@@ -396,8 +396,19 @@ function LiveAssessmentSession({
     if (view.legacySession) clearSavedSession(baseOpportunity.id);
   }, [view.legacySession, baseOpportunity.id]);
 
+  const prevPhaseRef = useRef<AssessmentView['phase']>(view.phase);
+
   useEffect(() => {
-    if (view.feedback || view.phase === 'closed' || view.phase === 'ready') {
+    const cancelledFromSubmitting =
+      prevPhaseRef.current === 'submitting_feedback' && view.phase === 'awaiting_feedback';
+    prevPhaseRef.current = view.phase;
+    if (
+      view.feedback ||
+      view.phase === 'closed' ||
+      view.phase === 'ready' ||
+      view.phase === 'failed' ||
+      cancelledFromSubmitting
+    ) {
       clearSubmittingRequestId(baseOpportunity.id);
       setSubmittingRequestId(null);
     }
@@ -448,9 +459,15 @@ function LiveAssessmentSession({
     saveSubmittingRequestId(baseOpportunity.id, pending.requestId);
     setSubmittingRequestId(pending.requestId);
     const text = await saAnswerText(formResponses, notesDelta);
-    await sendTurn(WRITEBACK_FAILED, () =>
-      agent.respond([{ requestId: pending.requestId, text }])
-    );
+    await sendTurn(WRITEBACK_FAILED, async () => {
+      try {
+        await agent.respond([{ requestId: pending.requestId, text }]);
+      } catch (err) {
+        clearSubmittingRequestId(baseOpportunity.id);
+        setSubmittingRequestId(null);
+        throw err;
+      }
+    });
   }
 
   // Live score and dimensions
@@ -743,6 +760,8 @@ function LiveAssessmentSession({
                       dimensions={liveDimensions}
                       hideHeader={true}
                       onAbort={() => {
+                        clearSubmittingRequestId(baseOpportunity.id);
+                        setSubmittingRequestId(null);
                         void agent.cancel();
                       }}
                     />

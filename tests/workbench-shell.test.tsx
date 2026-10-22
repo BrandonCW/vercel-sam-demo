@@ -6,7 +6,12 @@ import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results
 import { assessTurnMessage } from '@/lib/assessment-turns';
 import { saFeedbackKey } from '@/lib/agents/feedback-schema';
 import { LEGACY_SESSION_ERROR } from '@/lib/assessment-results';
-import { loadSavedSession, saveSession } from '@/lib/ui/saved-assessment-session';
+import {
+  loadSavedSession,
+  loadSubmittingRequestId,
+  saveSession,
+  saveSubmittingRequestId,
+} from '@/lib/ui/saved-assessment-session';
 import { DEFAULT_SYSTEM2_MODEL } from '@/lib/types/crm';
 import { jev, opportunity, system2 } from './fixtures/qualification';
 
@@ -18,11 +23,19 @@ const hook = vi.hoisted(() => ({
   send: vi.fn(async () => {}),
   respond: vi.fn(async () => {}),
   reset: vi.fn(),
+  cancel: vi.fn(async () => {}),
 }));
 vi.mock('eve/react', () => ({
   useEveAgent: (options: any) => {
     hook.options = options;
-    return { ...hook.state, data: hook.state.data ?? options.reducer.initial(), send: hook.send, respond: hook.respond, reset: hook.reset };
+    return {
+      ...hook.state,
+      data: hook.state.data ?? options.reducer.initial(),
+      send: hook.send,
+      respond: hook.respond,
+      reset: hook.reset,
+      cancel: hook.cancel,
+    };
   },
 }));
 
@@ -340,6 +353,66 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       expect(screen.getByLabelText('Select Scenario')).toBeTruthy();
       expect(screen.getByLabelText('Select System 2 Model')).toBeTruthy();
       expect(screen.getByRole('button', { name: /Reset Demo/i })).toBeTruthy();
+    });
+  });
+
+  describe('Cancellation & mid-submit reload continuity (Issue #25)', () => {
+    it('keeps EVALUATING state across a browser reload while SA feedback submission is in flight', () => {
+      saveSubmittingRequestId(base.id, 'req_1');
+      hook.state.status = 'streaming';
+      hook.state.data = view({
+        phase: 'awaiting_feedback',
+        pendingInput: { requestId: 'req_1' },
+        jevResult: jev(),
+        system2Result: system2(),
+        opportunity: opportunity(),
+      });
+      renderShell();
+      expect(screen.getByText(/Synthesizing Discovery Findings & Re-Scoring Deal/i)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /Submit Discovery Findings/i })).toBeNull();
+    });
+
+    it('clears submittingRequestId and restores the Stage 2 discovery form when Turn 2 is cancelled', async () => {
+      hook.state.status = 'streaming';
+      hook.state.data = view({
+        phase: 'awaiting_feedback',
+        pendingInput: { requestId: 'req_1' },
+        jevResult: jev(),
+        system2Result: system2(),
+        opportunity: opportunity(),
+      });
+      const { rerender } = renderShell();
+
+      fireEvent.click(screen.getByRole('button', { name: /Answer (\d+ )?Discovery Questions/i }));
+      fireEvent.change(screen.getByLabelText(/Who signs\?/), { target: { value: 'CFO Mark Ellis' } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Submit Discovery Findings/i }));
+      });
+      expect(loadSubmittingRequestId(base.id)).toBe('req_1');
+
+      // Transition to submitting_feedback, then simulate turn.cancelled returning phase to awaiting_feedback
+      hook.state.data = view({
+        phase: 'submitting_feedback',
+        pendingInput: { requestId: 'req_1' },
+        jevResult: jev(),
+        system2Result: system2(),
+        opportunity: opportunity(),
+      });
+      rerender(<LiveQualificationWorkbench initialOpportunity={base} initialScenarioId="scenario_acme_netlify" onModeChange={vi.fn()} />);
+      expect(screen.getByText(/Synthesizing Discovery Findings & Re-Scoring Deal/i)).toBeTruthy();
+
+      hook.state.status = 'ready';
+      hook.state.data = view({
+        phase: 'awaiting_feedback',
+        pendingInput: { requestId: 'req_1' },
+        jevResult: jev(),
+        system2Result: system2(),
+        opportunity: opportunity(),
+      });
+      rerender(<LiveQualificationWorkbench initialOpportunity={base} initialScenarioId="scenario_acme_netlify" onModeChange={vi.fn()} />);
+
+      expect(loadSubmittingRequestId(base.id)).toBeNull();
+      expect(screen.getByRole('button', { name: /Submit Discovery Findings/i })).toBeTruthy();
     });
   });
 });
