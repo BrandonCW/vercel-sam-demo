@@ -119,7 +119,7 @@ export async function recordSaFeedback(
   feedback: { formResponses: Record<string, string | string[]>; notesDelta?: string | null; expectedKey?: string },
   scope: AssessmentScope
 ): Promise<{ recorded: boolean; feedbackKey: string }> {
-  await loadLatestSystem2Result(opportunityId, scope.sessionId);
+  const system2Result = await loadLatestSystem2Result(opportunityId, scope.sessionId);
   const feedbackKey = await saFeedbackKey(feedback.formResponses, feedback.notesDelta);
   // The caller's key proves the answers were passed through unaltered; nothing is written otherwise.
   if (feedback.expectedKey !== undefined && feedback.expectedKey !== feedbackKey) {
@@ -131,7 +131,12 @@ export async function recordSaFeedback(
     opportunityId,
     sessionId: scope.sessionId,
     feedbackKey,
-    notesDelta: formatSaDiscoveryDelta(feedback.formResponses, feedback.notesDelta, new Date().toISOString()),
+    notesDelta: formatSaDiscoveryDelta(
+      feedback.formResponses,
+      feedback.notesDelta,
+      new Date().toISOString(),
+      system2Result.phase3Form
+    ),
     payload: {
       ...stamp(scope),
       feedbackKey,

@@ -164,7 +164,7 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     expect(await actions()).toEqual(['initial_scoring', 'questions_generated', 'sa_feedback', 'initial_scoring', 'writeback']);
     const after = (await getOpportunity(ACME))!;
     expect(after.ae_notes).toBe(before.ae_notes);
-    expect(after.sa_notes).toContain('CFO Mark Ellis signs');
+    expect(after.sa_notes).toContain('• Who signs?: CFO Mark Ellis signs; $180k approved.');
   });
 
   it('writes back right after System 2 without pausing when asked to skip SA feedback', async () => {

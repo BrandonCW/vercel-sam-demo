@@ -198,6 +198,16 @@ describe('Simulation Engine & Acme Fixture (TDD)', () => {
       expect(state.opportunity.qualification_status).toBe('qualified');
       expect(state.opportunity.meddpicc_score).toBe(76);
       expect(state.suggestedNextSteps).toBe(fixture.verdict.nextSteps);
+      expect(state.opportunity.sa_notes).toContain(
+        '• Did Jane Doe (VP Engineering) formally confirm sponsorship?: Confirmed sponsorship if build times drop <5 min'
+      );
+      expect(state.opportunity.sa_notes).toContain(
+        '• Confirmed technical decision criteria: Build speed <5m + Turborepo caching + ISR'
+      );
+      expect(state.opportunity.sa_notes).not.toContain('eb_sponsorship');
+      expect(state.opportunity.sa_notes).not.toContain('confirmed_sponsorship');
+      expect(state.opportunity.sa_notes).not.toContain('technical_criteria');
+      expect(state.opportunity.sa_notes).not.toContain('build_speed_and_isr');
     });
 
     it('jumps directly to state 1, 2, 3, 4, 5 (and named states) with exact data', () => {

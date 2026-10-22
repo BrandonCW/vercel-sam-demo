@@ -40,4 +40,78 @@ describe('formatSaDiscoveryDelta', () => {
       '[SA Discovery Update - T]\n• pain_quant: 45-minute blocking'
     );
   });
+
+  it('resolves human-readable field labels and choice option labels when phase3Form is provided', () => {
+    const form = {
+      sections: [
+        {
+          id: 'section_blockers',
+          title: 'Stage Gate Blockers',
+          fields: [
+            {
+              id: 'eb_sponsorship',
+              name: 'eb_sponsorship',
+              label: 'Did Jane Doe (VP Engineering) formally confirm sponsorship?',
+              type: 'radio' as const,
+              required: true,
+              options: [
+                {
+                  label: 'Confirmed sponsorship if build times drop <5 min',
+                  value: 'confirmed_sponsorship',
+                },
+                { label: 'Meeting pending', value: 'meeting_pending' },
+              ],
+            },
+            {
+              id: 'technical_criteria',
+              name: 'technical_criteria',
+              label: 'Confirmed technical decision criteria:',
+              type: 'checkbox_group' as const,
+              required: true,
+              options: [
+                {
+                  label: 'Build speed <5m + Turborepo caching + ISR',
+                  value: 'build_speed_and_isr',
+                },
+                {
+                  label: 'Dedicated static egress IPs',
+                  value: 'static_egress_ips',
+                },
+              ],
+            },
+            {
+              id: 'free_text_follow_up',
+              name: 'free_text_follow_up',
+              label: 'What is the procurement review SLA?',
+              type: 'text' as const,
+              required: false,
+            },
+          ],
+        },
+      ],
+    };
+
+    const block = formatSaDiscoveryDelta(
+      {
+        eb_sponsorship: 'confirmed_sponsorship',
+        technical_criteria: ['build_speed_and_isr', 'static_egress_ips'],
+        free_text_follow_up: '10 business days via legal desk',
+      },
+      'VP Eng joining architecture session Oct 12.',
+      '2026-10-01T12:05:00.000Z',
+      form
+    );
+
+    expect(block).toBe(
+      '[SA Discovery Update - 2026-10-01T12:05:00.000Z]\n' +
+        '• Did Jane Doe (VP Engineering) formally confirm sponsorship?: Confirmed sponsorship if build times drop <5 min\n' +
+        '• Confirmed technical decision criteria: Build speed <5m + Turborepo caching + ISR, Dedicated static egress IPs\n' +
+        '• What is the procurement review SLA?: 10 business days via legal desk\n' +
+        '• Additional SA Notes: VP Eng joining architecture session Oct 12.'
+    );
+    expect(block).not.toContain('eb_sponsorship');
+    expect(block).not.toContain('confirmed_sponsorship');
+    expect(block).not.toContain('technical_criteria');
+    expect(block).not.toContain('build_speed_and_isr');
+  });
 });
