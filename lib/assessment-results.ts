@@ -217,6 +217,27 @@ function reduce(view: AssessmentView, event: EveAgentReducerEvent): AssessmentVi
       if (view.phase === 'awaiting_feedback' && view.pendingInput) return view;
       if (view.result) return { ...view, phase: 'closed', runningTool: null };
       return fail(view, `The Assessment Session ended without a CRM writeback (${TOOL} did not complete).`);
+    case 'turn.cancelled': {
+      if (view.phase === 'failed' || view.phase === 'closed') return view;
+      const hasAwaitingDiscovery = Boolean(
+        view.pendingInput || (view.system2Result && (!view.feedback || !view.feedback.recorded))
+      );
+      return {
+        ...view,
+        phase: hasAwaitingDiscovery ? 'awaiting_feedback' : 'ready',
+        runningTool: null,
+        system2Running: false,
+        error: null,
+      };
+    }
+    case 'session.completed':
+      return {
+        ...view,
+        phase: 'closed',
+        runningTool: null,
+        system2Running: false,
+        pendingInput: null,
+      };
     case 'turn.failed':
     case 'session.failed':
       return fail(view, event.data.message);

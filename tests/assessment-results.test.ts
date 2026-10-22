@@ -252,4 +252,42 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
     const paused = run(toPause);
     expect(run([ev('message.appended', { messageDelta: 'hi' }), ev('session.waiting', {})], paused)).toEqual(paused);
   });
+
+  it('handles turn.cancelled during Turn 1 by returning to ready without trapping in error', () => {
+    const inFlight = run([submitted(), ev('turn.started', {}), requested('run_assessment', INPUT)]);
+    expect(inFlight.phase).toBe('assessing');
+    expect(inFlight.runningTool).toBe('run_assessment');
+
+    const cancelled = run([ev('turn.cancelled', {})], inFlight);
+    expect(cancelled.phase).toBe('ready');
+    expect(cancelled.runningTool).toBeNull();
+    expect(cancelled.system2Running).toBe(false);
+    expect(cancelled.error).toBeNull();
+  });
+
+  it('handles turn.cancelled during Turn 2 by preserving discovery and returning to awaiting_feedback', () => {
+    const paused = run(toPause);
+    expect(paused.phase).toBe('awaiting_feedback');
+
+    // Simulate sending feedback and then cancelling before feedback_recorded
+    const submitting = run([responded(answer)], paused);
+    expect(submitting.phase).toBe('submitting_feedback');
+
+    const cancelled = run([ev('turn.cancelled', {})], submitting);
+    expect(cancelled.phase).toBe('awaiting_feedback');
+    expect(cancelled.runningTool).toBeNull();
+    expect(cancelled.system2Running).toBe(false);
+    expect(cancelled.error).toBeNull();
+    expect(cancelled.system2Result).toBeDefined();
+    expect(cancelled.pendingInput?.requestId).toBe('req_1');
+  });
+
+  it('handles session.completed by transitioning to closed', () => {
+    const paused = run(toPause);
+    const completed = run([ev('session.completed', {})], paused);
+    expect(completed.phase).toBe('closed');
+    expect(completed.runningTool).toBeNull();
+    expect(completed.system2Running).toBe(false);
+    expect(completed.pendingInput).toBeNull();
+  });
 });
