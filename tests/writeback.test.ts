@@ -52,7 +52,7 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
       meddpicc_score: 72,
       meddpicc_breakdown: sampleBreakdown,
       sessionId: 'wrun_wb',
-      audit: { actor: 'system1_jev', payload: { sessionState: 'closed' } },
+      audit: { actor: 'system2_llm', payload: { sessionState: 'closed' } },
     });
 
     // 1. Designated writeback fields MUST be updated
@@ -101,7 +101,7 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
 
     await recordInteraction({
       opportunity_id: oppId,
-      actor: 'system1_jev',
+      actor: 'system2_llm',
       action: 'writeback',
       payload: {
         formResponses: { eb_auth: 'unilateral' },
@@ -117,12 +117,12 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
 
     const interactions = await getInteractions(oppId);
     const writebackEntry = interactions.find(
-      (i) => i.actor === 'system1_jev' && i.action === 'writeback'
+      (i) => i.actor === 'system2_llm' && i.action === 'writeback'
     );
 
     expect(writebackEntry).toBeDefined();
     expect(writebackEntry?.opportunity_id).toBe(oppId);
-    expect(writebackEntry?.actor).toBe('system1_jev');
+    expect(writebackEntry?.actor).toBe('system2_llm');
     expect(writebackEntry?.action).toBe('writeback');
     expect((writebackEntry?.payload as any).deltaScore).toBe(16);
     expect((writebackEntry?.payload as any).qualificationStatus).toBe('qualified');
@@ -139,7 +139,7 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
         meddpicc_score: 50,
         meddpicc_breakdown: {},
         sessionId: 'wrun_none',
-        audit: { actor: 'system1_jev', payload: {} },
+        audit: { actor: 'system2_llm', payload: {} },
       })
     ).rejects.toThrow(/not found/i);
   });

@@ -9,6 +9,7 @@ import {
   saveJevScoring,
   scoreWithJev,
   writeBack,
+  type SaAnswer,
 } from "../lib/assessment-steps";
 import type { AssessmentProgress, AssessmentResult } from "@/lib/assessment-progress";
 
@@ -45,25 +46,47 @@ export default defineWorkflowTool({
     const { status, qualificationStatus, finalScore, delta } = output;
     return { type: "json", value: { status, qualificationStatus, finalScore, delta } };
   },
-  async *execute({ opportunityId, model, writebackWithoutFeedback }, ctx): AsyncGenerator<AssessmentProgress, AssessmentResult> {
+  async *execute(input, ctx): AsyncGenerator<AssessmentProgress, AssessmentResult> {
     "use workflow";
+    const { opportunityId, model, writebackWithoutFeedback } = input;
     const scope = assessmentScopeOf(ctx);
     const system2Model = model ?? (await defaultSystem2Model());
 
-    const baseline = await scoreWithJev(opportunityId);
+    const baseline = await scoreWithJev(opportunityId, ctx.abortSignal);
     yield { stage: "jev_scored", round: "baseline", jevResult: baseline.jevResult };
     const scored = await saveJevScoring(baseline.opportunity, baseline.jevResult, scope);
     yield { stage: "jev_saved", round: "baseline", jevResult: baseline.jevResult, opportunity: scored };
 
-    const analysis = await analyzeWithSystem2(scored, baseline.jevResult, system2Model, scope);
+    const analysis = await analyzeWithSystem2(
+      scored,
+      baseline.jevResult,
+      system2Model,
+      scope,
+      ctx.abortSignal,
+      Boolean(input.writebackWithoutFeedback)
+    );
     yield { stage: "system2_saved", system2Result: analysis.system2Result, opportunity: analysis.opportunity };
 
     if (!writebackWithoutFeedback) {
-      const reply = await ctx.ask({ prompt: DISCOVERY_PROMPT, display: "text", allowFreeform: true });
-      const feedback = await recordFeedback(opportunityId, parseSaAnswer(reply.text), scope);
+      let saAnswer: SaAnswer | null = null;
+      let promptText = DISCOVERY_PROMPT;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const reply = await ctx.ask({ prompt: promptText, display: "text", allowFreeform: true });
+        try {
+          saAnswer = parseSaAnswer(reply.text);
+          break;
+        } catch (err) {
+          if (attempt === 3) throw err;
+          const msg = err instanceof Error ? err.message : String(err);
+          promptText = `${DISCOVERY_PROMPT} (Previous response invalid: ${msg}. Please re-submit valid JSON.)`;
+        }
+      }
+      if (!saAnswer) throw new Error("Failed to receive valid SA answers after 3 attempts");
+
+      const feedback = await recordFeedback(opportunityId, saAnswer, scope);
       yield { stage: "feedback_recorded", feedback };
 
-      const rescore = await scoreWithJev(opportunityId);
+      const rescore = await scoreWithJev(opportunityId, ctx.abortSignal);
       yield { stage: "jev_scored", round: "rescore", jevResult: rescore.jevResult };
       const rescored = await saveJevScoring(rescore.opportunity, rescore.jevResult, scope);
       yield { stage: "jev_saved", round: "rescore", jevResult: rescore.jevResult, opportunity: rescored };

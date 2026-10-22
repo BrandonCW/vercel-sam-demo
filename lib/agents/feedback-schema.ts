@@ -1,5 +1,16 @@
 import { z } from 'zod';
 
+export interface DiscoveryFormLookup {
+  sections?: {
+    fields?: {
+      id: string;
+      name?: string;
+      label?: string;
+      options?: { label: string; value: string }[];
+    }[];
+  }[];
+}
+
 export const SaFeedbackPayloadSchema = z.object({
   opportunityId: z.string().min(1, 'opportunityId is required'),
   formResponses: z.record(z.union([z.string(), z.array(z.string())])),
@@ -31,11 +42,40 @@ export async function saFeedbackKey(
 export function formatSaDiscoveryDelta(
   formResponses: Record<string, string | string[]>,
   notesDelta: string | null | undefined,
-  timestamp: string
+  timestamp: string,
+  form?: DiscoveryFormLookup | null
 ): string {
+  const fieldById = new Map(
+    (form?.sections ?? [])
+      .flatMap((s) => s.fields ?? [])
+      .flatMap((f) => [
+        [f.id, f] as const,
+        ...(f.name && f.name !== f.id ? ([[f.name, f]] as const) : []),
+      ])
+  );
+
   const entries = Object.entries(formResponses)
-    .filter(([_, val]) => val !== undefined && val !== null && val !== '')
-    .map(([fieldId, val]) => `• ${fieldId}: ${Array.isArray(val) ? val.join(', ') : val}`);
+    .filter(
+      ([_, val]) =>
+        val !== undefined &&
+        val !== null &&
+        val !== '' &&
+        (!Array.isArray(val) || val.length > 0)
+    )
+    .map(([fieldId, val]) => {
+      const field = fieldById.get(fieldId);
+      const questionLabel = field?.label?.trim()
+        ? field.label.trim().replace(/:\s*$/, '')
+        : fieldId;
+      const resolveOptionLabel = (rawVal: string): string => {
+        const matchedOption = field?.options?.find((opt) => opt.value === rawVal);
+        return matchedOption?.label?.trim() ? matchedOption.label.trim() : rawVal;
+      };
+      const answerText = Array.isArray(val)
+        ? val.map(resolveOptionLabel).join(', ')
+        : resolveOptionLabel(val);
+      return `• ${questionLabel}: ${answerText}`;
+    });
 
   const deltaParts: string[] = [`[SA Discovery Update - ${timestamp}]`];
   if (entries.length > 0) {

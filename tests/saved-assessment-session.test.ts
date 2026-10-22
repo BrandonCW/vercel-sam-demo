@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { clearSavedSession, loadSavedSession, saveSession } from '@/lib/ui/saved-assessment-session';
+import {
+  clearSavedSession,
+  clearSubmittingRequestId,
+  loadSavedSession,
+  loadSubmittingRequestId,
+  saveSession,
+  saveSubmittingRequestId,
+} from '@/lib/ui/saved-assessment-session';
 
 // One Assessment Session per Opportunity, remembered in this browser so a reload resumes it.
 const oppA = { id: 'opp_a', last_reset_at: '2026-09-25T01:00:00.000Z' };
@@ -52,5 +59,20 @@ describe('saved Assessment Session per Opportunity', () => {
     expect(error).toHaveBeenCalledWith(expect.stringMatching(/cannot resume Assessment Sessions.*storage disabled/));
     getItem.mockRestore();
     error.mockRestore();
+  });
+
+  it('persists, loads and clears submittingRequestId across browser reloads', () => {
+    expect(loadSubmittingRequestId(oppA.id)).toBeNull();
+    saveSubmittingRequestId(oppA.id, 'req_submitting_42');
+    expect(loadSubmittingRequestId(oppA.id)).toBe('req_submitting_42');
+
+    clearSubmittingRequestId(oppA.id);
+    expect(loadSubmittingRequestId(oppA.id)).toBeNull();
+
+    // Verify clearSavedSession also clears submittingRequestId
+    saveSubmittingRequestId(oppB.id, 'req_b_99');
+    expect(loadSubmittingRequestId(oppB.id)).toBe('req_b_99');
+    clearSavedSession(oppB.id);
+    expect(loadSubmittingRequestId(oppB.id)).toBeNull();
   });
 });
