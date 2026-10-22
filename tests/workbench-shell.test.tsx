@@ -414,5 +414,26 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       expect(loadSubmittingRequestId(base.id)).toBeNull();
       expect(screen.getByRole('button', { name: /Submit Discovery Findings/i })).toBeTruthy();
     });
+
+    // Regression: ISSUE-001 — clear stale submittingRequestId on replayed turn.cancelled or ctx.ask retry requestId
+    // Found by /qa on 2026-10-22
+    // Report: .gstack/qa-reports/run-20261022T072000Z/qa-report-eve-alignment-hardening-2026-10-22.md
+    it('clears stale submittingRequestId on reload when ctx.ask retried with a new requestId or turn was cancelled', () => {
+      saveSubmittingRequestId(base.id, 'req_1');
+      hook.state.status = 'ready';
+      hook.state.data = view({
+        phase: 'awaiting_feedback',
+        pendingInput: { requestId: 'req_2' },
+        jevResult: jev(),
+        system2Result: system2(),
+        opportunity: opportunity(),
+      });
+      renderShell();
+
+      expect(loadSubmittingRequestId(base.id)).toBeNull();
+      expect(screen.queryByText(/Synthesizing Discovery Findings & Re-Scoring Deal/i)).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /Answer (\d+ )?Discovery Questions/i }));
+      expect(screen.getByRole('button', { name: /Submit Discovery Findings/i })).toBeTruthy();
+    });
   });
 });

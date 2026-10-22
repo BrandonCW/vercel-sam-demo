@@ -280,6 +280,21 @@ describe('assessmentReducer (workbench view from the run_assessment stream)', ()
     expect(cancelled.error).toBeNull();
     expect(cancelled.system2Result).toBeDefined();
     expect(cancelled.pendingInput?.requestId).toBe('req_1');
+    expect(cancelled.turnCancelled).toBe(true);
+  });
+
+  // Regression: ISSUE-001 — clear stale submittingRequestId on replayed turn.cancelled or ctx.ask retry requestId
+  // Found by /qa on 2026-10-22
+  // Report: .gstack/qa-reports/run-20261022T072000Z/qa-report-eve-alignment-hardening-2026-10-22.md
+  it('marks turnCancelled on replayed turn.cancelled and resets sentFeedbackKey on retry input.requested', () => {
+    const replayedCancel = run([...toPause, ev('turn.started', {}), ev('turn.cancelled', {})]);
+    expect(replayedCancel.phase).toBe('awaiting_feedback');
+    expect(replayedCancel.turnCancelled).toBe(true);
+
+    const retriedAsk = run([responded(answer), question('req_2')], run(toPause));
+    expect(retriedAsk.phase).toBe('awaiting_feedback');
+    expect(retriedAsk.pendingInput).toEqual({ requestId: 'req_2' });
+    expect(retriedAsk.sentFeedbackKey).toBeNull();
   });
 
   it('handles session.completed by transitioning to closed', () => {

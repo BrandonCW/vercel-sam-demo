@@ -310,20 +310,26 @@ function LiveAssessmentSession({
     loadSubmittingRequestId(baseOpportunity.id)
   );
 
+  const isSubmittingPending = Boolean(
+    submittingRequestId &&
+      view.pendingInput?.requestId === submittingRequestId &&
+      !view.turnCancelled
+  );
+
   const turnInFlight =
     ((agent.status === 'submitted' || agent.status === 'streaming') &&
-      (view.phase !== 'awaiting_feedback' || Boolean(submittingRequestId))) ||
+      (view.phase !== 'awaiting_feedback' || isSubmittingPending)) ||
     isResuming;
 
   const currentOpportunity = view.opportunity ?? baseOpportunity;
 
-  const isAwaitingFeedback = view.phase === 'awaiting_feedback' && !submittingRequestId;
+  const isAwaitingFeedback = view.phase === 'awaiting_feedback' && !isSubmittingPending;
 
   // Map real Eve agent session state to WorkflowState
   const workflowState: WorkflowState =
     view.phase === 'assessing'
       ? 'ANALYZING'
-      : view.phase === 'submitting_feedback' || (view.phase === 'awaiting_feedback' && Boolean(submittingRequestId))
+      : view.phase === 'submitting_feedback' || (view.phase === 'awaiting_feedback' && isSubmittingPending)
       ? 'EVALUATING'
       : isAwaitingFeedback
       ? 'PENDING_FEEDBACK'
@@ -401,18 +407,23 @@ function LiveAssessmentSession({
   useEffect(() => {
     const cancelledFromSubmitting =
       prevPhaseRef.current === 'submitting_feedback' && view.phase === 'awaiting_feedback';
+    const staleRequestId = Boolean(
+      submittingRequestId && view.pendingInput && view.pendingInput.requestId !== submittingRequestId
+    );
     prevPhaseRef.current = view.phase;
     if (
       view.feedback ||
       view.phase === 'closed' ||
       view.phase === 'ready' ||
       view.phase === 'failed' ||
-      cancelledFromSubmitting
+      view.turnCancelled ||
+      cancelledFromSubmitting ||
+      staleRequestId
     ) {
       clearSubmittingRequestId(baseOpportunity.id);
       setSubmittingRequestId(null);
     }
-  }, [view.feedback, view.phase, baseOpportunity.id]);
+  }, [view.feedback, view.phase, view.turnCancelled, view.pendingInput, submittingRequestId, baseOpportunity.id]);
 
   async function sendTurn(label: string, submit: () => Promise<void>) {
     setSendError(null);
