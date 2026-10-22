@@ -50,12 +50,12 @@ export default defineWorkflowTool({
     const scope = assessmentScopeOf(ctx);
     const system2Model = model ?? (await defaultSystem2Model());
 
-    const baseline = await scoreWithJev(opportunityId);
+    const baseline = await scoreWithJev(opportunityId, ctx.abortSignal);
     yield { stage: "jev_scored", round: "baseline", jevResult: baseline.jevResult };
     const scored = await saveJevScoring(baseline.opportunity, baseline.jevResult, scope);
     yield { stage: "jev_saved", round: "baseline", jevResult: baseline.jevResult, opportunity: scored };
 
-    const analysis = await analyzeWithSystem2(scored, baseline.jevResult, system2Model, scope);
+    const analysis = await analyzeWithSystem2(scored, baseline.jevResult, system2Model, scope, ctx.abortSignal);
     yield { stage: "system2_saved", system2Result: analysis.system2Result, opportunity: analysis.opportunity };
 
     if (!writebackWithoutFeedback) {
@@ -63,7 +63,7 @@ export default defineWorkflowTool({
       const feedback = await recordFeedback(opportunityId, parseSaAnswer(reply.text), scope);
       yield { stage: "feedback_recorded", feedback };
 
-      const rescore = await scoreWithJev(opportunityId);
+      const rescore = await scoreWithJev(opportunityId, ctx.abortSignal);
       yield { stage: "jev_scored", round: "rescore", jevResult: rescore.jevResult };
       const rescored = await saveJevScoring(rescore.opportunity, rescore.jevResult, scope);
       yield { stage: "jev_saved", round: "rescore", jevResult: rescore.jevResult, opportunity: rescored };

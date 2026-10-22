@@ -25,7 +25,10 @@ import { AssessmentResultSchema, type AssessmentResult } from "@/lib/assessment-
  */
 
 /** System 1: loads the Opportunity and scores it with Jev. Writes nothing. */
-export async function scoreWithJev(opportunityId: string): Promise<{ opportunity: Opportunity; jevResult: JevScoringResult }> {
+export async function scoreWithJev(
+  opportunityId: string,
+  signal?: AbortSignal
+): Promise<{ opportunity: Opportunity; jevResult: JevScoringResult }> {
   "use step";
   assertAiGatewayConfigured();
   const opportunity = await requireOpportunity(opportunityId);
@@ -39,7 +42,11 @@ export async function scoreWithJev(opportunityId: string): Promise<{ opportunity
     saNotes: opportunity.sa_notes,
   };
   // Jev answers typed questions; composite and stage gate are computed in code.
-  const evaluation = await evaluate({ model: resolveJevModel(), ...buildJevEvaluationRequest(input) });
+  const evaluation = await evaluate({
+    model: resolveJevModel(),
+    ...buildJevEvaluationRequest(input),
+    abortSignal: signal,
+  });
   return { opportunity, jevResult: interpretJevEvaluation(input, evaluation) };
 }
 scoreWithJev.maxRetries = 0;
@@ -81,7 +88,8 @@ export async function analyzeWithSystem2(
   opportunity: Opportunity,
   jevResult: JevScoringResult,
   model: System2ModelOption,
-  scope: AssessmentScope
+  scope: AssessmentScope,
+  signal?: AbortSignal
 ): Promise<{ system2Result: System2AnalysisResult; opportunity: Opportunity }> {
   "use step";
   assertAiGatewayConfigured();
@@ -101,6 +109,9 @@ export async function analyzeWithSystem2(
       stageGate: jevResult.stageGate,
     },
   });
+  const abortSignal = signal
+    ? AbortSignal.any([AbortSignal.timeout(SYSTEM2_TIMEOUT_MS), signal])
+    : AbortSignal.timeout(SYSTEM2_TIMEOUT_MS);
   // Gateway errors, timeouts and schema-invalid output all throw.
   const result = await generateText({
     model: gateway(model),
@@ -111,7 +122,7 @@ export async function analyzeWithSystem2(
       name: "system2_analysis",
       description: "System 2 per-dimension citations, SA discovery form, and gap synthesis.",
     }),
-    abortSignal: AbortSignal.timeout(SYSTEM2_TIMEOUT_MS),
+    abortSignal,
   });
   if (!result.output) throw new Error(`System 2 model ${model} returned no structured output`);
   const system2Result = toSystem2AnalysisResult(result.output, { opportunityId: opportunity.id, model });
