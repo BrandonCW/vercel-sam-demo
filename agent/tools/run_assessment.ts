@@ -9,6 +9,7 @@ import {
   saveJevScoring,
   scoreWithJev,
   writeBack,
+  type SaAnswer,
 } from "../lib/assessment-steps";
 import type { AssessmentProgress, AssessmentResult } from "@/lib/assessment-progress";
 
@@ -59,8 +60,22 @@ export default defineWorkflowTool({
     yield { stage: "system2_saved", system2Result: analysis.system2Result, opportunity: analysis.opportunity };
 
     if (!writebackWithoutFeedback) {
-      const reply = await ctx.ask({ prompt: DISCOVERY_PROMPT, display: "text", allowFreeform: true });
-      const feedback = await recordFeedback(opportunityId, parseSaAnswer(reply.text), scope);
+      let saAnswer: SaAnswer | null = null;
+      let promptText = DISCOVERY_PROMPT;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const reply = await ctx.ask({ prompt: promptText, display: "text", allowFreeform: true });
+        try {
+          saAnswer = parseSaAnswer(reply.text);
+          break;
+        } catch (err) {
+          if (attempt === 3) throw err;
+          const msg = err instanceof Error ? err.message : String(err);
+          promptText = `${DISCOVERY_PROMPT} (Previous response invalid: ${msg}. Please re-submit valid JSON.)`;
+        }
+      }
+      if (!saAnswer) throw new Error("Failed to receive valid SA answers after 3 attempts");
+
+      const feedback = await recordFeedback(opportunityId, saAnswer, scope);
       yield { stage: "feedback_recorded", feedback };
 
       const rescore = await scoreWithJev(opportunityId, ctx.abortSignal);

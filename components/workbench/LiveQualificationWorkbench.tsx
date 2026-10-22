@@ -8,8 +8,11 @@ import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results
 import { assessTurnMessage, saAnswerText } from '@/lib/assessment-turns';
 import {
   clearSavedSession,
+  clearSubmittingRequestId,
   loadSavedSession,
+  loadSubmittingRequestId,
   saveSession,
+  saveSubmittingRequestId,
 } from '@/lib/ui/saved-assessment-session';
 import type { WorkflowState, WorkbenchMode } from '@/lib/simulation/types';
 
@@ -308,16 +311,22 @@ function LiveAssessmentSession({
       view.phase !== 'awaiting_feedback') ||
     isResuming;
 
+  const [submittingRequestId, setSubmittingRequestId] = useState<string | null>(() =>
+    loadSubmittingRequestId(baseOpportunity.id)
+  );
+
   const currentOpportunity = view.opportunity ?? baseOpportunity;
+
+  const isAwaitingFeedback = view.phase === 'awaiting_feedback' && !submittingRequestId;
 
   // Map real Eve agent session state to WorkflowState
   const workflowState: WorkflowState =
     view.phase === 'assessing'
       ? 'ANALYZING'
-      : view.phase === 'awaiting_feedback'
-      ? 'PENDING_FEEDBACK'
-      : view.phase === 'submitting_feedback'
+      : view.phase === 'submitting_feedback' || (view.phase === 'awaiting_feedback' && Boolean(submittingRequestId))
       ? 'EVALUATING'
+      : isAwaitingFeedback
+      ? 'PENDING_FEEDBACK'
       : view.phase === 'closed' || currentOpportunity.suggested_next_steps
       ? 'COMPLETED'
       : 'READY_TO_ASSESS';
@@ -387,6 +396,13 @@ function LiveAssessmentSession({
     if (view.legacySession) clearSavedSession(baseOpportunity.id);
   }, [view.legacySession, baseOpportunity.id]);
 
+  useEffect(() => {
+    if (view.feedback || view.phase === 'closed' || view.phase === 'ready') {
+      clearSubmittingRequestId(baseOpportunity.id);
+      setSubmittingRequestId(null);
+    }
+  }, [view.feedback, view.phase, baseOpportunity.id]);
+
   async function sendTurn(label: string, submit: () => Promise<void>) {
     setSendError(null);
     try {
@@ -400,6 +416,8 @@ function LiveAssessmentSession({
 
   async function handleStartAssessment() {
     agent.reset();
+    clearSubmittingRequestId(baseOpportunity.id);
+    setSubmittingRequestId(null);
     setResumeError(null);
     setActiveStageView('blank');
     setBaselineAssessment(null);
@@ -427,6 +445,8 @@ function LiveAssessmentSession({
     if (notesDelta !== undefined) setSavedManualNotes(notesDelta);
 
     showToast('Submitting discovery findings to Eve Agent for delta re-scoring...');
+    saveSubmittingRequestId(baseOpportunity.id, pending.requestId);
+    setSubmittingRequestId(pending.requestId);
     const text = await saAnswerText(formResponses, notesDelta);
     await sendTurn(WRITEBACK_FAILED, () =>
       agent.respond([{ requestId: pending.requestId, text }])
@@ -434,7 +454,7 @@ function LiveAssessmentSession({
   }
 
   // Live score and dimensions
-  const liveScore = currentOpportunity.meddpicc_score ?? view.jevResult?.overallScore ?? (isComplete ? 76 : 0);
+  const liveScore = currentOpportunity.meddpicc_score ?? view.jevResult?.overallScore ?? view.result?.finalScore ?? 0;
 
   const baselineScore =
     baselineAssessment?.score ??

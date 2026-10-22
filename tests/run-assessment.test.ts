@@ -205,4 +205,24 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     expect(await actions()).toEqual(['initial_scoring', 'questions_generated']);
     expect((await getOpportunity(ACME))!.sa_notes).toBe(before.sa_notes);
   });
+
+  it('retries ctx.ask when parseSaAnswer fails on attempt 1 and recovers on attempt 2', async () => {
+    gatewayCalls.evaluate.mockResolvedValueOnce(jevAnswers(2.61, 1.44)).mockResolvedValueOnce(jevAnswers(9.5, 9));
+    gatewayCalls.generateText.mockResolvedValue({ output: modelOutput });
+
+    let attempts = 0;
+    const { result, asks } = await drive({ opportunityId: ACME }, async () => {
+      attempts++;
+      if (attempts === 1) {
+        return { text: 'invalid not-json' };
+      }
+      return { text: await answerText({ eb: 'CFO Mark Ellis signs' }, 'Approved.') };
+    });
+
+    expect(attempts).toBe(2);
+    expect(asks).toHaveLength(2);
+    expect(asks[1].prompt).toContain('Previous response invalid: The SA discovery answer is not JSON');
+    expect(result.status).toBe('written_back');
+    expect(result.opportunity.qualification_status).toBe('qualified');
+  });
 });
