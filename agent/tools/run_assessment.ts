@@ -3,42 +3,46 @@ import { z } from "zod";
 import { assessmentScopeOf } from "@/lib/assessment-session";
 import { resolveSystem2Model, System2ModelSchema } from "@/lib/models";
 import {
-  analyzeWithSystem2,
+  generateSystem2Analysis,
   parseSaAnswer,
   recordFeedback,
   saveJevScoring,
+  saveSystem2Analysis,
   scoreWithJev,
   writeBack,
   type SaAnswer,
 } from "../lib/assessment-steps";
 import type { AssessmentProgress, AssessmentResult } from "@/lib/assessment-progress";
 
-/** Prompt of the discovery pause. The workbench renders the form from the yielded System 2 result. */
+/** Prompt of the discovery pause. The workbench renders the form from the yielded gap analysis result. */
 export const DISCOVERY_PROMPT =
-  "Answer the System 2 discovery form. Send JSON text: { formResponses, notesDelta?, feedbackKey }.";
+  "Submit Solutions Architect discovery responses as JSON text: { formResponses, notesDelta?, feedbackKey }.";
 
 /**
- * The whole Assessment Session as one durable workflow: code, not the root model, sequences it.
- * Every yield is an `action.partial` the workbench renders (Jev scores before their CRM write,
- * then the persisted results); the SA pause is `ctx.ask`, which parks the run at zero compute
- * for as long as discovery takes. The return value closes the session.
+ * The whole deal qualification audit as one durable workflow: code, not the root model, sequences it.
+ * Baseline rubric scores yield immediately (`jev_scored`) while persistence and deep gap/citation
+ * synthesis run concurrently; `ctx.ask` parks the session at zero compute while awaiting discovery
+ * answers; Turn 2 re-scores and writes back using in-memory results to minimize DB roundtrips.
  */
 export default defineWorkflowTool({
   description:
-    "Run the whole Assessment Session for one Opportunity: Jev scoring (System 1), System 2 analysis and discovery form, a durable pause for the Solutions Architect's answers, delta re-scoring and the CRM writeback. Pass only the opportunityId and, if one was requested, the System 2 model. Returns when the session is written back.",
+    "Run the complete MEDDPICC deal audit for an Opportunity: baseline rubric scoring, deep gap & citation analysis with discovery form generation, a durable pause for Solutions Architect answers, delta re-scoring, and atomic CRM writeback.",
   inputSchema: z.object({
     opportunityId: z.string().min(1).describe("The ID of the Opportunity to assess"),
-    model: System2ModelSchema.optional().describe("Vercel AI Gateway model for System 2 (defaults to the configured model)"),
+    model: System2ModelSchema.optional().describe(
+      "AI Gateway analysis model for deep gap & citation synthesis (defaults to the configured model)"
+    ),
     writebackWithoutFeedback: z
       .boolean()
       .optional()
-      .describe("Only when explicitly asked: write back right after System 2 instead of waiting for the SA's answers"),
+      .describe(
+        "Only when explicitly requested: write back immediately after baseline gap analysis without waiting for discovery answers"
+      ),
   }),
   label: {
-    start: () => "Scoring with Jev (System 1)",
+    start: () => "Baseline MEDDPICC rubric scoring",
     delta: (_input, partial: AssessmentProgress | AssessmentResult) => progressLabel(partial),
-    complete: (_input, output: AssessmentProgress | AssessmentResult) =>
-      progressLabel(output),
+    complete: (_input, output: AssessmentProgress | AssessmentResult) => progressLabel(output),
   },
   // The workbench and evals read the full result from the stream; the root model only needs one line.
   toModelOutput(output: AssessmentProgress | AssessmentResult) {
@@ -50,68 +54,128 @@ export default defineWorkflowTool({
     "use workflow";
     const { opportunityId, model, writebackWithoutFeedback } = input;
     const scope = assessmentScopeOf(ctx);
-    const system2Model = model ?? (await defaultSystem2Model());
+    const skipFeedback = Boolean(writebackWithoutFeedback);
 
-    const baseline = await scoreWithJev(opportunityId, ctx.abortSignal);
+    const [analysisModel, baseline] = model
+      ? [model, await scoreWithJev(opportunityId, ctx.abortSignal)]
+      : await Promise.all([defaultAnalysisModel(), scoreWithJev(opportunityId, ctx.abortSignal)]);
+
+    const { sessionStartedAt } = baseline;
+
+    // Surface baseline rubric scores to the UI immediately before waiting on CRM write or deep synthesis.
     yield { stage: "jev_scored", round: "baseline", jevResult: baseline.jevResult };
-    const scored = await saveJevScoring(baseline.opportunity, baseline.jevResult, scope);
-    yield { stage: "jev_saved", round: "baseline", jevResult: baseline.jevResult, opportunity: scored };
 
-    const analysis = await analyzeWithSystem2(
-      scored,
+    // Run baseline CRM persistence and deep gap/citation LLM inference concurrently (zero serial barrier).
+    const saveBaselinePromise = saveJevScoring(
+      baseline.opportunity,
       baseline.jevResult,
-      system2Model,
       scope,
-      ctx.abortSignal,
-      Boolean(input.writebackWithoutFeedback)
+      sessionStartedAt
     );
-    yield { stage: "system2_saved", system2Result: analysis.system2Result, opportunity: analysis.opportunity };
+    const inferencePromise = generateSystem2Analysis(
+      baseline.opportunity,
+      baseline.jevResult,
+      analysisModel,
+      ctx.abortSignal
+    );
+    // Attach no-op handler while awaiting `saveBaselinePromise` + `yield` so an early rejection never surfaces unhandled.
+    inferencePromise.catch(() => {});
 
-    if (!writebackWithoutFeedback) {
-      let saAnswer: SaAnswer | null = null;
-      let promptText = DISCOVERY_PROMPT;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        const reply = await ctx.ask({ prompt: promptText, display: "text", allowFreeform: true });
-        try {
-          saAnswer = parseSaAnswer(reply.text);
-          break;
-        } catch (err) {
-          if (attempt === 3) throw err;
-          const msg = err instanceof Error ? err.message : String(err);
-          promptText = `${DISCOVERY_PROMPT} (Previous response invalid: ${msg}. Please re-submit valid JSON.)`;
-        }
-      }
-      if (!saAnswer) throw new Error("Failed to receive valid SA answers after 3 attempts");
+    const scoredOpportunity = await saveBaselinePromise;
+    yield {
+      stage: "jev_saved",
+      round: "baseline",
+      jevResult: baseline.jevResult,
+      opportunity: scoredOpportunity,
+    };
 
-      const feedback = await recordFeedback(opportunityId, saAnswer, scope);
-      yield { stage: "feedback_recorded", feedback };
+    const system2Result = await inferencePromise;
+    const analyzedOpportunity = await saveSystem2Analysis(
+      scoredOpportunity,
+      baseline.jevResult,
+      system2Result,
+      scope,
+      skipFeedback,
+      sessionStartedAt
+    );
+    yield { stage: "system2_saved", system2Result, opportunity: analyzedOpportunity };
 
-      const rescore = await scoreWithJev(opportunityId, ctx.abortSignal);
-      yield { stage: "jev_scored", round: "rescore", jevResult: rescore.jevResult };
-      const rescored = await saveJevScoring(rescore.opportunity, rescore.jevResult, scope);
-      yield { stage: "jev_saved", round: "rescore", jevResult: rescore.jevResult, opportunity: rescored };
+    if (skipFeedback) {
+      return writeBack(opportunityId, scope, "skipped", {
+        opportunity: analyzedOpportunity,
+        baselineJevResult: baseline.jevResult,
+        latestJevResult: baseline.jevResult,
+        system2Result,
+        sessionStartedAt,
+      });
     }
 
-    return writeBack(opportunityId, scope, writebackWithoutFeedback ? "skipped" : "recorded");
+    let saAnswer: SaAnswer | null = null;
+    let promptText = DISCOVERY_PROMPT;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const reply = await ctx.ask({ prompt: promptText, display: "text", allowFreeform: true });
+      try {
+        saAnswer = parseSaAnswer(reply.text);
+        break;
+      } catch (err) {
+        if (attempt === 3) throw err;
+        const msg = err instanceof Error ? err.message : String(err);
+        promptText = `${DISCOVERY_PROMPT} (Previous response invalid: ${msg}. Please re-submit valid JSON.)`;
+      }
+    }
+    if (!saAnswer) throw new Error("Failed to receive valid SA answers after 3 attempts");
+
+    const feedback = await recordFeedback(opportunityId, saAnswer, scope, {
+      phase3Form: system2Result.phase3Form,
+      sessionStartedAt,
+    });
+    yield { stage: "feedback_recorded", feedback };
+
+    const rescore = await scoreWithJev(opportunityId, ctx.abortSignal);
+    yield { stage: "jev_scored", round: "rescore", jevResult: rescore.jevResult };
+    const rescoredOpportunity = await saveJevScoring(
+      rescore.opportunity,
+      rescore.jevResult,
+      scope,
+      sessionStartedAt
+    );
+    yield {
+      stage: "jev_saved",
+      round: "rescore",
+      jevResult: rescore.jevResult,
+      opportunity: rescoredOpportunity,
+    };
+
+    return writeBack(opportunityId, scope, "recorded", {
+      opportunity: rescoredOpportunity,
+      baselineJevResult: baseline.jevResult,
+      latestJevResult: rescore.jevResult,
+      system2Result,
+      sessionStartedAt,
+    });
   },
 });
 
-/** `process.env` belongs in a step: the body is replayed and must stay deterministic. */
-async function defaultSystem2Model() {
+/** `process.env` belongs in a step: the workflow body is replayed and must stay deterministic. */
+async function defaultAnalysisModel() {
   "use step";
   return resolveSystem2Model();
 }
 
 function progressLabel(progress: AssessmentProgress | AssessmentResult): string {
-  if ("status" in progress) return `Written back: ${progress.qualificationStatus}`;
+  if ("status" in progress) return `CRM writeback complete: ${progress.qualificationStatus}`;
   switch (progress.stage) {
     case "jev_scored":
-      return "Jev scored; saving to the CRM";
+      return progress.round === "baseline"
+        ? "Baseline MEDDPICC rubric scored · starting deep gap & citation analysis"
+        : "Post-discovery MEDDPICC rubric scored · saving to CRM";
     case "jev_saved":
-      return progress.round === "baseline" ? "Running System 2 analysis" : "Writing back to the CRM";
+      return progress.round === "baseline"
+        ? "Deep gap & citation analysis"
+        : "Finalizing qualification verdict & CRM writeback";
     case "system2_saved":
-      return "Waiting for the Solutions Architect";
+      return "Awaiting Solutions Architect discovery answers";
     case "feedback_recorded":
-      return "Re-scoring with Jev";
+      return "Re-scoring MEDDPICC rubric with discovery answers";
   }
 }

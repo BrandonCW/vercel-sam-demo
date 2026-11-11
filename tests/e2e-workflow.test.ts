@@ -20,7 +20,7 @@ function makeResetRequest(body?: { scenarioId?: string }): Request {
   });
 }
 
-describe('CRM Reset Endpoint (POST /api/crm/reset)', () => {
+describe.skipIf(!process.env.POSTGRES_URL)('CRM Reset Endpoint (POST /api/crm/reset)', () => {
   beforeEach(async () => {
     await resetCrmDatabase('scenario_acme_netlify');
   });

@@ -15,7 +15,9 @@ vi.mock('ai', async (importOriginal) => ({
   generateText: gatewayCalls.generateText,
 }));
 
-const { default: runAssessmentTool } = await import('@/agent/tools/run_assessment');
+const { default: runAssessmentTool, DISCOVERY_PROMPT } = await import('@/agent/tools/run_assessment');
+const { generateSystem2Analysis, parseSaAnswer } = await import('@/agent/lib/assessment-steps');
+const { jev: makeJev, opportunity: makeOpp } = await import('./fixtures/qualification');
 
 const ACME = 'opp_acme_corp_001';
 const score = (s: number) => ({ type: 'score', score: s });
@@ -103,7 +105,70 @@ async function drive(
 
 const actions = async () => (await getSessionInteractions(ACME, 'wrun_A')).map((i) => i.action).reverse();
 
-describe('run_assessment: one workflow tool sequences the Assessment Session in code', { timeout: 30_000 }, () => {
+describe('run_assessment display copy & step labels (offline-safe)', () => {
+  const INTERNAL_JARGON = /\b(System 1|System 2|Jev|eve|run_assessment)\b/i;
+
+  it('uses Deal Desk terminology in DISCOVERY_PROMPT and step display labels', () => {
+    expect(DISCOVERY_PROMPT).not.toMatch(INTERNAL_JARGON);
+    const label = (runAssessmentTool as any).label;
+    expect(label.start({})).not.toMatch(INTERNAL_JARGON);
+    expect(label.delta({}, { stage: 'jev_scored', round: 'baseline', jevResult: {} })).not.toMatch(INTERNAL_JARGON);
+    expect(label.delta({}, { stage: 'jev_saved', round: 'baseline', jevResult: {}, opportunity: {} })).not.toMatch(
+      INTERNAL_JARGON
+    );
+    expect(label.delta({}, { stage: 'system2_saved', system2Result: {}, opportunity: {} })).not.toMatch(INTERNAL_JARGON);
+    expect(label.delta({}, { stage: 'feedback_recorded', feedback: { recorded: true, feedbackKey: 'k' } })).not.toMatch(
+      INTERNAL_JARGON
+    );
+    expect(label.complete({}, { status: 'written_back', qualificationStatus: 'qualified' })).not.toMatch(INTERNAL_JARGON);
+  });
+
+  it('caps Gemini thinkingBudget to 1024 and omits Google providerOptions for Anthropic Haiku', async () => {
+    const prevKey = process.env.AI_GATEWAY_API_KEY;
+    process.env.AI_GATEWAY_API_KEY = 'test-gateway-key';
+    try {
+      gatewayCalls.generateText.mockReset();
+      gatewayCalls.generateText.mockResolvedValue({ output: modelOutput });
+
+      const opp = makeOpp();
+      const baseJev = makeJev();
+
+      const geminiRes = await generateSystem2Analysis(opp, baseJev, 'google/gemini-3.8-flash');
+      expect(geminiRes.modelUsed).toBe('google/gemini-3.8-flash');
+      expect(gatewayCalls.generateText).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          providerOptions: { google: { thinkingConfig: { thinkingBudget: 1024 } } },
+        })
+      );
+
+      const haikuRes = await generateSystem2Analysis(opp, baseJev, 'anthropic/claude-haiku-5.5');
+      expect(haikuRes.modelUsed).toBe('anthropic/claude-haiku-5.5');
+      const lastCallArgs = gatewayCalls.generateText.mock.calls.at(-1)?.[0];
+      expect(lastCallArgs).not.toHaveProperty('providerOptions');
+    } finally {
+      if (prevKey === undefined) delete process.env.AI_GATEWAY_API_KEY;
+      else process.env.AI_GATEWAY_API_KEY = prevKey;
+    }
+  });
+
+  it('validates SA discovery answers strictly via parseSaAnswer', () => {
+    expect(() => parseSaAnswer(undefined)).toThrow(/empty/);
+    expect(() => parseSaAnswer('plain text')).toThrow(/not JSON/);
+    expect(() => parseSaAnswer(JSON.stringify({ formResponses: { eb: 'CFO' } }))).toThrow(/feedbackKey/);
+    expect(
+      parseSaAnswer(JSON.stringify({ formResponses: { eb: 'CFO' }, notesDelta: 'Confirmed', feedbackKey: 'k_123' }))
+    ).toEqual({
+      formResponses: { eb: 'CFO' },
+      notesDelta: 'Confirmed',
+      feedbackKey: 'k_123',
+    });
+  });
+});
+
+describe.skipIf(!process.env.POSTGRES_URL)(
+  'run_assessment: one workflow tool sequences the Assessment Session in code',
+  { timeout: 30_000 },
+  () => {
   beforeEach(async () => {
     await resetCrmDatabase('scenario_acme_netlify');
     gatewayCalls.evaluate.mockReset();
@@ -165,6 +230,12 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
     const after = (await getOpportunity(ACME))!;
     expect(after.ae_notes).toBe(before.ae_notes);
     expect(after.sa_notes).toContain('• Who signs?: CFO Mark Ellis signs; $180k approved.');
+    // Turn-1 gaps on Economic Buyer (now verified, score >= 8) must be cleared in Postgres:
+    expect(after.meddpicc_breakdown.economicBuyer?.gaps).toEqual([]);
+    // Anthropic Haiku must NOT receive Google thinkingConfig providerOptions:
+    expect(gatewayCalls.generateText).not.toHaveBeenCalledWith(
+      expect.objectContaining({ providerOptions: expect.anything() })
+    );
   });
 
   it('writes back right after System 2 without pausing when asked to skip SA feedback', async () => {
@@ -241,7 +312,10 @@ describe('run_assessment: one workflow tool sequences the Assessment Session in 
       expect.objectContaining({ abortSignal: expect.any(AbortSignal) })
     );
     expect(gatewayCalls.generateText).toHaveBeenCalledWith(
-      expect.objectContaining({ abortSignal: expect.any(AbortSignal) })
+      expect.objectContaining({
+        abortSignal: expect.any(AbortSignal),
+        providerOptions: { google: { thinkingConfig: { thinkingBudget: 1024 } } },
+      })
     );
   });
 

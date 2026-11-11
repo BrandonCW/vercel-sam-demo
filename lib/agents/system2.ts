@@ -10,6 +10,7 @@ import {
   type JsonRenderForm,
   type JsonRenderSection,
 } from '@/lib/ui/json-render-schema';
+import type { JevScoringResult } from './jev-schema';
 import { System2ModelSchema, type System2ModelOption } from '@/lib/models';
 
 
@@ -73,9 +74,9 @@ const ModelFormSchema = z.object({
 });
 
 /**
- * What the System 2 model must return. Code, not the model, turns this into status and next steps.
- * Property order is generation order: citations and the discovery form stream first, so the
- * workbench can show them while the rest is still being written.
+ * Structured output contract for deep gap and citation analysis. Code, not the model,
+ * derives qualification status and Suggested Next Steps from this validated object.
+ * Returned as a single validated structured object per step execution (not streamed).
  */
 export const System2ModelOutputSchema = z.object({
   dimensionFindings: DimensionFindingsSchema,
@@ -172,4 +173,31 @@ export function toSystem2AnalysisResult(
     opportunityId: meta.opportunityId,
     modelUsed: meta.model,
   });
+}
+
+/**
+ * Clears Turn-1 gap callouts on dimensions whose post-discovery rubric score reached
+ * `'verified'` (`score >= 8`), while preserving buyer citations and unresolved gaps.
+ */
+export function clearVerifiedDimensionGaps(
+  system2: System2AnalysisResult,
+  jev: Pick<JevScoringResult, 'dimensions'>
+): System2AnalysisResult {
+  const updatedFindings = { ...system2.dimensionFindings };
+  let changed = false;
+
+  for (const key of Object.keys(updatedFindings) as DimensionTarget[]) {
+    const dim = jev.dimensions[key];
+    if (!dim) continue;
+    const isVerified = dim.status === 'verified' || dim.score >= 8;
+    if (isVerified && updatedFindings[key].gaps.length > 0) {
+      updatedFindings[key] = {
+        ...updatedFindings[key],
+        gaps: [],
+      };
+      changed = true;
+    }
+  }
+
+  return changed ? { ...system2, dimensionFindings: updatedFindings } : system2;
 }
