@@ -1,10 +1,25 @@
 import type { Metadata } from 'next';
+import { Instrument_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+
+const instrumentSans = Instrument_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-instrument-sans',
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-jetbrains-mono',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Deal Qualification System | Vercel Solutions Engineering',
   description:
-    'Automated enterprise deal qualification workbench evaluating AE/SA discovery against MEDDPICC criteria with System 1 and System 2 agent intelligence.',
+    'Enterprise deal qualification workbench evaluating AE and SA discovery notes against MEDDPICC criteria with structured stage-gate scoring and CRM writeback.',
 };
 
 export default function RootLayout({
@@ -13,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${instrumentSans.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-[#F8F8F6] text-[#111215] antialiased selection:bg-[#0F52BA] selection:text-white">
         {children}
       </body>
