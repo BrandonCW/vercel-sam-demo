@@ -59,7 +59,7 @@ describe('synthesizeSuggestedNextSteps', () => {
 });
 
 describe('mergeSystem2Findings', () => {
-  it('attaches System 2 citations and gaps to each Jev dimension for the rubric UI', () => {
+  it('attaches System 2 citations and gaps to unverified dimensions, and clears stale gaps on verified dimensions (score >= 8)', () => {
     const breakdown = mergeSystem2Findings(jev(), system2());
     expect(breakdown.economicBuyer).toMatchObject({
       score: 3,
@@ -68,5 +68,26 @@ describe('mergeSystem2Findings', () => {
     });
     expect(breakdown.metrics).toMatchObject({ score: 6, evidence: [], gaps: [] });
     expect(breakdown.stageGate).toEqual(jev().stageGate);
+
+    const postFeedbackJev = jev({
+      dimensions: {
+        ...jev().dimensions,
+        economicBuyer: {
+          key: 'economicBuyer',
+          label: 'Economic Buyer',
+          weight: 0.15,
+          score: 9,
+          status: 'verified',
+          confidence: 0.9,
+        },
+      },
+    });
+    const postFeedbackBreakdown = mergeSystem2Findings(postFeedbackJev, system2());
+    expect(postFeedbackBreakdown.economicBuyer).toMatchObject({
+      score: 9,
+      status: 'verified',
+      evidence: ['VP of E-Commerce mentioned budget'],
+      gaps: [],
+    });
   });
 });

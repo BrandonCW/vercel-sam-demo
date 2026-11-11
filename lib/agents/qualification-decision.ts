@@ -60,7 +60,7 @@ export function synthesizeSuggestedNextSteps(
   return `[${tag}] ${clean(action)} | Owner: ${owner} | Focus: ${clean(system2.valueFocus)} | Watch: ${clean(watch)}`;
 }
 
-/** Jev dimensions plus System 2 citations (evidence) and gap callouts, as persisted for the rubric UI. */
+/** Rubric dimensions plus buyer citations (evidence) and unresolved gap callouts for the scorecard UI. */
 export function mergeSystem2Findings(
   jev: JevScoringResult,
   system2: System2AnalysisResult
@@ -71,7 +71,12 @@ export function mergeSystem2Findings(
     JevScoringResult['dimensions'][keyof JevScoringResult['dimensions']],
   ][]) {
     const finding = system2.dimensionFindings[key];
-    breakdown[key] = { ...dimension, evidence: finding.citations, gaps: finding.gaps };
+    const isVerified = dimension.status === 'verified' || dimension.score >= 8;
+    breakdown[key] = {
+      ...dimension,
+      evidence: finding.citations,
+      gaps: isVerified ? [] : finding.gaps,
+    };
   }
   return breakdown;
 }

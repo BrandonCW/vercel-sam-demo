@@ -148,6 +148,36 @@ describe('System 1 (Jev) - Stage Gate Readiness Logic', () => {
     expect(evaluation.gateBlockers.some((b) => b.includes('Decision Process'))).toBe(true);
     expect(evaluation.gateBlockers.some((b) => b.includes('Overall MEDDPICC score'))).toBe(true);
   });
+
+  it('matches explicit stage numbers cleanly and defaults early or unrecognized stages to gateReady: false', () => {
+    const highScores = {
+      identifyPain: 9,
+      champion: 9,
+      economicBuyer: 9,
+      decisionCriteria: 9,
+      decisionProcess: 9,
+      metrics: 9,
+      competition: 9,
+      paperProcess: 9,
+    };
+
+    const stage1 = evaluateStageGate('Stage 1 - Prospecting', dims(highScores), 90);
+    expect(stage1.gateReady).toBe(false);
+    expect(stage1.targetStage).toBe('Stage 2 - Discovery');
+    expect(stage1.gateBlockers.length).toBeGreaterThan(0);
+
+    const stage1Validation = evaluateStageGate('Stage 1 - Lead Validation', dims(highScores), 90);
+    expect(stage1Validation.gateReady).toBe(false);
+    expect(stage1Validation.targetStage).toBe('Stage 2 - Discovery');
+
+    const stage2WithValidationWord = evaluateStageGate('Stage 2 - Discovery & Validation', dims(highScores), 90);
+    expect(stage2WithValidationWord.gateReady).toBe(true);
+    expect(stage2WithValidationWord.targetStage).toBe('Stage 3 - Technical Validation');
+
+    const unknownStage = evaluateStageGate('Unmapped Legacy Stage', dims(highScores), 90);
+    expect(unknownStage.gateReady).toBe(false);
+    expect(unknownStage.gateBlockers.length).toBeGreaterThan(0);
+  });
 });
 
 const ACME_INPUT = {
@@ -264,15 +294,29 @@ describe('System 1 (Jev) - interpreting answers', () => {
     expect(r.dimensions.champion.confidence).toBe(0.4);
   });
 
-  it('throws when Jev omits confidence instead of inventing one', () => {
+  it('throws when confidence is omitted and surfaces jargon-free rubric errors', () => {
     const e = acmeEvaluation();
     (e as any).providerMetadata = {};
     expect(() => interpretJevEvaluation(ACME_INPUT, e)).toThrow(/confidence/);
+    expect(() => interpretJevEvaluation(ACME_INPUT, e)).not.toThrow(/Jev|System 1|providerMetadata/);
   });
 
-  it('throws when a dimension answer is missing', () => {
+  it('throws when a dimension answer is missing with jargon-free error copy', () => {
     const e = acmeEvaluation();
     delete (e.answers as any).metrics;
     expect(() => interpretJevEvaluation(ACME_INPUT, e)).toThrow(/metrics/);
+    expect(() => interpretJevEvaluation(ACME_INPUT, e)).not.toThrow(/Jev|System 1/);
+  });
+
+  it('maps continuous expected positions across 10 levels to every integer score 0..10 including 5/10', () => {
+    const reachableScores = new Set<number>();
+    for (let tenth = 0; tenth <= 90; tenth++) {
+      const pos = tenth / 10;
+      const evalAtPos = acmeEvaluation();
+      evalAtPos.answers.metrics = scoreAnswer(pos);
+      const res = interpretJevEvaluation(ACME_INPUT, evalAtPos);
+      reachableScores.add(res.dimensions.metrics.score);
+    }
+    expect([...reachableScores].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 });
