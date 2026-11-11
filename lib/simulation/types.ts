@@ -33,6 +33,12 @@ export interface SimulationDimension {
   delta?: number | null;
 }
 
+export interface SubmittedSimulationFeedback {
+  formResponses: Record<string, string | string[]>;
+  notesDelta?: string;
+  explicitFormSubmission: boolean;
+}
+
 export interface SimulationState {
   workflowState: WorkflowState;
   opportunity: Opportunity;
@@ -45,6 +51,7 @@ export interface SimulationState {
   statusLabel: string;
   suggestedNextSteps: string | null;
   discoveryForm: JsonRenderForm | null;
+  submittedFeedback?: SubmittedSimulationFeedback | null;
 }
 
 export type SimulationAction =

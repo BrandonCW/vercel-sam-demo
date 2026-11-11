@@ -1,19 +1,33 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Lock, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { AlertCircle, ArrowRight, Gauge, Lock } from 'lucide-react';
+import { sanitizeRedirectPath } from '@/lib/auth';
 
-function LoginForm() {
-  const router = useRouter();
+function RedirectParamReader({ onResolve }: { onResolve: (path: string) => void }) {
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/';
+  const rawRedirect = searchParams.get('redirect');
 
+  useEffect(() => {
+    onResolve(sanitizeRedirectPath(rawRedirect));
+  }, [rawRedirect, onResolve]);
+
+  return null;
+}
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [redirectPath, setRedirectPath] = useState<string>('/');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleResolveRedirect = useCallback((sanitized: string) => {
+    setRedirectPath(sanitized);
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
@@ -25,7 +39,12 @@ function LoginForm() {
         body: JSON.stringify({ password }),
       });
 
-      const data = await res.json();
+      let data: { error?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        // Non-JSON error response
+      }
 
       if (!res.ok) {
         setError(data.error || 'Authentication failed');
@@ -33,59 +52,78 @@ function LoginForm() {
         return;
       }
 
-      router.push(redirect);
+      const safeDestination = sanitizeRedirectPath(redirectPath);
+      router.push(safeDestination);
       router.refresh();
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+    } catch {
+      setError('Unable to reach authentication service. Please try again.');
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex flex-col justify-center items-center px-4">
-      <div className="w-full max-w-md bg-[#121215] border border-[#27272a] rounded-xl p-8 shadow-2xl">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-lg bg-[#0070f3]/10 border border-[#0070f3]/30 flex items-center justify-center text-[#0070f3]">
-            <ShieldCheck className="w-6 h-6" />
+    <main className="min-h-screen bg-[#F8F8F6] text-[#111215] flex flex-col justify-center items-center px-4 py-12">
+      <Suspense fallback={null}>
+        <RedirectParamReader onResolve={handleResolveRedirect} />
+      </Suspense>
+
+      <div className="w-full max-w-md bg-[#FFFFFF] border border-[#E2E0D8] rounded-lg p-8">
+        <div className="flex items-center gap-3 pb-6 mb-6 border-b border-[#E2E0D8]">
+          <div className="flex size-9 items-center justify-center rounded-md bg-[#111215] text-[#FFFFFF]">
+            <Gauge className="size-5 text-[#FFFFFF]" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Deal Qualification</h1>
-            <p className="text-xs text-[#a1a1aa]">Sales Engineering & Solution Architecture</p>
+            <p className="font-display text-[11px] font-semibold tracking-[0.05em] uppercase text-[#787C87]">
+              DEAL OPERATIONS
+            </p>
+            <h1 className="font-display text-lg font-bold tracking-[-0.03em] text-[#111215]">
+              Qualification System
+            </h1>
           </div>
         </div>
 
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-[#f4f4f5] mb-1">Access Protected Workbench</h2>
-          <p className="text-xs text-[#a1a1aa] leading-relaxed">
-            Enter the authorized team password to access simulated Salesforce Opportunities, qualification engines, and System 2 playbooks.
+          <h2 className="font-display text-sm font-semibold text-[#111215] mb-1.5">
+            Sign in to Deal Desk Workbench
+          </h2>
+          <p className="text-sm text-[#52545D] leading-relaxed">
+            Enter your workspace access password to review active opportunities, run MEDDPICC deal
+            audits, and synchronize qualification updates.
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-950/40 border border-red-800/50 flex items-center gap-2 text-xs text-red-300">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
-            <span>{error}</span>
+          <div
+            role="alert"
+            className="mb-5 p-3 rounded-md bg-[#F1F0EC] border border-[#111215] flex items-start gap-2.5 text-xs text-[#111215]"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#111215]" aria-hidden="true" />
+            <span className="leading-relaxed font-medium">{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="password" className="block text-xs font-medium text-[#a1a1aa] mb-1.5 uppercase tracking-wider">
-              Password
+            <label
+              htmlFor="password"
+              className="block font-display text-[11px] font-semibold text-[#52545D] mb-1.5 uppercase tracking-[0.05em]"
+            >
+              Access Password
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#71717a]">
-                <Lock className="w-4 h-4" />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#787C87]">
+                <Lock className="w-4 h-4" aria-hidden="true" />
               </div>
               <input
                 id="password"
+                name="password"
                 type="password"
                 required
-                autoFocus
-                placeholder="Enter access password..."
+                autoComplete="current-password"
+                placeholder="Enter workspace password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-[#09090b] border border-[#3f3f46] rounded-lg text-sm text-[#f4f4f5] placeholder-[#71717a] focus:outline-none focus:border-[#0070f3] focus:ring-1 focus:ring-[#0070f3] transition-colors"
+                className="w-full pl-9 pr-3 py-2.5 bg-[#F1F0EC] border border-[#E2E0D8] rounded-md text-sm text-[#111215] placeholder-[#787C87] focus:outline-none focus:border-[#111215] transition-colors"
               />
             </div>
           </div>
@@ -93,33 +131,22 @@ function LoginForm() {
           <button
             type="submit"
             disabled={isLoading || !password}
-            className="w-full py-2.5 px-4 bg-[#0070f3] hover:bg-[#0060df] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm"
+            className="w-full py-2.5 px-4 bg-[#0F52BA] hover:bg-[#0C4196] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-[#FFFFFF] text-sm font-medium rounded-md flex items-center justify-center gap-2 transition"
           >
             {isLoading ? (
-              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span
+                aria-label="Signing in"
+                className="inline-block w-4 h-4 border-2 border-[#FFFFFF]/30 border-t-[#FFFFFF] rounded-full animate-spin"
+              />
             ) : (
               <>
                 <span>Enter Workbench</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </>
             )}
           </button>
         </form>
-
-        <div className="mt-6 pt-4 border-t border-[#27272a] text-center">
-          <p className="text-[11px] text-[#71717a]">
-            Local dev mode auto-bypasses this gate when <code className="text-zinc-400">NODE_ENV=development</code>.
-          </p>
-        </div>
       </div>
-    </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-[#09090b]" />}>
-      <LoginForm />
-    </Suspense>
+    </main>
   );
 }

@@ -26,9 +26,12 @@ describe('eve channel auth (non-dev environment)', () => {
     expect((result as Response).status).toBe(401);
   });
 
-  it('rejects a forged deal_qual_session cookie with 401', async () => {
-    const result = await routeAuth(sessionRequest(`${COOKIE_NAME}=123.deadbeef`), EVE_CHANNEL_AUTH);
-    expect((result as Response).status).toBe(401);
+  it('rejects a forged or malformed percent-encoded deal_qual_session cookie with 401', async () => {
+    const forged = await routeAuth(sessionRequest(`${COOKIE_NAME}=123.deadbeef`), EVE_CHANNEL_AUTH);
+    expect((forged as Response).status).toBe(401);
+
+    const malformedUri = await routeAuth(sessionRequest(`${COOKIE_NAME}=%E0%A4%A`), EVE_CHANNEL_AUTH);
+    expect((malformedUri as Response).status).toBe(401);
   });
 
   it('admits a caller holding a valid deal_qual_session cookie', async () => {
