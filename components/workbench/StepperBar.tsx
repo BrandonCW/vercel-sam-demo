@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { WorkflowState } from '@/lib/simulation/types';
 
 export type DeskOsStageId = 'stage1' | 'stage2' | 'stage3';
@@ -18,19 +18,19 @@ export const DESK_OS_STAGES: DeskOsStageDef[] = [
     id: 'stage1',
     stepNumber: 1,
     label: 'Initial Deal Audit',
-    fullTitle: 'Initial Deal Audit (Gaps Identified)',
+    fullTitle: 'Initial Deal Audit',
   },
   {
     id: 'stage2',
     stepNumber: 2,
-    label: 'Field Discovery Checklist',
-    fullTitle: 'Field Discovery Checklist (In-Context)',
+    label: 'Field Discovery',
+    fullTitle: 'Field Discovery',
   },
   {
     id: 'stage3',
     stepNumber: 3,
-    label: 'Updated Assessment & Next Steps',
-    fullTitle: 'Updated Assessment & Next Steps (Qualified)',
+    label: 'Updated Assessment',
+    fullTitle: 'Updated Assessment',
   },
 ];
 
@@ -76,8 +76,7 @@ export function StepperBar({
       ? 'stage3'
       : 'stage1';
 
-  const isAnalyzing = workflow === 'ANALYZING';
-  const isEvaluating = workflow === 'EVALUATING';
+  const isBusy = workflow === 'ANALYZING' || workflow === 'EVALUATING';
 
   // Compute unlocked stages if not passed explicitly
   const isStageUnlocked = (stageId: DeskOsStageId): boolean => {
@@ -137,9 +136,6 @@ export function StepperBar({
         const isActive = activeStage === stage.id;
         const unlocked = isStageUnlocked(stage.id);
         const completed = isStageCompleted(stage.id) && !isActive;
-        const loading =
-          (stage.id === 'stage1' && isAnalyzing) ||
-          (stage.id === 'stage2' && isEvaluating);
 
         return (
           <React.Fragment key={stage.id}>
@@ -154,7 +150,7 @@ export function StepperBar({
 
             <button
               type="button"
-              disabled={!unlocked || loading}
+              disabled={!unlocked || isBusy}
               onClick={() => {
                 if (unlocked && onSelectStage) {
                   onSelectStage(stage.id);
@@ -170,7 +166,7 @@ export function StepperBar({
               }`}
             >
               <span
-                className={`flex size-5 shrink-0 items-center justify-center rounded-[4px] border font-mono text-xs font-semibold leading-none tabular-nums ${
+                className={`flex size-5 shrink-0 items-center justify-center rounded-[4px] border font-sans text-xs font-semibold leading-none tabular-nums ${
                   completed
                     ? 'border-[#111215] bg-[#111215] text-[#FFFFFF]'
                     : isActive
@@ -178,23 +174,14 @@ export function StepperBar({
                     : 'border-[#E2E0D8] bg-[#F1F0EC] text-[#787C87]'
                 }`}
               >
-                {loading ? (
-                  <Loader2 className="size-3 animate-spin text-[#111215]" aria-hidden="true" />
-                ) : completed ? (
+                {completed ? (
                   <Check className="size-3 stroke-[2.5]" aria-hidden="true" />
                 ) : (
                   stage.stepNumber
                 )}
               </span>
 
-              <span className="truncate">
-                {stage.fullTitle}
-                {loading && (
-                  <span className="ml-1.5 text-xs text-[#787C87] font-normal" aria-hidden="true">
-                    {stage.id === 'stage1' ? ' (Evaluating…)' : ' (Re-scoring…)'}
-                  </span>
-                )}
-              </span>
+              <span className="truncate">{stage.fullTitle}</span>
             </button>
           </React.Fragment>
         );
