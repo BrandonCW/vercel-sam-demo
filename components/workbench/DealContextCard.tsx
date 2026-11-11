@@ -36,42 +36,46 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
   const statusLabel = formatQualificationStatusLabel(opportunity.qualification_status);
 
   return (
-    <div className="workbench-left flex flex-col gap-4 p-5 bg-[#FFFFFF] border-b lg:border-b-0 lg:border-r border-[#E2E0D8]">
+    <div className="workbench-left flex flex-col gap-4 p-5 bg-[#FFFFFF] border-b lg:border-b-0 lg:border-r border-[#E2E0D8] font-sans">
       {/* 2x2 Opportunity Metadata Box */}
-      <div className="meta-box rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-3.5">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <h3 className="meta-box-title text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87]">
+      <div className="meta-box rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-4">
+        <div className="flex items-center justify-between gap-2 mb-3.5">
+          <h3 className="meta-box-title font-sans text-kicker font-semibold uppercase text-[#787C87]">
             Opportunity Metadata
           </h3>
           <span
             data-testid="crm-qualification-status"
-            className="rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-[0.05em] text-[#52545D]"
+            className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D]"
           >
-            {statusLabel}
+            <span className="ui-pill-label">{statusLabel}</span>
           </span>
         </div>
-        <div className="meta-data-grid grid grid-cols-2 gap-3 text-left">
+        <div className="meta-data-grid grid grid-cols-2 gap-3.5 text-left">
           <div>
-            <div className="meta-item-label text-[11px] text-[#787C87]">Account Executive</div>
-            <div className="meta-item-val text-xs font-semibold text-[#111215]">
+            <div className="meta-item-label font-sans text-xs text-[#787C87]">
+              Account Executive
+            </div>
+            <div className="meta-item-val mt-0.5 font-sans text-sm font-medium text-[#111215]">
               {opportunity.ae_name || 'Sarah Jenkins'}
             </div>
           </div>
           <div>
-            <div className="meta-item-label text-[11px] text-[#787C87]">Solutions Architect</div>
-            <div className="meta-item-val text-xs font-semibold text-[#111215]">
+            <div className="meta-item-label font-sans text-xs text-[#787C87]">
+              Solutions Architect
+            </div>
+            <div className="meta-item-val mt-0.5 font-sans text-sm font-medium text-[#111215]">
               {opportunity.sa_name || 'David Kross'}
             </div>
           </div>
           <div>
-            <div className="meta-item-label text-[11px] text-[#787C87]">Target Close</div>
-            <div className="meta-item-val text-xs font-mono font-medium text-[#111215]">
+            <div className="meta-item-label font-sans text-xs text-[#787C87]">Target Close</div>
+            <div className="meta-item-val mt-0.5 font-sans text-sm font-medium text-[#111215] tabular-nums">
               {targetClose}
             </div>
           </div>
           <div>
-            <div className="meta-item-label text-[11px] text-[#787C87]">Current Stage</div>
-            <div className="meta-item-val text-xs font-medium text-[#111215]">
+            <div className="meta-item-label font-sans text-xs text-[#787C87]">Current Stage</div>
+            <div className="meta-item-val mt-0.5 font-sans text-sm font-medium text-[#111215] tabular-nums">
               {stageOrArch}
             </div>
           </div>
@@ -82,21 +86,21 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
       {hasCrmWriteback && (
         <div
           data-testid="crm-writeback-card"
-          className="rounded-md border border-[#E2E0D8] bg-[#F8F8F6] p-3.5 space-y-2"
+          className="rounded-md border border-[#E2E0D8] bg-[#F8F8F6] p-4 space-y-2.5"
         >
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87]">
+            <h3 className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
               CRM Qualification Writeback
             </h3>
-            <span className="rounded-[4px] border border-[#E2E0D8] bg-[#FFFFFF] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.05em] text-[#111215]">
-              {statusLabel}
+            <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#FFFFFF] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#111215]">
+              <span className="ui-pill-label">{statusLabel}</span>
             </span>
           </div>
-          <ul className="space-y-1 text-xs leading-relaxed text-[#52545D]">
+          <ul className="space-y-1.5 font-sans text-sm leading-relaxed text-[#52545D]">
             {parsedNextSteps.map((item, idx) => (
-              <li key={idx} className="flex items-start gap-1.5">
-                <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[#787C87]" aria-hidden="true" />
-                <span>
+              <li key={idx} className="flex items-start gap-2">
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-[#787C87]" aria-hidden="true" />
+                <span className="text-pretty">
                   {item.label ? (
                     <>
                       <strong className="font-semibold text-[#111215]">{item.label}:</strong>{' '}
@@ -113,30 +117,30 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
       )}
 
       {/* Neutral Competitor Context Callout */}
-      <div className="competitor-note rounded-md border border-[#E2E0D8] bg-[#F1F0EC]/60 p-3 text-xs leading-relaxed text-[#52545D]">
+      <div className="competitor-note rounded-md border border-[#E2E0D8] bg-[#F1F0EC]/60 p-3.5 font-sans text-sm leading-relaxed text-[#52545D] text-pretty">
         <strong className="text-[#111215] font-semibold">Competitor Context: </strong>
         {competitorText}
       </div>
 
       {/* Mobile/Tablet (< lg) Collapsible Details */}
-      <details className="lg:hidden rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-3 text-xs">
-        <summary className="cursor-pointer font-semibold text-xs tracking-[0.02em] text-[#52545D] hover:text-[#111215]">
+      <details className="lg:hidden rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-3.5 font-sans text-sm">
+        <summary className="cursor-pointer font-semibold text-sm text-[#52545D] hover:text-[#111215]">
           AE Business &amp; SA Technical Briefs
         </summary>
-        <div className="mt-3 space-y-3 pt-2 border-t border-[#E2E0D8]">
-          <div className="brief-block border-l-2 border-[#111215] pl-2.5">
-            <div className="brief-heading text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87] mb-1">
+        <div className="mt-3 space-y-3.5 pt-3 border-t border-[#E2E0D8]">
+          <div className="brief-block border-l-2 border-[#111215] pl-3">
+            <div className="brief-heading font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1">
               AE Business Brief
             </div>
-            <p className="brief-text text-xs leading-relaxed text-[#52545D] whitespace-pre-wrap">
+            <p className="brief-text font-sans text-sm leading-relaxed text-[#52545D] whitespace-pre-wrap text-pretty">
               {opportunity.ae_notes || 'No AE business notes recorded.'}
             </p>
           </div>
-          <div className="brief-block border-l-2 border-[#111215] pl-2.5">
-            <div className="brief-heading text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87] mb-1">
+          <div className="brief-block border-l-2 border-[#111215] pl-3">
+            <div className="brief-heading font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1">
               SA Technical Assessment
             </div>
-            <p className="brief-text text-xs leading-relaxed text-[#52545D] whitespace-pre-wrap">
+            <p className="brief-text font-sans text-sm leading-relaxed text-[#52545D] whitespace-pre-wrap text-pretty">
               {opportunity.sa_notes || 'No SA technical notes recorded.'}
             </p>
           </div>
@@ -144,21 +148,21 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
       </details>
 
       {/* Desktop (lg+) Narrative Briefs Container with Constrained Scroll */}
-      <div className="hidden lg:flex lg:flex-col lg:max-h-[680px] lg:overflow-y-auto briefs-box flex-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-3.5 space-y-4">
-        <div className="brief-block border-l-2 border-[#111215] pl-2.5">
-          <div className="brief-heading text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87] mb-1">
+      <div className="hidden lg:flex lg:flex-col lg:max-h-[680px] lg:overflow-y-auto briefs-box flex-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-4 space-y-4">
+        <div className="brief-block border-l-2 border-[#111215] pl-3">
+          <div className="brief-heading font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1.5">
             AE Business Brief
           </div>
-          <p className="brief-text text-xs leading-relaxed text-[#52545D] whitespace-pre-wrap">
+          <p className="brief-text font-sans text-sm leading-relaxed text-[#52545D] whitespace-pre-wrap text-pretty">
             {opportunity.ae_notes || 'No AE business notes recorded.'}
           </p>
         </div>
 
-        <div className="brief-block border-l-2 border-[#111215] pl-2.5">
-          <div className="brief-heading text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87] mb-1">
+        <div className="brief-block border-l-2 border-[#111215] pl-3">
+          <div className="brief-heading font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1.5">
             SA Technical Assessment
           </div>
-          <p className="brief-text text-xs leading-relaxed text-[#52545D] whitespace-pre-wrap">
+          <p className="brief-text font-sans text-sm leading-relaxed text-[#52545D] whitespace-pre-wrap text-pretty">
             {opportunity.sa_notes || 'No SA technical notes recorded.'}
           </p>
         </div>

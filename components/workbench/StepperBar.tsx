@@ -161,7 +161,7 @@ export function StepperBar({
                 }
               }}
               aria-current={isActive ? 'step' : undefined}
-              className={`flex-1 min-w-0 flex items-center justify-center md:justify-start gap-2.5 rounded-md px-3.5 py-2.5 text-xs font-medium transition-all text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111215] ${
+              className={`min-h-10 flex-1 min-w-0 flex items-center justify-center md:justify-start gap-2.5 rounded-md px-3.5 py-2 font-sans text-xs sm:text-sm font-medium transition-all text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111215] ${
                 isActive
                   ? 'bg-[#F1F0EC] border border-[#E2E0D8] text-[#111215] font-semibold'
                   : unlocked
@@ -170,7 +170,7 @@ export function StepperBar({
               }`}
             >
               <span
-                className={`flex size-5 shrink-0 items-center justify-center rounded-[4px] font-mono text-[11px] font-semibold border ${
+                className={`flex size-5 shrink-0 items-center justify-center rounded-[4px] border font-mono text-xs font-semibold leading-none tabular-nums ${
                   completed
                     ? 'border-[#111215] bg-[#111215] text-[#FFFFFF]'
                     : isActive
@@ -190,7 +190,7 @@ export function StepperBar({
               <span className="truncate">
                 {stage.fullTitle}
                 {loading && (
-                  <span className="ml-1 text-[11px] text-[#787C87] font-normal" aria-hidden="true">
+                  <span className="ml-1.5 text-xs text-[#787C87] font-normal" aria-hidden="true">
                     {stage.id === 'stage1' ? ' (Evaluating…)' : ' (Re-scoring…)'}
                   </span>
                 )}

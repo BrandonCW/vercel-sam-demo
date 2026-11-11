@@ -157,18 +157,18 @@ export function MeddpiccScorecard({
     mode === 'completed' && delta !== undefined && delta !== null && delta !== 0;
 
   return (
-    <section className="meddpicc-table rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] overflow-hidden">
+    <section className="meddpicc-table rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] overflow-hidden font-sans">
       {/* Loading In-Place Shimmer Header */}
       {mode === 'loading' && (
         <div className="flex items-center justify-between border-b border-[#E2E0D8] bg-[#F8F8F6] px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <Loader2 className="size-4 animate-spin text-[#111215]" aria-hidden="true" />
-            <span className="text-xs font-semibold text-[#111215]" role="status" aria-live="polite">
+            <span className="font-sans text-sm font-medium text-[#111215]" role="status" aria-live="polite">
               {loadingStatus || 'Scanning AE & SA notes against MEDDPICC rubric…'}
             </span>
             {elapsedSeconds !== undefined && (
-              <span className="rounded-[4px] bg-[#E2E0D8] px-1.5 py-0.5 font-mono text-[11px] text-[#52545D]">
-                {elapsedSeconds}s
+              <span className="inline-flex min-h-6 items-center rounded-[4px] bg-[#E2E0D8] px-2 py-0.5 font-mono text-xs font-medium leading-none text-[#52545D] tabular-nums">
+                <span className="ui-pill-label">{elapsedSeconds}s</span>
               </span>
             )}
           </div>
@@ -177,10 +177,10 @@ export function MeddpiccScorecard({
             <button
               type="button"
               onClick={onAbort}
-              className="flex items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-2.5 py-1 text-xs font-medium text-[#111215] hover:bg-[#F1F0EC] cursor-pointer"
+              className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
             >
-              <Ban className="size-3 text-[#52545D]" aria-hidden="true" />
-              <span>Abort</span>
+              <Ban className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+              <span className="ui-pill-label">Abort</span>
             </button>
           )}
         </div>
@@ -192,14 +192,16 @@ export function MeddpiccScorecard({
           <div>
             <div className="flex items-center gap-2">
               <Target className="size-4 text-[#111215]" aria-hidden="true" />
-              <h3 className="font-semibold text-sm text-[#111215]">MEDDPICC scorecard</h3>
+              <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
+                MEDDPICC scorecard
+              </h3>
             </div>
-            <p className="mt-1 text-xs text-[#787C87]">
+            <p className="mt-1 font-sans text-xs text-[#787C87]">
               Evidence-based qualification across eight weighted dimensions. Permanently open ledger.
             </p>
           </div>
           <div className="text-right">
-            <p className="font-mono text-2xl font-bold tracking-tight text-[#111215] tabular-nums">
+            <p className="font-mono text-score font-bold text-[#111215] tabular-nums">
               {mode === 'unassessed' ? (
                 <span className="text-[#787C87]">--</span>
               ) : (
@@ -207,12 +209,12 @@ export function MeddpiccScorecard({
               )}
               <span className="text-sm font-normal text-[#787C87]">/100</span>
               {hasHeaderDelta ? (
-                <span className="ml-2 text-sm font-normal text-[#52545D]">
+                <span className="ml-2 text-sm font-medium text-[#52545D]">
                   ({delta! > 0 ? `+${delta}` : delta})
                 </span>
               ) : null}
             </p>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87]">
+            <p className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
               Composite score
             </p>
           </div>
@@ -220,7 +222,7 @@ export function MeddpiccScorecard({
       )}
 
       {/* 4-Column Table Header */}
-      <div className="hidden md:grid md:grid-cols-[150px_160px_1fr_1fr] gap-3 border-b border-[#E2E0D8] bg-[#F8F8F6] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#787C87]">
+      <div className="hidden md:grid md:grid-cols-[172px_152px_1fr_1fr] gap-4 border-b border-[#E2E0D8] bg-[#F8F8F6] px-5 py-2.5 font-sans text-kicker font-semibold uppercase text-[#787C87]">
         <div>Dimension</div>
         <div>Score &amp; Bar</div>
         <div>Verified Evidence</div>
@@ -239,6 +241,21 @@ export function MeddpiccScorecard({
       </div>
     </section>
   );
+}
+
+function formatDimensionStatusLabel(status?: string): string {
+  switch (status) {
+    case 'verified':
+      return 'Verified';
+    case 'partial':
+      return 'Partial';
+    case 'unaddressed':
+      return 'Unaddressed';
+    default:
+      return status
+        ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+        : 'Unassessed';
+  }
 }
 
 function ScorecardRow({
@@ -268,33 +285,37 @@ function ScorecardRow({
     dimension.delta !== null &&
     dimension.delta !== 0;
 
+  const statusText = isUnassessed
+    ? 'Unassessed'
+    : formatDimensionStatusLabel(dimension.status);
+
   return (
     <div
       className={`px-5 py-4 transition-colors ${
         isBlocker ? 'bg-[#F1F0EC]' : 'bg-[#FFFFFF] hover:bg-[#F8F8F6]/60'
       }`}
     >
-      <div className="grid grid-cols-1 md:grid-cols-[150px_160px_1fr_1fr] gap-3 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-[172px_152px_1fr_1fr] gap-4 items-start">
         {/* Column 1: Dimension Letter + Label + Weight */}
         <div>
-          <div className="flex items-baseline gap-1.5 text-left">
-            <span className="font-mono text-xs font-bold text-[#787C87] uppercase">
+          <div className="mixed-font-lockup flex items-baseline gap-1.5 text-left">
+            <span className="font-mono text-xs font-semibold text-[#787C87] uppercase">
               [{dimension.letter}]
             </span>
-            <span className="text-xs font-semibold text-[#111215]">
+            <span className="font-sans text-sm font-semibold text-[#111215]">
               {dimension.label}
             </span>
           </div>
-          <div className="text-[11px] text-[#787C87] font-mono mt-0.5">
+          <div className="mt-1 font-sans text-xs text-[#787C87] tabular-nums">
             Weight {dimension.weightLabel}
           </div>
-          <span className="mt-1 inline-block rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-1.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.05em] text-[#52545D]">
-            {isUnassessed ? 'unassessed' : dimension.status}
+          <span className="mt-1.5 inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-sans text-xs font-medium leading-none text-[#52545D]">
+            <span className="ui-pill-label">{statusText}</span>
           </span>
         </div>
 
         {/* Column 2: 10-Segment Discrete Score Bar & Monospace Score */}
-        <div>
+        <div className="pt-0.5">
           <div className="flex items-center gap-2">
             <TenSegmentBar
               score={isUnassessed ? null : dimension.score}
@@ -303,16 +324,16 @@ function ScorecardRow({
             />
           </div>
 
-          <div className="mt-1 font-mono text-xs tabular-nums text-[#111215]">
+          <div className="mt-1.5 font-mono text-sm tabular-nums text-[#111215]">
             {isUnassessed || isLoading ? (
               <span className="text-[#787C87]">--/10</span>
             ) : hasDimensionDelta ? (
               <div className="flex items-baseline gap-1">
-                <span className="text-[11px] text-[#787C87] font-medium">
+                <span className="text-xs text-[#787C87] font-medium">
                   {dimension.previousScore} →
                 </span>
                 <span className="font-bold">{dimension.score}/10</span>
-                <span className="text-[11px] text-[#52545D] font-normal">
+                <span className="text-xs text-[#52545D] font-normal">
                   ({dimension.delta! > 0 ? `+${dimension.delta}` : dimension.delta})
                 </span>
               </div>
@@ -323,28 +344,28 @@ function ScorecardRow({
         </div>
 
         {/* Column 3: Verified Evidence */}
-        <div className="text-xs leading-relaxed text-[#52545D]">
-          <div className="md:hidden font-semibold text-[11px] uppercase text-[#787C87] mb-1">
+        <div className="font-sans text-sm leading-relaxed text-[#52545D]">
+          <div className="md:hidden font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1">
             Buyer Evidence
           </div>
           {isLoading ? (
             <div className="space-y-1.5">
-              <div className="h-3 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-3/4" />
-              <div className="h-3 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/2" />
+              <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-3/4" />
+              <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/2" />
             </div>
           ) : isUnassessed ? (
-            <p className="text-xs italic text-[#787C87]">— Awaiting initial assessment</p>
+            <p className="text-sm italic text-[#787C87]">— Awaiting initial assessment</p>
           ) : isAnalyzing && quotes.length === 0 ? (
             <div className="space-y-1.5 py-0.5" aria-busy="true" data-testid={`evidence-shimmer-${dimension.key}`}>
               <span className="sr-only">Extracting buyer evidence citations…</span>
-              <div className="h-3 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-4/5" />
-              <div className="h-3 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-3/5" />
+              <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-4/5" />
+              <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-3/5" />
             </div>
           ) : quotes.length ? (
             quotes.map((quote, idx) => (
               <p
                 key={idx}
-                className="border-l-2 border-[#111215] pl-2 italic text-[#52545D] leading-5 mb-1.5 last:mb-0"
+                className="border-l-2 border-[#111215] pl-2.5 italic text-[#52545D] leading-relaxed text-pretty mb-2 last:mb-0"
               >
                 “{quote}”
               </p>
@@ -355,51 +376,51 @@ function ScorecardRow({
         </div>
 
         {/* Column 4: Open Gap / Blind Spot OR Resolved Status */}
-        <div className="text-xs leading-relaxed text-[#52545D]">
-          <div className="md:hidden font-semibold text-[11px] uppercase text-[#787C87] mb-1">
+        <div className="font-sans text-sm leading-relaxed text-[#52545D]">
+          <div className="md:hidden font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1">
             {isCompleted ? 'Resolved Status' : 'Open Gaps / Blind Spots'}
           </div>
 
           {isLoading ? (
             <div className="space-y-1.5">
-              <div className="h-3 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-2/3" />
-              <div className="h-3 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/3" />
+              <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-2/3" />
+              <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/3" />
             </div>
           ) : isUnassessed ? (
-            <p className="text-xs text-[#787C87]">—</p>
+            <p className="text-sm text-[#787C87]">—</p>
           ) : isAnalyzing && gaps.length === 0 ? (
             <div className="space-y-1.5 py-0.5" aria-busy="true" data-testid={`gap-shimmer-${dimension.key}`}>
               <span className="sr-only">Synthesizing qualification blind spots…</span>
-              <div className="h-3 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-3/4" />
-              <div className="h-3 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/2" />
+              <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-3/4" />
+              <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/2" />
             </div>
           ) : isCompleted && dimension.status === 'verified' && gaps.length === 0 ? (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-[#111215] font-medium">
-                <CheckCircle2 className="size-3.5 shrink-0 text-[#111215]" aria-hidden="true" />
+                <CheckCircle2 className="size-4 shrink-0 text-[#111215]" aria-hidden="true" />
                 <span>Verified in discovery</span>
               </div>
               {dimension.delta !== undefined && dimension.delta !== null && dimension.delta > 0 && (
-                <p className="text-[11px] text-[#787C87]">Gap resolved by SA field notes.</p>
+                <p className="font-sans text-xs text-[#787C87]">Gap resolved by SA field notes.</p>
               )}
             </div>
           ) : gaps.length ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {(dimension.score <= 3 || dimension.status === 'unaddressed') && (
-                <span className="inline-block rounded-[4px] border border-[#111215] bg-[#FFFFFF] text-[#111215] font-mono text-[10px] font-bold px-1.5 py-0.5 uppercase tracking-[0.05em]">
-                  BLOCKER
+                <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#111215] bg-[#FFFFFF] px-2 py-0.5 font-sans text-xs font-semibold leading-none text-[#111215]">
+                  <span className="ui-pill-label">Blocker</span>
                 </span>
               )}
               {gaps.map((gap, idx) => (
-                <p key={idx} className="flex items-start gap-1.5 text-[#52545D] leading-5">
-                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#787C87]" aria-hidden="true" />
+                <p key={idx} className="flex items-start gap-2 text-[#52545D] leading-relaxed text-pretty">
+                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-[#787C87]" aria-hidden="true" />
                   <span>{gap}</span>
                 </p>
               ))}
             </div>
           ) : dimension.status === 'verified' ? (
             <p className="flex items-center gap-1.5 text-[#52545D] font-medium">
-              <CheckCircle2 className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+              <CheckCircle2 className="size-4 shrink-0 text-[#52545D]" aria-hidden="true" />
               <span>Criteria verified, no blocking gaps.</span>
             </p>
           ) : dimension.status === 'unaddressed' ? (

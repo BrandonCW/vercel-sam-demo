@@ -16,10 +16,10 @@ const variantStyles: Record<NonNullable<ButtonProps['variant']>, string> = {
 };
 
 const sizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {
-  default: 'h-9 px-4 py-2 text-sm',
-  sm: 'h-8 px-3 text-xs',
-  lg: 'h-10 px-6 text-base',
-  icon: 'h-9 w-9 p-0',
+  default: 'min-h-9 px-4 py-2 text-sm',
+  sm: 'min-h-8 px-3 py-1.5 text-xs',
+  lg: 'min-h-10 px-6 py-2.5 text-base',
+  icon: 'min-h-9 min-w-9 p-0',
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -29,7 +29,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled}
         className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111215] disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer',
+          'inline-flex items-center justify-center gap-2 rounded-md font-sans font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111215] disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer',
           variantStyles[variant],
           sizeStyles[size],
           className

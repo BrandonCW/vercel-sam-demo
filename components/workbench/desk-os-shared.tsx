@@ -179,16 +179,17 @@ export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
   const stageDisplay = opportunity.stage_name || 'Stage 2 · Discovery';
 
   return (
-    <div className="monochrome-top-bar flex flex-col sm:flex-row sm:min-h-12 items-start sm:items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#FFFFFF] px-4 py-2.5 sm:px-5 sm:py-2">
+    <div className="monochrome-top-bar flex flex-col sm:flex-row sm:min-h-12 items-start sm:items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#FFFFFF] px-4 py-2.5 sm:px-5 sm:py-2.5">
       <div className="bar-left flex w-full sm:w-auto min-w-0 sm:flex-1 items-center gap-2.5 sm:gap-3">
-        <div className="bar-logo flex shrink-0 items-center gap-2 font-display text-xs font-bold uppercase tracking-[0.05em] text-[#111215] whitespace-nowrap">
+        <div className="bar-logo flex shrink-0 items-center gap-2 font-sans text-kicker font-semibold uppercase text-[#787C87] whitespace-nowrap">
           <svg
-            width="15"
-            height="15"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.5"
+            strokeWidth="2.25"
+            className="text-[#111215]"
             aria-hidden="true"
           >
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
@@ -196,17 +197,17 @@ export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
           <span>DEAL DESK</span>
         </div>
         <div className="bar-divider h-4 w-px shrink-0 bg-[#E2E0D8]" aria-hidden="true" />
-        <h2 className="opp-title min-w-0 text-xs font-semibold text-[#111215] truncate">
+        <h2 className="opp-title min-w-0 font-sans text-sm sm:text-base font-semibold tracking-[-0.015em] text-[#111215] truncate">
           {opportunity.name || 'Acme Corp — Platform Migration'}
         </h2>
       </div>
 
-      <div className="bar-right flex shrink-0 items-center gap-2">
-        <span className="mono-pill whitespace-nowrap rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#52545D]">
-          {stageDisplay}
+      <div className="bar-right mixed-font-lockup flex shrink-0 items-center gap-2 font-sans">
+        <span className="inline-flex min-h-6 items-center whitespace-nowrap rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D] tabular-nums">
+          <span className="ui-pill-label">{stageDisplay}</span>
         </span>
-        <span className="mono-pill whitespace-nowrap rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#52545D]">
-          {formattedAmount}
+        <span className="inline-flex min-h-6 items-center whitespace-nowrap rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-mono text-xs font-medium leading-none text-[#111215] tabular-nums">
+          <span className="ui-pill-label">{formattedAmount}</span>
         </span>
       </div>
     </div>
@@ -237,29 +238,29 @@ export function ProblemCauseFixBanner({
   return (
     <div
       role="alert"
-      className="rounded-lg border border-[#111215] bg-[#F1F0EC] p-4 text-xs text-[#111215] space-y-2.5"
+      className="rounded-lg border border-[#111215] bg-[#F1F0EC] p-4 font-sans text-sm text-[#111215] space-y-2.5"
     >
       <div className="flex items-start gap-2">
         <AlertCircle className="size-4 text-[#111215] shrink-0 mt-0.5" aria-hidden="true" />
         <div className="flex-1 space-y-1">
           <div className="font-semibold text-sm text-[#111215]">{problem}</div>
           {sanitizedCause && (
-            <div className="text-xs text-[#52545D] break-words leading-relaxed">
+            <div className="text-sm text-[#52545D] break-words leading-relaxed">
               {sanitizedCause}
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#E2E0D8]">
+      <div className="flex flex-wrap items-center gap-2 pt-1.5 border-t border-[#E2E0D8]">
         {onRetry && (
           <button
             type="button"
             onClick={onRetry}
-            className="flex items-center gap-1.5 rounded-md border border-[#111215] bg-[#FFFFFF] px-3 py-1.5 text-xs font-semibold text-[#111215] hover:bg-[#F8F8F6] cursor-pointer"
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#111215] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-semibold leading-none text-[#111215] hover:bg-[#F8F8F6] cursor-pointer"
           >
-            <RefreshCw className="size-3" aria-hidden="true" />
-            <span>Retry</span>
+            <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="ui-pill-label">Retry</span>
           </button>
         )}
 
@@ -267,9 +268,9 @@ export function ProblemCauseFixBanner({
           <button
             type="button"
             onClick={onSwitchToSimulation}
-            className="rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F8F8F6] hover:text-[#111215] cursor-pointer"
+            className="inline-flex min-h-8 items-center rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F8F8F6] hover:text-[#111215] cursor-pointer"
           >
-            Switch to Simulation Mode
+            <span className="ui-pill-label">Switch to Simulation Mode</span>
           </button>
         )}
 
@@ -277,10 +278,10 @@ export function ProblemCauseFixBanner({
           <button
             type="button"
             onClick={onDismiss}
-            className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs text-[#787C87] hover:text-[#111215] cursor-pointer"
+            className="inline-flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1.5 font-sans text-xs font-medium leading-none text-[#787C87] hover:text-[#111215] cursor-pointer"
           >
-            <XCircle className="size-3" aria-hidden="true" />
-            <span>Dismiss</span>
+            <XCircle className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="ui-pill-label">Dismiss</span>
           </button>
         )}
       </div>
@@ -355,15 +356,15 @@ export function SuggestedNextStepsCard({
     <div className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-5 space-y-3.5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-3">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-sm text-[#111215]">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
               Suggested Next Steps
             </h3>
-            <span className="rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-[0.05em] text-[#111215]">
-              {statusBadgeText}
+            <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#111215] tabular-nums">
+              <span className="ui-pill-label">{statusBadgeText}</span>
             </span>
           </div>
-          <p className="mt-1 text-xs text-[#787C87]">
+          <p className="mt-1 font-sans text-xs text-[#787C87]">
             {syncMode === 'simulation'
               ? 'Simulated writeback preview — ready for simulated Salesforce CRM sync.'
               : 'Synchronized to simulated Salesforce CRM.'}
@@ -372,7 +373,7 @@ export function SuggestedNextStepsCard({
 
         <div className="flex items-center gap-2">
           {copyFailed && (
-            <span className="text-[11px] text-[#52545D] font-medium" role="status" aria-live="polite">
+            <span className="font-sans text-xs text-[#52545D] font-medium" role="status" aria-live="polite">
               Copy Failed — Select text below manually
             </span>
           )}
@@ -380,7 +381,7 @@ export function SuggestedNextStepsCard({
           <button
             type="button"
             onClick={handleCopy}
-            className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+            className={`inline-flex min-h-8 items-center gap-1.5 rounded-md border px-3 py-1.5 font-sans text-xs font-medium leading-none transition cursor-pointer ${
               copied
                 ? 'border-[#111215] bg-[#F1F0EC] text-[#111215]'
                 : 'border-[#E2E0D8] bg-[#FFFFFF] text-[#111215] hover:bg-[#F1F0EC]'
@@ -388,13 +389,15 @@ export function SuggestedNextStepsCard({
           >
             {copied ? (
               <>
-                <Check className="size-3.5 text-[#111215]" aria-hidden="true" />
-                <span role="status" aria-live="polite">✓ Copied to Clipboard</span>
+                <Check className="size-3.5 shrink-0 text-[#111215]" aria-hidden="true" />
+                <span className="ui-pill-label" role="status" aria-live="polite">
+                  ✓ Copied to Clipboard
+                </span>
               </>
             ) : (
               <>
-                <Clipboard className="size-3.5 text-[#52545D]" aria-hidden="true" />
-                <span>Copy Next Steps</span>
+                <Clipboard className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+                <span className="ui-pill-label">Copy Next Steps</span>
               </>
             )}
           </button>
@@ -405,12 +408,12 @@ export function SuggestedNextStepsCard({
         {stepsList.map((item, idx) => (
           <div
             key={idx}
-            className="flex items-start gap-2.5 rounded-md border border-[#E2E0D8] bg-[#F1F0EC]/40 p-3 text-xs leading-relaxed text-[#111215]"
+            className="flex items-start gap-2.5 rounded-md border border-[#E2E0D8] bg-[#F1F0EC]/40 p-3.5 font-sans text-sm leading-relaxed text-[#111215]"
           >
-            <span className="font-mono text-xs font-bold text-[#787C87] shrink-0">
+            <span className="font-mono text-xs font-semibold text-[#787C87] shrink-0 mt-0.5 tabular-nums">
               {idx + 1}.
             </span>
-            <p className="whitespace-pre-wrap">
+            <p className="whitespace-pre-wrap text-pretty">
               {item.label ? (
                 <>
                   <strong className="font-semibold text-[#111215]">{item.label}:</strong>{' '}
@@ -468,7 +471,7 @@ export function Stage3HeaderLockup({
   return (
     <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
       <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
-        <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono text-2xl font-bold tracking-tight text-[#111215] tabular-nums">
+        <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono text-score font-bold text-[#111215] tabular-nums">
           {baselineScore !== null && baselineScore !== undefined && (
             <span className="text-sm font-medium text-[#787C87]">
               {baselineScore} →{' '}
@@ -477,18 +480,18 @@ export function Stage3HeaderLockup({
           <span>{score}</span>
           <span className="text-sm font-normal text-[#787C87]">/ 100</span>
           {hasNonZeroDelta && (
-            <span className="text-base font-normal text-[#52545D]">
+            <span className="text-sm font-medium text-[#52545D]">
               ({scoreDelta! > 0 ? `+${scoreDelta}` : scoreDelta})
             </span>
           )}
         </div>
 
         <span
-          className={`mono-pill rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-mono text-[11px] font-semibold ${
+          className={`inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none tabular-nums ${
             gateReadout.isSatisfied ? 'text-[#111215]' : 'text-[#52545D]'
           }`}
         >
-          {gateReadout.label}
+          <span className="ui-pill-label">{gateReadout.label}</span>
         </span>
       </div>
 
@@ -500,10 +503,10 @@ export function Stage3HeaderLockup({
             onClick={() => {
               void onRerunAudit();
             }}
-            className="flex items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#111215] hover:bg-[#F1F0EC] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className="size-3 text-[#52545D]" aria-hidden="true" />
-            <span>Re-run Deal Audit</span>
+            <RefreshCw className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+            <span className="ui-pill-label">Re-run Deal Audit</span>
           </button>
         )}
 
@@ -512,10 +515,10 @@ export function Stage3HeaderLockup({
           onClick={() => {
             void onReset();
           }}
-          className="flex items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer"
+          className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
         >
-          <RotateCcw className="size-3" aria-hidden="true" />
-          <span>{resetButtonText}</span>
+          <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="ui-pill-label">{resetButtonText}</span>
         </button>
       </div>
     </div>

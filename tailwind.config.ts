@@ -19,11 +19,12 @@ const config: Config = {
           'sans-serif',
         ],
         display: [
-          '"General Sans"',
           'var(--font-instrument-sans)',
           '"Instrument Sans"',
           '-apple-system',
           'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
           'sans-serif',
         ],
         mono: [
@@ -36,6 +37,10 @@ const config: Config = {
           'Consolas',
           'monospace',
         ],
+      },
+      fontSize: {
+        kicker: ['0.6875rem', { lineHeight: '1rem', letterSpacing: '0.05em' }],
+        score: ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.02em' }],
       },
       colors: {
         background: "#F8F8F6",

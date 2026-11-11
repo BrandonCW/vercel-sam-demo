@@ -376,14 +376,14 @@ export function QualificationWorkbench({
                 <div className="space-y-4">
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
                     <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
-                      <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                        <span className="font-mono text-2xl font-bold tracking-tight text-[#787C87]">
+                      <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono tabular-nums">
+                        <span className="text-score font-bold text-[#787C87]">
                           --
                         </span>
                         <span className="text-sm font-normal text-[#787C87]">/ 100</span>
                       </div>
-                      <span className="mono-pill rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-mono text-[11px] font-semibold text-[#52545D]">
-                        {unassessedGateReadout.label}
+                      <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D] tabular-nums">
+                        <span className="ui-pill-label">{unassessedGateReadout.label}</span>
                       </span>
                     </div>
 
@@ -391,9 +391,9 @@ export function QualificationWorkbench({
                       type="button"
                       onClick={handleStartAssessment}
                       aria-label="Start assessment"
-                      className="btn-action-primary flex items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2.5 text-xs font-semibold text-[#FFFFFF] hover:bg-[#0C4196] cursor-pointer"
+                      className="btn-action-primary inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2 font-sans text-xs sm:text-sm font-semibold leading-none text-[#FFFFFF] hover:bg-[#0C4196] active:scale-[0.98] transition cursor-pointer"
                     >
-                      <span>Run MEDDPICC Deal Audit →</span>
+                      <span className="ui-pill-label">Run MEDDPICC Deal Audit →</span>
                     </button>
                   </div>
 
@@ -423,17 +423,19 @@ export function QualificationWorkbench({
               {showStage1 && (
                 <div className="space-y-4">
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="score-lockup flex flex-wrap items-center gap-3">
-                      <span className="font-mono text-2xl font-bold tracking-tight text-[#111215] tabular-nums">
-                        {currentScore}
-                      </span>
-                      <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                    <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono tabular-nums">
+                        <span className="text-score font-bold text-[#111215]">
+                          {currentScore}
+                        </span>
+                        <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                      </div>
                       <span
-                        className={`mono-pill rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-mono text-[11px] font-semibold ${
+                        className={`inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none tabular-nums ${
                           stage1GateReadout.isSatisfied ? 'text-[#111215]' : 'text-[#52545D]'
                         }`}
                       >
-                        {stage1GateReadout.label}
+                        <span className="ui-pill-label">{stage1GateReadout.label}</span>
                       </span>
                     </div>
 
@@ -442,9 +444,11 @@ export function QualificationWorkbench({
                         <button
                           type="button"
                           onClick={() => setActiveStageView('stage3')}
-                          className="flex items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-2 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] cursor-pointer"
+                          className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
                         >
-                          <span>Return to Updated Assessment (Stage 3) →</span>
+                          <span className="ui-pill-label">
+                            Return to Updated Assessment (Stage 3) →
+                          </span>
                         </button>
                       )}
 
@@ -453,17 +457,17 @@ export function QualificationWorkbench({
                           <button
                             type="button"
                             onClick={handleAbortSimulation}
-                            className="flex items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-2 text-xs font-medium text-[#111215] hover:bg-[#F1F0EC] cursor-pointer"
+                            className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-2 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
                           >
-                            <Ban className="size-3 text-[#52545D]" aria-hidden="true" />
-                            <span>Abort</span>
+                            <Ban className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+                            <span className="ui-pill-label">Abort</span>
                           </button>
 
                           <button
                             type="button"
                             disabled={true}
                             aria-busy="true"
-                            className="btn-action-primary flex items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2 text-xs font-semibold text-[#FFFFFF] opacity-75 cursor-not-allowed"
+                            className="btn-action-primary inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2 font-sans text-xs sm:text-sm font-semibold leading-none text-[#FFFFFF] opacity-75 cursor-not-allowed"
                           >
                             <span
                               className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"
@@ -476,16 +480,16 @@ export function QualificationWorkbench({
                         <button
                           type="button"
                           onClick={() => setActiveStageView('stage2')}
-                          className="btn-action-primary flex items-center justify-center gap-1.5 rounded-md bg-[#0F52BA] px-4 py-2 text-xs font-semibold text-[#FFFFFF] hover:bg-[#0C4196] cursor-pointer"
+                          className="btn-action-primary inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md bg-[#0F52BA] px-4 py-2 font-sans text-xs sm:text-sm font-semibold leading-none text-[#FFFFFF] hover:bg-[#0C4196] active:scale-[0.98] transition cursor-pointer"
                         >
-                          <span>
+                          <span className="ui-pill-label">
                             Answer {discoveryQuestionCount} Discovery{' '}
                             {discoveryQuestionCount === 1 ? 'Question' : 'Questions'} →
                           </span>
                         </button>
                       ) : (
-                        <span className="rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#52545D]">
-                          No Open Discovery Questions
+                        <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D]">
+                          <span className="ui-pill-label">No Open Discovery Questions</span>
                         </span>
                       )}
                     </div>
@@ -499,8 +503,8 @@ export function QualificationWorkbench({
                   />
 
                   {/* Stage 1 Bottom Summary Footer */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md border border-[#E2E0D8] bg-[#F8F8F6] p-3.5">
-                    <span className="text-xs text-[#787C87]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md border border-[#E2E0D8] bg-[#F8F8F6] p-4">
+                    <span className="font-sans text-sm text-[#52545D]">
                       {stage1GateReadout.isSatisfied
                         ? `All ${stage1GateReadout.gateLabel} exit criteria verified in baseline scoring.`
                         : `${stage1GateReadout.blockerCount} qualification ${
@@ -512,9 +516,11 @@ export function QualificationWorkbench({
                       <button
                         type="button"
                         onClick={() => setActiveStageView('stage2')}
-                        className="flex items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#111215] hover:bg-[#F1F0EC] cursor-pointer"
+                        className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
                       >
-                        <span>Proceed to Stage 2: Field Discovery →</span>
+                        <span className="ui-pill-label">
+                          Proceed to Stage 2: Field Discovery →
+                        </span>
                       </button>
                     )}
                   </div>
@@ -539,9 +545,11 @@ export function QualificationWorkbench({
                           <button
                             type="button"
                             onClick={() => setActiveStageView('stage3')}
-                            className="flex items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] cursor-pointer"
+                            className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
                           >
-                            <span>Return to Updated Assessment (Stage 3) →</span>
+                            <span className="ui-pill-label">
+                              Return to Updated Assessment (Stage 3) →
+                            </span>
                           </button>
                         </div>
                       )}

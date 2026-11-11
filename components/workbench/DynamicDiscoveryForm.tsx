@@ -195,7 +195,7 @@ export function DynamicDiscoveryForm({
 
     return (
       <div
-        className={`flex items-center gap-2 px-3 py-2 rounded-md border text-xs ${bannerConfig.bg} ${bannerConfig.border} ${bannerConfig.text}`}
+        className={`flex items-center gap-2 px-3.5 py-2.5 rounded-md border font-sans text-xs leading-relaxed ${bannerConfig.bg} ${bannerConfig.border} ${bannerConfig.text}`}
       >
         {bannerConfig.icon}
         <span className="font-medium">{section.calloutText}</span>
@@ -225,16 +225,16 @@ export function DynamicDiscoveryForm({
     return (
       <div
         key={field.id}
-        className="q-card rounded-md border border-[#E2E0D8] bg-[#FFFFFF] overflow-hidden"
+        className="q-card rounded-md border border-[#E2E0D8] bg-[#FFFFFF] overflow-hidden font-sans"
       >
         {/* Desk OS Q-Card Header with Target Dimension & Embedded TenSegmentBar */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#F8F8F6] px-4 py-2.5">
-          <div className="flex items-center gap-1.5">
+          <div className="mixed-font-lockup flex items-baseline gap-1.5">
             {targetKey && <span className="sr-only">{targetKey}</span>}
-            <span className="font-mono text-xs font-bold text-[#787C87] uppercase">
+            <span className="font-mono text-xs font-semibold text-[#787C87] uppercase">
               [{defaultMeta.code}]
             </span>
-            <span className="text-xs font-semibold text-[#111215] tabular-nums">
+            <span className="font-sans text-xs font-semibold text-[#111215] tabular-nums">
               {defaultMeta.label}: {currentDimScore}/10
             </span>
           </div>
@@ -253,7 +253,7 @@ export function DynamicDiscoveryForm({
           <div className="flex items-start justify-between gap-2">
             <label
               htmlFor={field.id}
-              className="block text-xs font-semibold text-[#111215]"
+              className="block font-sans text-sm font-semibold text-[#111215]"
             >
               {field.label}
               {field.required && <span className="text-[#111215] ml-0.5">*</span>}
@@ -261,7 +261,7 @@ export function DynamicDiscoveryForm({
           </div>
 
           {field.description && (
-            <p className="text-[11px] text-[#787C87] leading-relaxed">{field.description}</p>
+            <p className="font-sans text-xs text-[#52545D] leading-relaxed">{field.description}</p>
           )}
 
           {/* 1. Text Field */}
@@ -276,7 +276,7 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 text-xs text-[#111215] outline-none focus:bg-[#FFFFFF] disabled:opacity-50`}
+              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 font-sans text-sm text-[#111215] outline-none focus:bg-[#FFFFFF] disabled:opacity-50`}
             />
           )}
 
@@ -292,7 +292,7 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 text-xs text-[#111215] outline-none focus:bg-[#FFFFFF] disabled:opacity-50 resize-y`}
+              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 font-sans text-sm leading-relaxed text-[#111215] outline-none focus:bg-[#FFFFFF] disabled:opacity-50 resize-y`}
             />
           )}
 
@@ -306,7 +306,7 @@ export function DynamicDiscoveryForm({
               onChange={(e) => handleTextChange(field.id, e.target.value)}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 text-xs text-[#111215] outline-none focus:bg-[#FFFFFF] cursor-pointer disabled:opacity-50`}
+              className={`w-full min-h-9 rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 font-sans text-sm text-[#111215] outline-none focus:bg-[#FFFFFF] cursor-pointer disabled:opacity-50`}
             >
               <option value="" disabled>
                 Select an option…
@@ -321,13 +321,13 @@ export function DynamicDiscoveryForm({
 
           {/* 4. Radio Group Field */}
           {field.type === 'radio' && (
-            <div className="space-y-1.5 pt-0.5" role="radiogroup" aria-required={field.required}>
+            <div className="space-y-2 pt-0.5" role="radiogroup" aria-required={field.required}>
               {field.options?.map((opt) => {
                 const checked = value === opt.value;
                 return (
                   <label
                     key={opt.value}
-                    className={`flex items-start gap-2.5 p-2.5 rounded-md border cursor-pointer transition ${
+                    className={`flex items-start gap-2.5 p-3 rounded-md border cursor-pointer transition ${
                       checked
                         ? 'border-[#111215] bg-[#F1F0EC] text-[#111215]'
                         : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#787C87] text-[#52545D]'
@@ -340,12 +340,12 @@ export function DynamicDiscoveryForm({
                       checked={checked}
                       disabled={readOnly}
                       onChange={() => handleTextChange(field.id, opt.value)}
-                      className="mt-0.5 accent-[#111215]"
+                      className="mt-1 accent-[#111215]"
                     />
-                    <div className="text-xs">
-                      <div className="font-semibold text-[#111215]">{opt.label}</div>
+                    <div className="font-sans text-sm">
+                      <div className="font-medium text-[#111215]">{opt.label}</div>
                       {opt.description && (
-                        <div className="text-[11px] text-[#787C87] mt-0.5 leading-relaxed">
+                        <div className="font-sans text-xs text-[#787C87] mt-0.5 leading-relaxed">
                           {opt.description}
                         </div>
                       )}
@@ -358,14 +358,14 @@ export function DynamicDiscoveryForm({
 
           {/* 5. Checkbox Group Field */}
           {field.type === 'checkbox_group' && (
-            <div className="space-y-1.5 pt-0.5">
+            <div className="space-y-2 pt-0.5">
               {field.options?.map((opt) => {
                 const selectedList = (value as string[]) || [];
                 const checked = selectedList.includes(opt.value);
                 return (
                   <label
                     key={opt.value}
-                    className={`flex items-start gap-2.5 p-2.5 rounded-md border cursor-pointer transition ${
+                    className={`flex items-start gap-2.5 p-3 rounded-md border cursor-pointer transition ${
                       checked
                         ? 'border-[#111215] bg-[#F1F0EC] text-[#111215]'
                         : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#787C87] text-[#52545D]'
@@ -377,12 +377,12 @@ export function DynamicDiscoveryForm({
                       checked={checked}
                       disabled={readOnly}
                       onChange={() => handleCheckboxToggle(field.id, opt.value)}
-                      className="mt-0.5 rounded accent-[#111215]"
+                      className="mt-1 rounded accent-[#111215]"
                     />
-                    <div className="text-xs">
-                      <div className="font-semibold text-[#111215]">{opt.label}</div>
+                    <div className="font-sans text-sm">
+                      <div className="font-medium text-[#111215]">{opt.label}</div>
                       {opt.description && (
-                        <div className="text-[11px] text-[#787C87] mt-0.5 leading-relaxed">
+                        <div className="font-sans text-xs text-[#787C87] mt-0.5 leading-relaxed">
                           {opt.description}
                         </div>
                       )}
@@ -394,13 +394,13 @@ export function DynamicDiscoveryForm({
           )}
 
           {field.helpCallout && (
-            <div className="flex items-start gap-1.5 mt-1 text-[11px] text-[#787C87] bg-[#F1F0EC] px-2.5 py-1.5 rounded-md border border-[#E2E0D8]">
+            <div className="flex items-start gap-2 mt-1 font-sans text-xs text-[#52545D] bg-[#F1F0EC] px-3 py-2 rounded-md border border-[#E2E0D8] leading-relaxed">
               <HelpCircle className="size-3.5 text-[#52545D] shrink-0 mt-0.5" aria-hidden="true" />
               <span>{field.helpCallout}</span>
             </div>
           )}
 
-          {error && <p className="text-[11px] text-[#111215] font-semibold mt-1">{error}</p>}
+          {error && <p className="font-sans text-xs text-[#111215] font-semibold mt-1">{error}</p>}
         </div>
       </div>
     );
@@ -410,24 +410,24 @@ export function DynamicDiscoveryForm({
   const effectiveSubmitText = submitButtonText || defaultSubmitText;
 
   return (
-    <section className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF]">
+    <section className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] font-sans">
       {/* Desk OS Stage 2 Header with Back to Audit & Answered Counter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] px-5 py-4">
         <div>
           <div className="flex items-center gap-2">
             <Search className="size-4 text-[#111215]" aria-hidden="true" />
-            <h3 className="font-semibold text-sm text-[#111215]">
+            <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
               {activeForm?.title || 'Field Discovery Checklist'}
             </h3>
           </div>
-          <p className="mt-1 text-xs text-[#787C87]">
+          <p className="mt-1 font-sans text-xs text-[#787C87]">
             {activeForm?.summary || 'Close the qualification blind spots identified in baseline scoring.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <span
-            className="font-mono text-xs text-[#787C87] font-medium"
+            className="whitespace-nowrap font-sans text-xs text-[#787C87] font-medium tabular-nums"
             role="status"
             aria-live="polite"
           >
@@ -438,10 +438,10 @@ export function DynamicDiscoveryForm({
             <button
               type="button"
               onClick={onBack || onCancel}
-              className="flex items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-2.5 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer"
+              className="inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
             >
-              <ArrowLeft className="size-3" aria-hidden="true" />
-              <span>Back to Audit</span>
+              <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="ui-pill-label">Back to Audit</span>
             </button>
           )}
         </div>
@@ -452,11 +452,11 @@ export function DynamicDiscoveryForm({
           activeForm.sections.map((section) => (
             <div key={section.id} className="space-y-3.5">
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-[#787C87]">
+                <h4 className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
                   {section.title}
                 </h4>
                 {section.description && (
-                  <p className="text-xs text-[#787C87] leading-relaxed mt-0.5">
+                  <p className="font-sans text-xs text-[#787C87] leading-relaxed mt-1">
                     {section.description}
                   </p>
                 )}
@@ -470,10 +470,10 @@ export function DynamicDiscoveryForm({
         ) : (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-md border border-dashed border-[#E2E0D8] bg-[#F8F8F6]">
             <Info className="size-6 text-[#787C87] mb-2" aria-hidden="true" />
-            <p className="text-xs font-medium text-[#111215]">
+            <p className="font-sans text-sm font-medium text-[#111215]">
               No discovery questions generated for this opportunity.
             </p>
-            <p className="text-[11px] text-[#787C87] mt-1 max-w-sm">
+            <p className="font-sans text-xs text-[#787C87] mt-1 max-w-sm leading-relaxed">
               Discovery questions are generated automatically when qualification blind spots or stage-gate blockers are identified in the baseline audit.
             </p>
           </div>
@@ -483,7 +483,7 @@ export function DynamicDiscoveryForm({
           <div className="space-y-2 pt-2 border-t border-[#E2E0D8]">
             <label
               htmlFor="sa_manual_notes"
-              className="block text-xs font-semibold text-[#111215]"
+              className="block font-sans text-sm font-semibold text-[#111215]"
             >
               Additional SA Notes &amp; Observations <span className="text-[#787C87] font-normal">(Optional)</span>
             </label>
@@ -494,7 +494,7 @@ export function DynamicDiscoveryForm({
               placeholder="Document any additional customer architecture context or meeting observations…"
               value={manualNotes}
               onChange={(e) => handleNotesChange(e.target.value)}
-              className="w-full rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-2 text-xs text-[#111215] outline-none focus:border-[#111215] focus:bg-[#FFFFFF]"
+              className="w-full rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-2 font-sans text-sm leading-relaxed text-[#111215] outline-none focus:border-[#111215] focus:bg-[#FFFFFF]"
             />
           </div>
         )}
@@ -505,9 +505,9 @@ export function DynamicDiscoveryForm({
               <button
                 type="button"
                 onClick={onCancel || onBack}
-                className="rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-2 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer"
+                className="inline-flex min-h-9 items-center rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3.5 py-2 font-sans text-xs sm:text-sm font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
               >
-                Cancel
+                <span className="ui-pill-label">Cancel</span>
               </button>
             )}
 
@@ -515,7 +515,7 @@ export function DynamicDiscoveryForm({
               type="submit"
               disabled={isSubmitting || isLocked}
               aria-label={effectiveSubmitText}
-              className="w-full bg-[#0F52BA] text-white hover:bg-[#0C4196] sm:w-fit cursor-pointer disabled:opacity-50 text-xs font-semibold py-2 h-auto"
+              className="min-h-9 w-full bg-[#0F52BA] text-white hover:bg-[#0C4196] sm:w-fit cursor-pointer disabled:opacity-50 font-sans text-xs sm:text-sm font-semibold px-4 py-2"
             >
               {isSubmitting ? (
                 <>
@@ -525,7 +525,7 @@ export function DynamicDiscoveryForm({
               ) : (
                 <>
                   <span>{effectiveSubmitText}</span>
-                  <Check className="size-4 ml-1.5" aria-hidden="true" />
+                  <Check className="size-4 ml-1" aria-hidden="true" />
                 </>
               )}
             </Button>

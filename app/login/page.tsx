@@ -62,7 +62,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8F8F6] text-[#111215] flex flex-col justify-center items-center px-4 py-12">
+    <main className="min-h-screen bg-[#F8F8F6] text-[#111215] font-sans flex flex-col justify-center items-center px-4 py-12">
       <Suspense fallback={null}>
         <RedirectParamReader onResolve={handleResolveRedirect} />
       </Suspense>
@@ -73,20 +73,20 @@ export default function LoginPage() {
             <Gauge className="size-5 text-[#FFFFFF]" aria-hidden="true" />
           </div>
           <div>
-            <p className="font-display text-[11px] font-semibold tracking-[0.05em] uppercase text-[#787C87]">
+            <p className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
               DEAL OPERATIONS
             </p>
-            <h1 className="font-display text-lg font-bold tracking-[-0.03em] text-[#111215]">
+            <h1 className="font-sans text-lg font-bold tracking-[-0.025em] text-[#111215] leading-tight">
               Qualification System
             </h1>
           </div>
         </div>
 
         <div className="mb-6">
-          <h2 className="font-display text-sm font-semibold text-[#111215] mb-1.5">
+          <h2 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215] mb-1.5">
             Sign in to Deal Desk Workbench
           </h2>
-          <p className="text-sm text-[#52545D] leading-relaxed">
+          <p className="font-sans text-sm text-[#52545D] leading-relaxed text-pretty">
             Enter your workspace access password to review active opportunities, run MEDDPICC deal
             audits, and synchronize qualification updates.
           </p>
@@ -95,7 +95,7 @@ export default function LoginPage() {
         {error && (
           <div
             role="alert"
-            className="mb-5 p-3 rounded-md bg-[#F1F0EC] border border-[#111215] flex items-start gap-2.5 text-xs text-[#111215]"
+            className="mb-5 p-3.5 rounded-md bg-[#F1F0EC] border border-[#111215] flex items-start gap-2.5 font-sans text-sm text-[#111215]"
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#111215]" aria-hidden="true" />
             <span className="leading-relaxed font-medium">{error}</span>
@@ -106,7 +106,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="password"
-              className="block font-display text-[11px] font-semibold text-[#52545D] mb-1.5 uppercase tracking-[0.05em]"
+              className="block font-sans text-kicker font-semibold text-[#52545D] mb-1.5 uppercase"
             >
               Access Password
             </label>
@@ -123,7 +123,7 @@ export default function LoginPage() {
                 placeholder="Enter workspace password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-[#F1F0EC] border border-[#E2E0D8] rounded-md text-sm text-[#111215] placeholder-[#787C87] focus:outline-none focus:border-[#111215] transition-colors"
+                className="w-full min-h-10 pl-9 pr-3 py-2.5 bg-[#F1F0EC] border border-[#E2E0D8] rounded-md font-sans text-sm text-[#111215] placeholder-[#787C87] focus:outline-none focus:border-[#111215] transition-colors"
               />
             </div>
           </div>
@@ -131,7 +131,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading || !password}
-            className="w-full py-2.5 px-4 bg-[#0F52BA] hover:bg-[#0C4196] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-[#FFFFFF] text-sm font-medium rounded-md flex items-center justify-center gap-2 transition"
+            className="w-full min-h-10 py-2.5 px-4 bg-[#0F52BA] hover:bg-[#0C4196] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-[#FFFFFF] font-sans text-sm font-semibold rounded-md inline-flex items-center justify-center gap-2 transition cursor-pointer"
           >
             {isLoading ? (
               <span
@@ -140,8 +140,8 @@ export default function LoginPage() {
               />
             ) : (
               <>
-                <span>Enter Workbench</span>
-                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                <span className="ui-pill-label">Enter Workbench</span>
+                <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
               </>
             )}
           </button>
