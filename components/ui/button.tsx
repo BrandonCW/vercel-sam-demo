@@ -7,12 +7,12 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const variantStyles: Record<NonNullable<ButtonProps['variant']>, string> = {
-  default: 'bg-[#14233b] text-white hover:bg-[#213858] shadow-sm',
-  secondary: 'bg-white text-[#14233b] hover:bg-[#edf2f8] shadow-sm',
-  outline: 'border border-[#dfe5ed] bg-white text-[#152238] hover:bg-[#f8fafc]',
-  ghost: 'hover:bg-black/5 text-[#52647b]',
-  destructive: 'bg-red-600 text-white hover:bg-red-700',
-  link: 'text-[#477fb8] underline-offset-4 hover:underline',
+  default: 'bg-[#0F52BA] text-[#FFFFFF] hover:bg-[#0C4196] active:scale-[0.98]',
+  secondary: 'border border-[#E2E0D8] bg-[#FFFFFF] text-[#111215] hover:bg-[#F1F0EC]',
+  outline: 'border border-[#E2E0D8] bg-[#FFFFFF] text-[#111215] hover:bg-[#F1F0EC]',
+  ghost: 'hover:bg-[#F1F0EC] text-[#52545D] hover:text-[#111215]',
+  destructive: 'border border-[#111215] bg-[#FFFFFF] text-[#111215] hover:bg-[#F1F0EC]',
+  link: 'text-[#111215] underline-offset-4 hover:underline',
 };
 
 const sizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {
@@ -29,7 +29,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled}
         className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9fc2e1] disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer',
+          'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111215] disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer',
           variantStyles[variant],
           sizeStyles[size],
           className

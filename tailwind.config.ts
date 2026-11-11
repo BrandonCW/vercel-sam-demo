@@ -10,6 +10,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: [
+          'var(--font-instrument-sans)',
           '"Instrument Sans"',
           '-apple-system',
           'BlinkMacSystemFont',
@@ -19,12 +20,14 @@ const config: Config = {
         ],
         display: [
           '"General Sans"',
+          'var(--font-instrument-sans)',
           '"Instrument Sans"',
           '-apple-system',
           'BlinkMacSystemFont',
           'sans-serif',
         ],
         mono: [
+          'var(--font-jetbrains-mono)',
           '"JetBrains Mono"',
           'ui-monospace',
           'SFMono-Regular',
@@ -35,12 +38,12 @@ const config: Config = {
         ],
       },
       colors: {
-        background: "#09090b",
-        card: "#121215",
-        "card-border": "#27272a",
+        background: "#F8F8F6",
+        card: "#FFFFFF",
+        "card-border": "#E2E0D8",
         accent: {
-          DEFAULT: "#0070f3",
-          hover: "#0060df",
+          DEFAULT: "#0F52BA",
+          hover: "#0C4196",
         },
       },
     },

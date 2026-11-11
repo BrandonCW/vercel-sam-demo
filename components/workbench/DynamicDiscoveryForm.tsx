@@ -177,19 +177,19 @@ export function DynamicDiscoveryForm({
         bg: 'bg-[#F1F0EC]',
         border: 'border-[#E2E0D8]',
         text: 'text-[#111215]',
-        icon: <Lightbulb className="size-3.5 text-[#0F52BA] shrink-0" aria-hidden="true" />,
+        icon: <Lightbulb className="size-3.5 text-[#52545D] shrink-0" aria-hidden="true" />,
       },
       warning: {
-        bg: 'bg-[#DC2626]/5',
-        border: 'border-[#DC2626]/20',
-        text: 'text-[#DC2626]',
-        icon: <AlertTriangle className="size-3.5 text-[#DC2626] shrink-0" aria-hidden="true" />,
+        bg: 'bg-[#F1F0EC]',
+        border: 'border-[#111215]',
+        text: 'text-[#111215]',
+        icon: <AlertTriangle className="size-3.5 text-[#111215] shrink-0" aria-hidden="true" />,
       },
       info: {
-        bg: 'bg-[#0F52BA]/5',
-        border: 'border-[#0F52BA]/20',
-        text: 'text-[#0F52BA]',
-        icon: <Info className="size-3.5 text-[#0F52BA] shrink-0" aria-hidden="true" />,
+        bg: 'bg-[#F1F0EC]',
+        border: 'border-[#E2E0D8]',
+        text: 'text-[#52545D]',
+        icon: <Info className="size-3.5 text-[#52545D] shrink-0" aria-hidden="true" />,
       },
     }[section.calloutType || 'info'];
 
@@ -218,10 +218,14 @@ export function DynamicDiscoveryForm({
         ? dimensions[targetKey].score
         : defaultMeta.score;
 
+    const inputBorderClass = error
+      ? 'border-[#111215] focus:border-[#111215]'
+      : 'border-[#E2E0D8] focus:border-[#111215]';
+
     return (
       <div
         key={field.id}
-        className="q-card rounded-md border border-[#E2E0D8] bg-[#FFFFFF] shadow-2xs overflow-hidden"
+        className="q-card rounded-md border border-[#E2E0D8] bg-[#FFFFFF] overflow-hidden"
       >
         {/* Desk OS Q-Card Header with Target Dimension & Embedded TenSegmentBar */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#F8F8F6] px-4 py-2.5">
@@ -252,7 +256,7 @@ export function DynamicDiscoveryForm({
               className="block text-xs font-semibold text-[#111215]"
             >
               {field.label}
-              {field.required && <span className="text-[#DC2626] ml-0.5">*</span>}
+              {field.required && <span className="text-[#111215] ml-0.5">*</span>}
             </label>
           </div>
 
@@ -272,9 +276,7 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${
-                error ? 'border-[#DC2626] focus:ring-[#DC2626]' : 'border-[#E2E0D8] focus:ring-[#111215]'
-              } bg-[#F1F0EC]/50 px-3 py-2 text-xs text-[#111215] outline-none focus:ring-1 focus:bg-white disabled:opacity-50`}
+              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 text-xs text-[#111215] outline-none focus:bg-[#FFFFFF] disabled:opacity-50`}
             />
           )}
 
@@ -290,9 +292,7 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${
-                error ? 'border-[#DC2626] focus:ring-[#DC2626]' : 'border-[#E2E0D8] focus:ring-[#111215]'
-              } bg-[#F1F0EC]/50 px-3 py-2 text-xs text-[#111215] outline-none focus:ring-1 focus:bg-white disabled:opacity-50 resize-y`}
+              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 text-xs text-[#111215] outline-none focus:bg-[#FFFFFF] disabled:opacity-50 resize-y`}
             />
           )}
 
@@ -306,12 +306,10 @@ export function DynamicDiscoveryForm({
               onChange={(e) => handleTextChange(field.id, e.target.value)}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${
-                error ? 'border-[#DC2626] focus:ring-[#DC2626]' : 'border-[#E2E0D8] focus:ring-[#111215]'
-              } bg-[#F1F0EC]/50 px-3 py-2 text-xs text-[#111215] outline-none focus:ring-1 focus:bg-white cursor-pointer disabled:opacity-50`}
+              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 text-xs text-[#111215] outline-none focus:bg-[#FFFFFF] cursor-pointer disabled:opacity-50`}
             >
               <option value="" disabled>
-                Select an option...
+                Select an option…
               </option>
               {field.options?.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -342,7 +340,7 @@ export function DynamicDiscoveryForm({
                       checked={checked}
                       disabled={readOnly}
                       onChange={() => handleTextChange(field.id, opt.value)}
-                      className="mt-0.5 accent-[#0F52BA]"
+                      className="mt-0.5 accent-[#111215]"
                     />
                     <div className="text-xs">
                       <div className="font-semibold text-[#111215]">{opt.label}</div>
@@ -379,7 +377,7 @@ export function DynamicDiscoveryForm({
                       checked={checked}
                       disabled={readOnly}
                       onChange={() => handleCheckboxToggle(field.id, opt.value)}
-                      className="mt-0.5 rounded accent-[#0F52BA]"
+                      className="mt-0.5 rounded accent-[#111215]"
                     />
                     <div className="text-xs">
                       <div className="font-semibold text-[#111215]">{opt.label}</div>
@@ -397,12 +395,12 @@ export function DynamicDiscoveryForm({
 
           {field.helpCallout && (
             <div className="flex items-start gap-1.5 mt-1 text-[11px] text-[#787C87] bg-[#F1F0EC] px-2.5 py-1.5 rounded-md border border-[#E2E0D8]">
-              <HelpCircle className="size-3.5 text-[#52545D] shrink-0 mt-0.5" />
+              <HelpCircle className="size-3.5 text-[#52545D] shrink-0 mt-0.5" aria-hidden="true" />
               <span>{field.helpCallout}</span>
             </div>
           )}
 
-          {error && <p className="text-[11px] text-[#DC2626] font-medium mt-1">{error}</p>}
+          {error && <p className="text-[11px] text-[#111215] font-semibold mt-1">{error}</p>}
         </div>
       </div>
     );
@@ -412,12 +410,12 @@ export function DynamicDiscoveryForm({
   const effectiveSubmitText = submitButtonText || defaultSubmitText;
 
   return (
-    <section className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] shadow-xs">
+    <section className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF]">
       {/* Desk OS Stage 2 Header with Back to Audit & Answered Counter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] px-5 py-4">
         <div>
           <div className="flex items-center gap-2">
-            <Search className="size-4 text-[#0F52BA]" aria-hidden="true" />
+            <Search className="size-4 text-[#111215]" aria-hidden="true" />
             <h3 className="font-semibold text-sm text-[#111215]">
               {activeForm?.title || 'Field Discovery Checklist'}
             </h3>
@@ -470,13 +468,13 @@ export function DynamicDiscoveryForm({
             </div>
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-md border border-dashed border-[#E2E0D8] bg-[#FAFAF7]">
-            <Info className="size-6 text-[#787C87] mb-2" />
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-md border border-dashed border-[#E2E0D8] bg-[#F8F8F6]">
+            <Info className="size-6 text-[#787C87] mb-2" aria-hidden="true" />
             <p className="text-xs font-medium text-[#111215]">
               No discovery questions generated for this opportunity.
             </p>
             <p className="text-[11px] text-[#787C87] mt-1 max-w-sm">
-              Discovery questions are automatically generated from System 2 analysis when gaps are identified in baseline scoring.
+              Discovery questions are generated automatically when qualification blind spots or stage-gate blockers are identified in the baseline audit.
             </p>
           </div>
         )}
@@ -493,10 +491,10 @@ export function DynamicDiscoveryForm({
               id="sa_manual_notes"
               aria-label="Additional SA Notes & Observations"
               rows={3}
-              placeholder="Document any additional customer architecture context or meeting observations..."
+              placeholder="Document any additional customer architecture context or meeting observations…"
               value={manualNotes}
               onChange={(e) => handleNotesChange(e.target.value)}
-              className="w-full rounded-md border border-[#E2E0D8] bg-[#F1F0EC]/50 px-3 py-2 text-xs text-[#111215] outline-none focus:ring-1 focus:ring-[#111215] focus:bg-white"
+              className="w-full rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-2 text-xs text-[#111215] outline-none focus:border-[#111215] focus:bg-[#FFFFFF]"
             />
           </div>
         )}
@@ -521,13 +519,13 @@ export function DynamicDiscoveryForm({
             >
               {isSubmitting ? (
                 <>
-                  <span className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
-                  <span>Executing Delta Re-scoring...</span>
+                  <span className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" aria-hidden="true" />
+                  <span>Re-scoring Deal &amp; Updating CRM…</span>
                 </>
               ) : (
                 <>
                   <span>{effectiveSubmitText}</span>
-                  <Check className="size-4 ml-1.5" />
+                  <Check className="size-4 ml-1.5" aria-hidden="true" />
                 </>
               )}
             </Button>

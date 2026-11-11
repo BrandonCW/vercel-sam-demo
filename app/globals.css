@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,400..800;1,400..800&display=swap');
 @import url('https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap');
 
 @tailwind base;
@@ -6,24 +5,22 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'General Sans', 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: var(--font-instrument-sans), 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'General Sans', var(--font-instrument-sans), 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --bg: #F8F8F6;
   --surface: #FFFFFF;
   --surface-canvas: #F8F8F6;
   --surface-recessed: #F1F0EC;
   --border-hairline: #E2E0D8;
   --border-subtle: #ECEAE3;
+  --border-focus: #111215;
   --text: #111215;
   --text-secondary: #52545D;
   --text-muted: #787C87;
   --text-faint: #A6A7AD;
   --primary: #0F52BA;
   --primary-hover: #0C4196;
-  --success: #059669;
-  --warning: #D97706;
-  --error: #DC2626;
   --score-blocker: #DC2626;
   --score-partial: #D97706;
   --score-verified: #059669;
@@ -34,16 +31,16 @@ html,
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
 .font-display {
-  font-family: 'General Sans', 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-display);
 }
 
 .font-mono {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Check, Loader2 } from 'lucide-react';
-import type { WorkflowState, WorkbenchMode } from '@/lib/simulation/types';
+import type { WorkflowState } from '@/lib/simulation/types';
 
 export type DeskOsStageId = 'stage1' | 'stage2' | 'stage3';
 
@@ -43,6 +43,7 @@ export interface StepperBarProps {
   isComplete?: boolean;
   unlockedStages?: DeskOsStageId[];
   readOnlyRetrospective?: boolean;
+  hasDiscoveryQuestions?: boolean;
 }
 
 export function StepperBar({
@@ -53,6 +54,7 @@ export function StepperBar({
   isComplete = false,
   unlockedStages,
   readOnlyRetrospective = false,
+  hasDiscoveryQuestions = true,
 }: StepperBarProps) {
   const workflow = workflowState ?? currentWorkflow ?? 'READY_TO_ASSESS';
 
@@ -89,6 +91,9 @@ export function StepperBar({
       return true;
     }
     if (stageId === 'stage2') {
+      if (!hasDiscoveryQuestions && !isComplete) {
+        return false;
+      }
       return (
         activeStageView === 'stage2' ||
         activeStageView === 'stage3' ||
@@ -126,7 +131,7 @@ export function StepperBar({
   return (
     <nav
       aria-label="Qualification process progression"
-      className="mb-6 flex flex-col md:flex-row items-stretch md:items-center gap-2 rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-1.5 shadow-xs"
+      className="mb-6 flex flex-col md:flex-row items-stretch md:items-center gap-2 rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-1.5"
     >
       {DESK_OS_STAGES.map((stage, idx) => {
         const isActive = activeStage === stage.id;
@@ -156,9 +161,9 @@ export function StepperBar({
                 }
               }}
               aria-current={isActive ? 'step' : undefined}
-              className={`flex-1 min-w-0 flex items-center justify-center md:justify-start gap-2.5 rounded-md px-3.5 py-2.5 text-xs font-medium transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F52BA] ${
+              className={`flex-1 min-w-0 flex items-center justify-center md:justify-start gap-2.5 rounded-md px-3.5 py-2.5 text-xs font-medium transition-all text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111215] ${
                 isActive
-                  ? 'bg-[#F1F0EC] border border-[#E2E0D8] text-[#111215] font-semibold shadow-2xs'
+                  ? 'bg-[#F1F0EC] border border-[#E2E0D8] text-[#111215] font-semibold'
                   : unlocked
                   ? 'text-[#52545D] hover:bg-[#F1F0EC]/60 hover:text-[#111215] cursor-pointer'
                   : 'text-[#A6A7AD] cursor-not-allowed opacity-60'
@@ -167,14 +172,14 @@ export function StepperBar({
               <span
                 className={`flex size-5 shrink-0 items-center justify-center rounded-[4px] font-mono text-[11px] font-semibold border ${
                   completed
-                    ? 'border-[#059669] bg-[#059669] text-[#FFFFFF]'
+                    ? 'border-[#111215] bg-[#111215] text-[#FFFFFF]'
                     : isActive
-                    ? 'border-[#0F52BA] bg-[#FFFFFF] text-[#0F52BA]'
+                    ? 'border-[#111215] bg-[#FFFFFF] text-[#111215]'
                     : 'border-[#E2E0D8] bg-[#F1F0EC] text-[#787C87]'
                 }`}
               >
                 {loading ? (
-                  <Loader2 className="size-3 animate-spin text-[#0F52BA]" aria-hidden="true" />
+                  <Loader2 className="size-3 animate-spin text-[#111215]" aria-hidden="true" />
                 ) : completed ? (
                   <Check className="size-3 stroke-[2.5]" aria-hidden="true" />
                 ) : (
@@ -185,8 +190,8 @@ export function StepperBar({
               <span className="truncate">
                 {stage.fullTitle}
                 {loading && (
-                  <span className="ml-1 text-[11px] text-[#0F52BA] font-normal" aria-hidden="true">
-                    {stage.id === 'stage1' ? ' (Analyzing...)' : ' (Re-scoring...)'}
+                  <span className="ml-1 text-[11px] text-[#787C87] font-normal" aria-hidden="true">
+                    {stage.id === 'stage1' ? ' (Evaluating…)' : ' (Re-scoring…)'}
                   </span>
                 )}
               </span>

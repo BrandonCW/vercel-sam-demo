@@ -3,22 +3,40 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { QualificationWorkbench } from '@/components/workbench/QualificationWorkbench';
-import fixtureRaw from '@/lib/fixtures/simulation/acme_migration.json';
+import acmeFixture from '@/lib/fixtures/simulation/acme_migration.json';
+import globexFixture from '@/lib/fixtures/simulation/globex_amplify.json';
+import soylentFixture from '@/lib/fixtures/simulation/soylent_retail.json';
 
 describe('QualificationWorkbench Component & Desk OS Flow', () => {
-  const opportunity = fixtureRaw.opportunity as any;
+  const opportunity = acmeFixture.opportunity as any;
+  const acmeBaselineScore = String(acmeFixture.baseline.jevResult.overallScore);
+  const acmeFinalScore = String(acmeFixture.feedback.rescoreJevResult.overallScore);
+  const globexBaselineScore = String(globexFixture.baseline.jevResult.overallScore);
+  const soylentBaselineScore = String(soylentFixture.baseline.jevResult.overallScore);
 
-  it('renders in Simulation Mode by default with Desk OS split layout and Acme Corp baseline data', () => {
-    render(<QualificationWorkbench initialOpportunity={opportunity} />);
+  it('renders in Simulation Mode by default with visible monochrome SIMULATION pill, stable avatar, and zero System 1/2 jargon', () => {
+    const { container } = render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
     // Header checks
     expect(screen.getByText('DEAL OPERATIONS')).toBeDefined();
     expect(screen.getByText('Qualification System')).toBeDefined();
-    expect(screen.getByRole('button', { name: /Workbench settings|Settings/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /Workbench settings/i })).toBeDefined();
 
-    // Zero raw enums or demo pill
+    // Visible monochrome SIMULATION pill immediately left of Settings
+    const simPill = screen.getByRole('button', { name: /^SIMULATION$/i });
+    expect(simPill).toBeDefined();
+    expect(simPill.getAttribute('title')).toBe(
+      'AI Simulation mode (deterministic responses) — click to switch to Live AI'
+    );
+    expect(simPill.className).toContain('bg-[#F1F0EC]');
+
+    // Stable operator avatar
+    expect(screen.getByLabelText('Deal Desk Operator').textContent).toBe('DD');
+
+    // Zero raw enums, demo pill, or System 1/2 jargon
     const header = screen.getByRole('banner');
     expect(header.textContent).not.toContain('Salesforce connected');
+    expect(container.textContent).not.toMatch(/System 1|System 2|\bJev\b|Demo Scenario|Reset Demo/i);
 
     // Context & Desk OS 3-Stage Stepper
     expect(screen.getAllByText(/Acme Corp/i).length).toBeGreaterThan(0);
@@ -29,52 +47,94 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     // Blank Start State (Pre-Audit)
     expect(screen.getByText(/Stage Gate 2 · Unassessed Opportunity/i)).toBeDefined();
     expect(screen.getByRole('button', { name: /Start assessment/i })).toBeDefined();
-    expect(screen.getByText(/Run MEDDPICC Deal Audit →/i)).toBeDefined();
+    expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
   });
 
-  it('toggles between Simulation Mode and Live AI Mode without mocked state bleed', async () => {
+  it('opens Settings from SIMULATION pill, dims/disables analysis model in Simulation mode, and toggles cleanly to Live AI mode', async () => {
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    const settingsBtn = screen.getByRole('button', { name: /Workbench settings|Settings/i });
+    const simPill = screen.getByRole('button', { name: /^SIMULATION$/i });
     await act(async () => {
-      fireEvent.click(settingsBtn);
+      fireEvent.click(simPill);
     });
 
-    const liveBtn = screen.getByText(/Live AI mode/i);
+    // In Simulation mode, model selector is disabled with explanatory helper text
+    const modelSelect = screen.getByLabelText('Select analysis model');
+    expect(modelSelect).toHaveProperty('disabled', true);
+    expect(screen.getByText('Model selection applies in Live AI mode')).toBeDefined();
+
+    const liveBtn = screen.getByRole('button', { name: /Live AI Inference/i });
     await act(async () => {
       fireEvent.click(liveBtn);
     });
 
-    // In Live Mode, live workbench CTA is rendered
-    expect(screen.getByText(/Run MEDDPICC Deal Audit — Start Assessment/i)).toBeDefined();
+    // TopNavBar pill flips to LIVE and Live workbench renders unified CTA label
+    expect(screen.getByRole('button', { name: /^LIVE$/i })).toBeDefined();
+    expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
 
-    const simBtn = screen.getByText(/Simulation mode/i);
+    const simBtn = screen.getByRole('button', { name: /Simulated AI \(Instant Replay\)/i });
     await act(async () => {
       fireEvent.click(simBtn);
     });
 
     // Back in Simulation Mode
-    expect(screen.getByText(/Run MEDDPICC Deal Audit →/i)).toBeDefined();
+    expect(screen.getByRole('button', { name: /^SIMULATION$/i })).toBeDefined();
+    expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
+  });
+
+  it('mirrors 2-step progressive hydration in Simulation Mode (~350ms baseline scores + shimmers + Abort -> ~950ms citations & checklist)', async () => {
+    vi.useFakeTimers();
+    render(<QualificationWorkbench initialOpportunity={opportunity} />);
+
+    const startBtn = screen.getByRole('button', { name: /Start assessment/i });
+    await act(async () => {
+      fireEvent.click(startBtn);
+    });
+
+    // 0–350ms: baseline rubric scanning state with Abort button
+    expect(screen.getByText(/Scanning AE & SA notes against MEDDPICC rubric…/i)).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Abort$/i })).toBeDefined();
+
+    // Advance past 350ms -> Stage 1 unlocks immediately with baseline score, shimmers, progressive CTA, and Abort
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(screen.getAllByText(acmeBaselineScore).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /Generating Discovery Checklist…/i })).toHaveProperty(
+      'disabled',
+      true
+    );
+    expect(screen.getByRole('button', { name: /^Abort$/i })).toBeDefined();
+    expect(screen.getByTestId('evidence-shimmer-economicBuyer')).toBeDefined();
+
+    // Advance past 950ms -> buyer citations, gaps, and discovery CTA hydrate
+    await act(async () => {
+      vi.advanceTimersByTime(650);
+    });
+
+    expect(screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i })).toBeDefined();
+    expect(screen.queryByTestId('evidence-shimmer-economicBuyer')).toBeNull();
+
+    vi.useRealTimers();
   });
 
   it('progresses sequentially and supports stepping back to the previous stage with input preservation', async () => {
     vi.useFakeTimers();
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    // Click Start assessment to advance from blank to ANALYZING
     const startBtn = screen.getByRole('button', { name: /Start assessment/i });
     await act(async () => {
       fireEvent.click(startBtn);
     });
 
-    // Advance 1200ms timer to reach PENDING_FEEDBACK (Stage 1)
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
-    // Stage 1: Score 54, blocker pill, primary CTA
-    expect(screen.getAllByText('54').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Stage Gate 2 · \d+ Gaps Identified/i)).toBeDefined();
+    // Stage 1: Baseline score, real Stage Gate blocker pill, primary CTA
+    expect(screen.getAllByText(acmeBaselineScore).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Stage Gate 2 · \d+ Gate Blockers? Identified/i)).toBeDefined();
 
     // Advance to Stage 2: Field Discovery Checklist
     const toStage2Btn = screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i });
@@ -82,8 +142,10 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
       fireEvent.click(toStage2Btn);
     });
 
-    // In Stage 2, discovery form rendered
+    // In Stage 2, discovery form rendered with baseline dimension score
     expect(screen.getByText(/Submit Discovery Findings & Re-Score Deal/i)).toBeDefined();
+    expect(screen.getByText('Economic Buyer: 3/10')).toBeDefined();
+
     const radioOption = screen.getByRole('radio', {
       name: /Confirmed sponsorship if build times drop <5 min/i,
     });
@@ -101,8 +163,7 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
       fireEvent.click(backBtn);
     });
 
-    // Verify Stage 1 is visible
-    expect(screen.getByText(/Stage Gate 2 · \d+ Gaps Identified/i)).toBeDefined();
+    expect(screen.getByText(/Stage Gate 2 · \d+ Gate Blockers? Identified/i)).toBeDefined();
 
     // Navigate forward to Stage 2 again
     await act(async () => {
@@ -120,16 +181,16 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     vi.useRealTimers();
   });
 
-  it('completes assessment and allows inspecting Stage 1 and Stage 2 without state loss', async () => {
+  it('completes assessment, shows honest simulation sync subtitle + CRM writeback card, and preserves baseline Stage 2 scores on retrospective inspection', async () => {
     vi.useFakeTimers();
-    render(<QualificationWorkbench initialOpportunity={opportunity} />);
+    const { container } = render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
     // Advance to Stage 1
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
     });
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
     // Advance to Stage 2
@@ -137,7 +198,6 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
       fireEvent.click(screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i }));
     });
 
-    // Fill required discovery fields
     const radioOption = screen.getByRole('radio', {
       name: /Confirmed sponsorship if build times drop <5 min/i,
     });
@@ -152,15 +212,17 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
       fireEvent.click(submitBtn);
     });
 
-    // Advance evaluation timer
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
-    // Stage 3: Score 76, Gate Criteria Satisfied
-    expect(screen.getAllByText('76').length).toBeGreaterThan(0);
+    // Stage 3: Final score, Gate Criteria Satisfied, honest simulation preview subtitle, zero [QUALIFIED] tag
+    expect(screen.getAllByText(acmeFinalScore).length).toBeGreaterThan(0);
     expect(screen.getByText(/Stage Gate 2 · Gate Criteria Satisfied/i)).toBeDefined();
     expect(screen.getByText(/Suggested Next Steps/i)).toBeDefined();
+    expect(screen.getByText(/Simulated writeback preview/i)).toBeDefined();
+    expect(container.textContent).not.toContain('[QUALIFIED]');
+    expect(screen.getByTestId('crm-writeback-card')).toBeDefined();
 
     // Inspect Stage 1 via StepperBar
     const stage1Step = screen.getByRole('button', { name: /Initial Deal Audit/i });
@@ -173,31 +235,30 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Return to Updated Assessment \(Stage 3\)/i }));
     });
-    expect(screen.getAllByText('76').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(acmeFinalScore).length).toBeGreaterThan(0);
 
-    // Inspect Stage 2 via StepperBar
+    // Inspect Stage 2 via StepperBar — shows baseline 3/10 (not post-rescore 8/10)
     const stage2Step = screen.getByRole('button', { name: /Field Discovery Checklist/i });
     await act(async () => {
       fireEvent.click(stage2Step);
     });
     expect(screen.getByRole('button', { name: /Return to Updated Assessment \(Stage 3\)/i })).toBeDefined();
+    expect(screen.getByText('Economic Buyer: 3/10')).toBeDefined();
 
     vi.useRealTimers();
   });
 
-  it('resets back to baseline on Restart button click', async () => {
+  it('resets back to baseline on Reset Opportunity Baseline button click', async () => {
     vi.useFakeTimers();
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    // Advance to Stage 1
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
     });
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
-    // Advance to Stage 2 and fill required fields
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i }));
     });
@@ -208,18 +269,17 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     const criteriaSelect = screen.getByLabelText(/Confirmed technical decision criteria/i);
     fireEvent.change(criteriaSelect, { target: { value: 'build_speed_and_isr' } });
 
-    // Submit
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Submit Discovery Findings/i }));
     });
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
-    // In Stage 3, click ↺ Restart Walkthrough
-    const restartBtn = screen.getByRole('button', { name: /Restart Walkthrough/i });
+    // In Stage 3, click Reset Opportunity Baseline
+    const resetBtn = screen.getByRole('button', { name: /Reset Opportunity Baseline/i });
     await act(async () => {
-      fireEvent.click(restartBtn);
+      fireEvent.click(resetBtn);
     });
     await act(async () => {
       vi.advanceTimersByTime(400);
@@ -243,31 +303,28 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
 
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    // Advance to Stage 1
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
     });
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
-    // Advance to Stage 2 and fill required fields
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i }));
     });
-    const radioOption = screen.getByRole('radio', {
-      name: /Confirmed sponsorship if build times drop <5 min/i,
+    fireEvent.click(
+      screen.getByRole('radio', { name: /Confirmed sponsorship if build times drop <5 min/i })
+    );
+    fireEvent.change(screen.getByLabelText(/Confirmed technical decision criteria/i), {
+      target: { value: 'build_speed_and_isr' },
     });
-    fireEvent.click(radioOption);
-    const criteriaSelect = screen.getByLabelText(/Confirmed technical decision criteria/i);
-    fireEvent.change(criteriaSelect, { target: { value: 'build_speed_and_isr' } });
 
-    // Submit
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Submit Discovery Findings/i }));
     });
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
     const copyBtn = screen.getByRole('button', { name: /Copy Next Steps/i });
@@ -276,6 +333,7 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     });
 
     expect(writeTextMock).toHaveBeenCalled();
+    expect(writeTextMock.mock.calls[0][0]).not.toContain('[QUALIFIED]');
     expect(screen.getByText('✓ Copied to Clipboard')).toBeDefined();
 
     vi.useRealTimers();
@@ -292,31 +350,28 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
 
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    // Advance to Stage 1
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
     });
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
-    // Advance to Stage 2 and fill required fields
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i }));
     });
-    const radioOption = screen.getByRole('radio', {
-      name: /Confirmed sponsorship if build times drop <5 min/i,
+    fireEvent.click(
+      screen.getByRole('radio', { name: /Confirmed sponsorship if build times drop <5 min/i })
+    );
+    fireEvent.change(screen.getByLabelText(/Confirmed technical decision criteria/i), {
+      target: { value: 'build_speed_and_isr' },
     });
-    fireEvent.click(radioOption);
-    const criteriaSelect = screen.getByLabelText(/Confirmed technical decision criteria/i);
-    fireEvent.change(criteriaSelect, { target: { value: 'build_speed_and_isr' } });
 
-    // Submit
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Submit Discovery Findings/i }));
     });
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
     const copyBtn = screen.getByRole('button', { name: /Copy Next Steps/i });
@@ -330,90 +385,72 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     vi.useRealTimers();
   });
 
-  it('switches simulation scenarios dynamically, updating Deal Context card, baseline scores, and discovery questions', async () => {
+  it('switches simulation scenarios dynamically while keeping operator avatar stable', async () => {
     vi.useFakeTimers();
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    // Initial state: Acme Corp
     expect(screen.getAllByText(/Acme Corp/i).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Deal Desk Operator').textContent).toBe('DD');
 
-    // Open settings and switch to Globex FinTech scenario
-    const settingsBtn = screen.getByRole('button', { name: /Workbench settings|Settings/i });
+    const settingsBtn = screen.getByRole('button', { name: /Workbench settings/i });
     await act(async () => {
       fireEvent.click(settingsBtn);
     });
 
-    const scenarioSelect = screen.getByLabelText(/Select Scenario/i);
+    const scenarioSelect = screen.getByLabelText(/Select active opportunity/i);
     await act(async () => {
       fireEvent.change(scenarioSelect, { target: { value: 'scenario_globex_amplify' } });
     });
 
-    // Close settings dialog
-    const closeBtn = screen.getByRole('button', { name: /Close settings/i });
     await act(async () => {
-      fireEvent.click(closeBtn);
+      fireEvent.click(screen.getByRole('button', { name: /Close settings/i }));
     });
 
-    // Deal Context card should reflect Globex FinTech ($240,000 ACV, AWS Amplify competitor)
     expect(screen.getAllByText(/Globex/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/\$240,000/i)).toBeDefined();
     expect(screen.getAllByText(/AWS Amplify/i).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Deal Desk Operator').textContent).toBe('DD');
 
-    // Workbench should be in blank unassessed state for the new scenario
-    expect(screen.getByText(/Stage Gate 2 · Unassessed Opportunity/i)).toBeDefined();
-
-    // Start assessment for Globex
-    const startBtn = screen.getByRole('button', { name: /Start assessment/i });
     await act(async () => {
-      fireEvent.click(startBtn);
+      fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1100);
     });
 
-    // Advance 1200ms timer to reach PENDING_FEEDBACK
+    expect(screen.getAllByText(globexBaselineScore).length).toBeGreaterThan(0);
+
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      fireEvent.click(screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i }));
     });
 
-    // Globex baseline MEDDPICC score is 48
-    expect(screen.getAllByText('48').length).toBeGreaterThan(0);
-
-    // Advance to Stage 2: Field Discovery Checklist
-    const toStage2Btn = screen.getByRole('button', { name: /Answer \d+ Discovery Questions/i });
-    await act(async () => {
-      fireEvent.click(toStage2Btn);
-    });
-
-    // Globex discovery questions target Secure Compute / VPC Peering and InfoSec SOC2
     expect(
       screen.getByText(/Confirmed Vercel Secure Compute VPC peering and dedicated egress IP architecture\?/i)
     ).toBeDefined();
 
-    // Now open settings and switch scenario to Soylent Retail
     await act(async () => {
       fireEvent.click(settingsBtn);
     });
-    const soylentSelect = screen.getByLabelText(/Select Scenario/i);
     await act(async () => {
-      fireEvent.change(soylentSelect, { target: { value: 'scenario_soylent_headless' } });
+      fireEvent.change(screen.getByLabelText(/Select active opportunity/i), {
+        target: { value: 'scenario_soylent_headless' },
+      });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Close settings/i }));
     });
 
-    // Deal Context card reflects Soylent Retail ($90,000 ACV)
     expect(screen.getAllByText(/Soylent/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/\$90,000/i)).toBeDefined();
 
-    // Start assessment for Soylent
-    const startSoylentBtn = screen.getByRole('button', { name: /Start assessment/i });
     await act(async () => {
-      fireEvent.click(startSoylentBtn);
+      fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
     });
     await act(async () => {
-      vi.advanceTimersByTime(1300);
+      vi.advanceTimersByTime(1100);
     });
 
-    // Soylent baseline MEDDPICC score is 52
-    expect(screen.getAllByText('52').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(soylentBaselineScore).length).toBeGreaterThan(0);
 
     vi.useRealTimers();
   });
