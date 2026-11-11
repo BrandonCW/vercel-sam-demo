@@ -13,7 +13,10 @@ async function leaveExpiredLease(token = 'crashed-token') {
     ON CONFLICT (name) DO UPDATE SET holder = EXCLUDED.holder, token = EXCLUDED.token, expires_at = EXCLUDED.expires_at;`;
 }
 
-describe('live-run lease (serialises destructive users of the test database)', { timeout: 30_000 }, () => {
+describe.skipIf(!process.env.POSTGRES_URL)(
+  'live-run lease (serialises destructive users of the test database)',
+  { timeout: 30_000 },
+  () => {
   const held: { release: () => Promise<void> }[] = [];
   afterEach(async () => {
     while (held.length) await held.pop()!.release();

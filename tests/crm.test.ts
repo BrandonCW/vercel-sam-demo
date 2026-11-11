@@ -33,7 +33,7 @@ describe('CRM fails loudly without Postgres', () => {
   });
 });
 
-describe('Simulated CRM Persistence & Seeding (live Postgres test branch)', () => {
+describe.skipIf(!process.env.POSTGRES_URL)('Simulated CRM Persistence & Seeding (live Postgres test branch)', () => {
   beforeEach(async () => {
     // Reset to clean fixture baseline
     await resetCrmDatabase('scenario_acme_netlify');
@@ -136,7 +136,7 @@ describe('Simulated CRM Persistence & Seeding (live Postgres test branch)', () =
   });
 });
 
-describe('Opportunity reset marker (issue 15)', { timeout: 30_000 }, () => {
+describe.skipIf(!process.env.POSTGRES_URL)('Opportunity reset marker (issue 15)', { timeout: 30_000 }, () => {
   it('reports when the Opportunity was last reset, and a newer value after every reset', async () => {
     const first = await resetCrmDatabase('scenario_acme_netlify');
     const read = (await getOpportunity('opp_acme_corp_001'))!;

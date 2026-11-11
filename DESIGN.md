@@ -98,7 +98,7 @@ components:
 - **Quarantined Color Domain:** Color exists exclusively on the 10-segment MEDDPICC score bars (`0–3` Crimson, `4–7` Amber, `8–10` Emerald) and the primary action button (`#0F52BA`).
 - **All 8 MEDDPICC Dimensions Always Open:** Zero collapsible dropdowns or accordions; all 8 pillars show dimension, 10-segment bar, score, verified evidence, and open gap inline for instantaneous vertical scanning.
 - **Clean Inline Parenthetical Deltas:** Stage 3 reflects score gains using plain text `JetBrains Mono` parenthetical notation `(+24)`, `(+6)`, without button or badge styling.
-- **Zero Demo Scaffolding:** Internal enums (`READY_TO_ASSESS`, `PENDING_FEEDBACK`), `$0 compute` banners, `"Salesforce Connected"` pills, and `"⚙ Workspace / Dev Controls"` popovers are strictly forbidden.
+- **Zero Demo Scaffolding:** Internal enums (`READY_TO_ASSESS`, `PENDING_FEEDBACK`), `$0 compute` banners, `"Salesforce Connected"` pills, and `"⚙ Workspace / Dev Controls"` popovers are strictly forbidden; the sole permitted operational exception is a single strictly monochrome `SIMULATION` / `LIVE` AI execution-mode pill in `TopNavBar` so operators can distinguish deterministic AI fixture replay from live inference without breaking the Quarantined Color Domain.
 
 ## Colors
 
@@ -205,3 +205,4 @@ Neutrals derive from a warm architectural stone palette (`#F8F8F6` canvas, `#E2E
 | 2026-10-21 | Always-Open MEDDPICC Ledger | Replaced accordion dropdowns with permanently open 8-row table for instantaneous vertical scanning of buyer evidence and gaps. |
 | 2026-10-21 | 3-Stage Process Walkthrough | Codified the interactive journey: Stage 1 (Audit), Stage 2 (In-Context Field Discovery), and Stage 3 (Qualified Re-score). |
 | 2026-10-21 | Clean Parenthetical Score Deltas | User feedback: replaced button-like delta badges with unadorned typographic parentheticals `(+24)` and `(+6)` in JetBrains Mono. |
+| 2026-11-11 | Monochrome AI Execution-Mode Pill Carve-Out | Amended Zero Demo Scaffolding to permit a single strictly monochrome `SIMULATION` / `LIVE` pill in `TopNavBar` so operators can tell deterministic AI fixture replay from live Gateway inference while keeping color strictly quarantined. |

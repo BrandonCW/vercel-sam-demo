@@ -15,7 +15,10 @@ async function assessIn(sessionId: string, overrides: Parameters<typeof system2>
   await recordSystem2Analysis(opp, jev({ overallScore: score }), system2(overrides), scope(sessionId, 'turn_1'));
 }
 
-describe('Assessment Session: run_assessment steps are scoped to the root eve session', { timeout: 30_000 }, () => {
+describe.skipIf(!process.env.POSTGRES_URL)(
+  'Assessment Session: run_assessment steps are scoped to the root eve session',
+  { timeout: 30_000 },
+  () => {
   beforeEach(async () => {
     await resetCrmDatabase('scenario_acme_netlify');
   });

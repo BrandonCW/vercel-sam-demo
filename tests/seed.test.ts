@@ -19,7 +19,7 @@ import resetCrmDataTool from '@/agent/tools/reset_crm_data';
 const sql = () => neon(process.env.POSTGRES_URL!);
 const SCENARIO_OPPS = ['opp_acme_corp_001', 'opp_globex_fintech_002', 'opp_soylent_retail_003'];
 
-describe('demo seed data (live Postgres test branch)', { timeout: 60_000 }, () => {
+describe.skipIf(!process.env.POSTGRES_URL)('demo seed data (live Postgres test branch)', { timeout: 60_000 }, () => {
   afterAll(async () => {
     await seedDemoData({ fullReset: true });
   });
