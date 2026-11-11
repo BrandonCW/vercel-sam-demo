@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Check, AlertTriangle, Lightbulb, Info, HelpCircle, ArrowLeft } from 'lucide-react';
+import { Info, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { JsonRenderForm, JsonRenderSection, FormField } from '@/lib/ui/json-render-schema';
 import { TenSegmentBar } from './MeddpiccScorecard';
@@ -172,34 +172,10 @@ export function DynamicDiscoveryForm({
   const renderCalloutBanner = (section: JsonRenderSection) => {
     if (!section.calloutText) return null;
 
-    const bannerConfig = {
-      tip: {
-        bg: 'bg-[#F1F0EC]',
-        border: 'border-[#E2E0D8]',
-        text: 'text-[#111215]',
-        icon: <Lightbulb className="size-3.5 text-[#52545D] shrink-0" aria-hidden="true" />,
-      },
-      warning: {
-        bg: 'bg-[#F1F0EC]',
-        border: 'border-[#111215]',
-        text: 'text-[#111215]',
-        icon: <AlertTriangle className="size-3.5 text-[#111215] shrink-0" aria-hidden="true" />,
-      },
-      info: {
-        bg: 'bg-[#F1F0EC]',
-        border: 'border-[#E2E0D8]',
-        text: 'text-[#52545D]',
-        icon: <Info className="size-3.5 text-[#52545D] shrink-0" aria-hidden="true" />,
-      },
-    }[section.calloutType || 'info'];
-
     return (
-      <div
-        className={`flex items-center gap-2 px-3.5 py-2.5 rounded-md border font-sans text-xs leading-relaxed ${bannerConfig.bg} ${bannerConfig.border} ${bannerConfig.text}`}
-      >
-        {bannerConfig.icon}
-        <span className="font-medium">{section.calloutText}</span>
-      </div>
+      <p className="border-l-2 border-[#D4D1C7] pl-3 font-sans text-xs text-[#52545D] leading-relaxed">
+        {section.calloutText}
+      </p>
     );
   };
 
@@ -220,7 +196,7 @@ export function DynamicDiscoveryForm({
 
     const inputBorderClass = error
       ? 'border-[#111215] focus:border-[#111215]'
-      : 'border-[#E2E0D8] focus:border-[#111215]';
+      : 'border-[#E2E0D8] hover:border-[#C8C5BA] focus:border-[#111215]';
 
     return (
       <div
@@ -229,11 +205,8 @@ export function DynamicDiscoveryForm({
       >
         {/* Desk OS Q-Card Header with Target Dimension & Embedded TenSegmentBar */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#F8F8F6] px-4 py-2.5">
-          <div className="mixed-font-lockup flex items-baseline gap-1.5">
+          <div className="flex items-baseline gap-1.5">
             {targetKey && <span className="sr-only">{targetKey}</span>}
-            <span className="font-mono text-xs font-semibold text-[#787C87] uppercase">
-              [{defaultMeta.code}]
-            </span>
             <span className="font-sans text-xs font-semibold text-[#111215] tabular-nums">
               {defaultMeta.label}: {currentDimScore}/10
             </span>
@@ -276,7 +249,7 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 font-sans text-sm text-[#111215] outline-none focus:bg-[#FFFFFF] disabled:opacity-50`}
+              className={`w-full min-h-10 rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm text-[#111215] leading-normal transition-colors focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]`}
             />
           )}
 
@@ -292,31 +265,39 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 font-sans text-sm leading-relaxed text-[#111215] outline-none focus:bg-[#FFFFFF] disabled:opacity-50 resize-y`}
+              className={`w-full rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm leading-relaxed text-[#111215] transition-colors focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD] resize-y`}
             />
           )}
 
           {/* 3. Select Field */}
           {field.type === 'select' && (
-            <select
-              id={field.id}
-              name={field.name}
-              disabled={readOnly}
-              value={(value as string) || ''}
-              onChange={(e) => handleTextChange(field.id, e.target.value)}
-              aria-invalid={Boolean(error)}
-              aria-required={field.required}
-              className={`w-full min-h-9 rounded-md border ${inputBorderClass} bg-[#F1F0EC] px-3 py-2 font-sans text-sm text-[#111215] outline-none focus:bg-[#FFFFFF] cursor-pointer disabled:opacity-50`}
-            >
-              <option value="" disabled>
-                Select an option…
-              </option>
-              {field.options?.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+            <div className="relative">
+              <select
+                id={field.id}
+                name={field.name}
+                disabled={readOnly}
+                value={(value as string) || ''}
+                onChange={(e) => handleTextChange(field.id, e.target.value)}
+                aria-invalid={Boolean(error)}
+                aria-required={field.required}
+                className={`w-full min-h-10 appearance-none rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]`}
+              >
+                <option value="" disabled>
+                  Select an option…
                 </option>
-              ))}
-            </select>
+                {field.options?.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-white text-[#111215]">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className={`pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ${
+                  readOnly ? 'text-[#A6A7AD]' : 'text-[#52545D]'
+                }`}
+              />
+            </div>
           )}
 
           {/* 4. Radio Group Field */}
@@ -394,10 +375,7 @@ export function DynamicDiscoveryForm({
           )}
 
           {field.helpCallout && (
-            <div className="flex items-start gap-2 mt-1 font-sans text-xs text-[#52545D] bg-[#F1F0EC] px-3 py-2 rounded-md border border-[#E2E0D8] leading-relaxed">
-              <HelpCircle className="size-3.5 text-[#52545D] shrink-0 mt-0.5" aria-hidden="true" />
-              <span>{field.helpCallout}</span>
-            </div>
+            <p className="mt-1.5 font-sans text-xs text-[#787C87]">{field.helpCallout}</p>
           )}
 
           {error && <p className="font-sans text-xs text-[#111215] font-semibold mt-1">{error}</p>}
@@ -414,12 +392,9 @@ export function DynamicDiscoveryForm({
       {/* Desk OS Stage 2 Header with Back to Audit & Answered Counter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] px-5 py-4">
         <div>
-          <div className="flex items-center gap-2">
-            <Search className="size-4 text-[#111215]" aria-hidden="true" />
-            <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
-              {activeForm?.title || 'Field Discovery Checklist'}
-            </h3>
-          </div>
+          <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
+            {activeForm?.title || 'Field Discovery'}
+          </h3>
           <p className="mt-1 font-sans text-xs text-[#787C87]">
             {activeForm?.summary || 'Close the qualification blind spots identified in baseline scoring.'}
           </p>
@@ -437,8 +412,9 @@ export function DynamicDiscoveryForm({
           {(onBack || onCancel) && (
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={onBack || onCancel}
-              className="inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
+              className="inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="ui-pill-label">Back to Audit</span>
@@ -491,10 +467,11 @@ export function DynamicDiscoveryForm({
               id="sa_manual_notes"
               aria-label="Additional SA Notes & Observations"
               rows={3}
+              disabled={isSubmitting}
               placeholder="Document any additional customer architecture context or meeting observations…"
               value={manualNotes}
               onChange={(e) => handleNotesChange(e.target.value)}
-              className="w-full rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-2 font-sans text-sm leading-relaxed text-[#111215] outline-none focus:border-[#111215] focus:bg-[#FFFFFF]"
+              className="w-full rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm leading-relaxed text-[#111215] transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]"
             />
           </div>
         )}
@@ -504,8 +481,9 @@ export function DynamicDiscoveryForm({
             {(onCancel || onBack) && (
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={onCancel || onBack}
-                className="inline-flex min-h-9 items-center rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3.5 py-2 font-sans text-xs sm:text-sm font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
+                className="inline-flex min-h-9 items-center rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3.5 py-2 font-sans text-xs sm:text-sm font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="ui-pill-label">Cancel</span>
               </button>
@@ -514,19 +492,19 @@ export function DynamicDiscoveryForm({
             <Button
               type="submit"
               disabled={isSubmitting || isLocked}
-              aria-label={effectiveSubmitText}
+              aria-busy={isSubmitting || undefined}
               className="min-h-9 w-full bg-[#0F52BA] text-white hover:bg-[#0C4196] sm:w-fit cursor-pointer disabled:opacity-50 font-sans text-xs sm:text-sm font-semibold px-4 py-2"
             >
               {isSubmitting ? (
                 <>
-                  <span className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" aria-hidden="true" />
+                  <span
+                    className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                    aria-hidden="true"
+                  />
                   <span>Re-scoring Deal &amp; Updating CRM…</span>
                 </>
               ) : (
-                <>
-                  <span>{effectiveSubmitText}</span>
-                  <Check className="size-4 ml-1" aria-hidden="true" />
-                </>
+                <span>{effectiveSubmitText}</span>
               )}
             </Button>
           </div>

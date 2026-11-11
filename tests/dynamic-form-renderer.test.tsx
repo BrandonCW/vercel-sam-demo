@@ -1,9 +1,17 @@
 // @vitest-environment happy-dom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { DynamicDiscoveryForm } from '@/components/workbench/DynamicDiscoveryForm';
+import { TopNavBar } from '@/components/workbench/TopNavBar';
+import { StepperBar } from '@/components/workbench/StepperBar';
+import { DealContextCard } from '@/components/workbench/DealContextCard';
 import { JsonRenderForm } from '@/lib/ui/json-render-schema';
+import { opportunity } from './fixtures/qualification';
+
+afterEach(() => {
+  cleanup();
+});
 
 const mockComprehensiveForm: JsonRenderForm = {
   opportunityId: 'opp_acme_corp_001',
@@ -365,13 +373,78 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       expect((radio2 as HTMLInputElement).checked).toBe(true);
     });
 
-    it('supports select option changes and updates form state', () => {
+    it('supports select option changes and updates form state with custom 40px appearance-none styling', () => {
       const handleSubmit = vi.fn();
       render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       const select = screen.getByRole('combobox');
+      expect(select.className).toContain('appearance-none');
+      expect(select.className).toContain('min-h-10');
+      expect(select.className).toContain('text-sm');
+
       fireEvent.change(select, { target: { value: 'confirmed_switch' } });
       expect((select as HTMLSelectElement).value).toBe('confirmed_switch');
+    });
+
+    it('renders quiet 1-line helper captions without bordered HelpCircle boxes or [E] mono brackets', () => {
+      const { container } = render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={vi.fn()} />);
+
+      const helperCaption = screen.getByText('Stage Gate requirement: Verified budget authority is required.');
+      expect(helperCaption.tagName).toBe('P');
+      expect(helperCaption.className).toContain('text-xs');
+      expect(helperCaption.className).toContain('text-[#787C87]');
+      expect(helperCaption.className).not.toContain('border');
+      expect(container.textContent).not.toContain('[E]');
+      expect(container.textContent).not.toContain('[I]');
+    });
+  });
+
+  describe('6. Shell, Settings Custom Selects, Stepper & Left-Pane De-duplication', () => {
+    it('styles TopNavBar Settings selects with appearance-none min-h-10 and omits static DD avatar', () => {
+      render(
+        <TopNavBar
+          mode="live"
+          onScenarioChange={vi.fn()}
+          onModelChange={vi.fn()}
+          settingsOpen={true}
+        />
+      );
+
+      expect(screen.queryByLabelText('Deal Desk Operator')).toBeNull();
+
+      const scenarioSelect = screen.getByLabelText('Select active opportunity');
+      const modelSelect = screen.getByLabelText('Select analysis model');
+      for (const el of [scenarioSelect, modelSelect]) {
+        expect(el.className).toContain('appearance-none');
+        expect(el.className).toContain('min-h-10');
+        expect(el.className).toContain('text-sm');
+      }
+    });
+
+    it('renders clean StepperBar labels without parenthetical spoilers or duplicate inline spinners', () => {
+      const { container } = render(
+        <StepperBar activeStageView="stage1" workflowState="ANALYZING" />
+      );
+
+      expect(screen.getByText('Initial Deal Audit')).toBeTruthy();
+      expect(screen.getByText('Field Discovery')).toBeTruthy();
+      expect(screen.getByText('Updated Assessment')).toBeTruthy();
+      expect(container.textContent).not.toMatch(/Gaps Identified|In-Context|\(Qualified\)|Evaluating…|Re-scoring…/);
+      expect(container.querySelector('.animate-spin')).toBeNull();
+    });
+
+    it('omits duplicate CRM Qualification Writeback and Current Stage from DealContextCard', () => {
+      const opp = opportunity({
+        qualification_status: 'qualified',
+        suggested_next_steps: '[QUALIFIED] Advance to Stage 3 | Owner: SA | Focus: ISR | Watch: Netlify',
+      });
+      const { container } = render(<DealContextCard opportunity={opp} />);
+
+      expect(screen.getByTestId('crm-qualification-status').textContent).toBe('Qualified');
+      expect(screen.queryByTestId('crm-writeback-card')).toBeNull();
+      expect(container.textContent).not.toContain('CRM Qualification Writeback');
+      expect(container.textContent).not.toContain('Current Stage');
+      expect(screen.getByText('Acme Global')).toBeTruthy();
     });
   });
 });
