@@ -1,6 +1,6 @@
 # 26: E2E Audit Hardening, Progressive Eve Latency & Deal Desk UX Polish
 
-**Status:** in_progress  
+**Status:** completed  
 **Type:** task  
 **Blocked by:** 25  
 **Parent Epic:** [GitHub Issue #6](https://github.com/BrandonCW/vercel-sam-demo/issues/6)
@@ -34,7 +34,7 @@ Following the Issue #24 Deal Desk OS split-workbench refactor and Issue #25 Eve 
   - Pin Node runtime via `.nvmrc` (`24`) and `"engines": { "node": ">=22.0.0" }` in `package.json`.
   - Upgrade `next` within Next 15 to patched `^15.5.28` and remediate transitive/dev CVEs via safe version bumps and `pnpm.overrides` (`sharp >=0.35.5`, `postcss >=8.5.23`, `source-map-js >=1.2.2`, `postcss-selector-parser >=6.1.5`, major-scoped `undici >=7.30.1` for v7 and `>=8.12.2` for v8, `happy-dom >=21.0.4`, `vite >=7.3.7`, `tinypool >=2.1.2` / compatible `vitest`), keeping `zod` on v3 (`^3.25.76`) to preserve 100% schema/type compatibility with `ai@7.0.112`, `eve@0.64.1`, and single-arg `z.record(...)` schemas.
   - Configure non-interactive ESLint (`eslint` + `eslint-config-next` matching Next 15.5) so `CI=true npm run lint` exits `0` with zero interactive prompts.
-  - Set `poweredByHeader: false` in `next.config.ts` and add `Permissions-Policy: camera=(), microphone=(), geolocation=()` to `vercel.json`.
+  - Set `poweredByHeader: false` and `async headers()` in `next.config.ts` mirroring all 5 security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `X-DNS-Prefetch-Control`, `Permissions-Policy`) alongside `vercel.json`.
   - Sync `agent/skills/scenario_seeder.md` with `lib/db/scenarios.ts` (Globex: `Stage 2 - Discovery` / `$240,000`; Soylent: `$90,000` / `Akamai/Fastly`).
   - Guard Postgres-dependent `describe` blocks in the 5 owned DB test files with `describe.skipIf(!process.env.POSTGRES_URL)`.
 

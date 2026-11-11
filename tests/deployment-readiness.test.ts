@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { nextConfig } from '../next.config';
 
 describe('Vercel Release & Deployment Configuration', () => {
   it('documents all required production and preview environment variables in .env.example', () => {
@@ -30,5 +31,22 @@ describe('Vercel Release & Deployment Configuration', () => {
     const parsed = JSON.parse(fs.readFileSync(vercelConfigPath, 'utf8'));
     expect(parsed.framework).toBe('nextjs');
     expect(Array.isArray(parsed.headers)).toBe(true);
+    expect(parsed.headers.length).toBeGreaterThan(0);
+  });
+
+  it('exports runtime security headers in next.config.ts matching vercel.json', async () => {
+    const vercelParsed = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'vercel.json'), 'utf8'));
+    const vercelHeaders = vercelParsed.headers[0].headers;
+
+    expect(nextConfig.poweredByHeader).toBe(false);
+    expect(typeof nextConfig.headers).toBe('function');
+
+    const runtimeHeaderRules = await nextConfig.headers!();
+    expect(runtimeHeaderRules).toEqual([
+      {
+        source: '/:path*',
+        headers: vercelHeaders,
+      },
+    ]);
   });
 });
