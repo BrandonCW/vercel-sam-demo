@@ -1,14 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   getOpportunity,
+  getOpportunityWithServerTimestamp,
   resetCrmDatabase,
+  recordAssessmentStep,
   writebackOpportunityQualification,
   recordInteraction,
   getInteractions,
 } from '@/lib/db/crm';
 import { MEDDPICCBreakdown } from '@/lib/types/crm';
 
-describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
+describe.skipIf(!process.env.POSTGRES_URL)('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
   beforeEach(async () => {
     await resetCrmDatabase('scenario_acme_netlify');
   });
@@ -142,5 +144,42 @@ describe('Atomic CRM Writeback & Telemetry (Ticket 04)', () => {
         audit: { actor: 'system2_llm', payload: {} },
       })
     ).rejects.toThrow(/not found/i);
+  });
+
+  it('rejects orphaned recordAssessmentStep and writebackOpportunityQualification writes after a CRM reset', async () => {
+    const snap = await getOpportunityWithServerTimestamp('opp_acme_corp_001');
+    expect(snap).not.toBeNull();
+    const { opportunity: oppBeforeReset, serverTimestamp: sessionStartedAt } = snap!;
+
+    // Simulate user resetting the Opportunity while an older workflow session is still in flight:
+    await new Promise((r) => setTimeout(r, 15));
+    await resetCrmDatabase('scenario_acme_netlify');
+
+    await expect(
+      recordAssessmentStep(
+        'opp_acme_corp_001',
+        { meddpicc_breakdown: {}, meddpicc_score: 60, markInReview: true },
+        { actor: 'system1_jev', action: 'initial_scoring', payload: { assessmentSessionId: 'wrun_orphan' } },
+        { sessionStartedAt }
+      )
+    ).rejects.toThrow(/reset after this audit session started/i);
+
+    await expect(
+      writebackOpportunityQualification('opp_acme_corp_001', {
+        expectedAeNotes: oppBeforeReset.ae_notes,
+        suggested_next_steps: '[QUALIFIED] Stale orphaned writeback',
+        qualification_status: 'qualified',
+        meddpicc_score: 88,
+        meddpicc_breakdown: {},
+        sessionId: 'wrun_orphan',
+        sessionStartedAt,
+        audit: { actor: 'system2_llm', payload: {} },
+      })
+    ).rejects.toThrow(/reset after this audit session started/i);
+
+    const fresh = await getOpportunity('opp_acme_corp_001');
+    expect(fresh?.qualification_status).toBe('unqualified');
+    expect(fresh?.meddpicc_score).toBeNull();
+    expect(fresh?.suggested_next_steps).toBeNull();
   });
 });
