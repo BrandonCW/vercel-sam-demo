@@ -546,7 +546,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       renderShell();
       expect(loadSavedSession(base)).toBeUndefined();
       expect(screen.getByRole('alert').textContent).toMatch(
-        /older version of the agent.*Start a new assessment/
+        /earlier version of Deal Desk.*Start a new deal audit/
       );
       expect(screen.getByRole('button', { name: /Start assessment/i })).toBeTruthy();
     });

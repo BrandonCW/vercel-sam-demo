@@ -51,35 +51,43 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
   });
 
   it('opens Settings from SIMULATION pill, dims/disables analysis model in Simulation mode, and toggles cleanly to Live AI mode', async () => {
-    render(<QualificationWorkbench initialOpportunity={opportunity} />);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ sessionId: 'wrun_PREWARM' }), { status: 200 }))
+    );
+    try {
+      render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
-    const simPill = screen.getByRole('button', { name: /^SIMULATION$/i });
-    await act(async () => {
-      fireEvent.click(simPill);
-    });
+      const simPill = screen.getByRole('button', { name: /^SIMULATION$/i });
+      await act(async () => {
+        fireEvent.click(simPill);
+      });
 
-    // In Simulation mode, model selector is disabled with explanatory helper text
-    const modelSelect = screen.getByLabelText('Select analysis model');
-    expect(modelSelect).toHaveProperty('disabled', true);
-    expect(screen.getByText('Model selection applies in Live AI mode')).toBeDefined();
+      // In Simulation mode, model selector is disabled with explanatory helper text
+      const modelSelect = screen.getByLabelText('Select analysis model');
+      expect(modelSelect).toHaveProperty('disabled', true);
+      expect(screen.getByText('Model selection applies in Live AI mode')).toBeDefined();
 
-    const liveBtn = screen.getByRole('button', { name: /Live AI Inference/i });
-    await act(async () => {
-      fireEvent.click(liveBtn);
-    });
+      const liveBtn = screen.getByRole('button', { name: /Live AI Inference/i });
+      await act(async () => {
+        fireEvent.click(liveBtn);
+      });
 
-    // TopNavBar pill flips to LIVE and Live workbench renders unified CTA label
-    expect(screen.getByRole('button', { name: /^LIVE$/i })).toBeDefined();
-    expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
+      // TopNavBar pill flips to LIVE and Live workbench renders unified CTA label
+      expect(screen.getByRole('button', { name: /^LIVE$/i })).toBeDefined();
+      expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
 
-    const simBtn = screen.getByRole('button', { name: /Simulated AI \(Instant Replay\)/i });
-    await act(async () => {
-      fireEvent.click(simBtn);
-    });
+      const simBtn = screen.getByRole('button', { name: /Simulated AI \(Instant Replay\)/i });
+      await act(async () => {
+        fireEvent.click(simBtn);
+      });
 
-    // Back in Simulation Mode
-    expect(screen.getByRole('button', { name: /^SIMULATION$/i })).toBeDefined();
-    expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
+      // Back in Simulation Mode
+      expect(screen.getByRole('button', { name: /^SIMULATION$/i })).toBeDefined();
+      expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('mirrors 2-step progressive hydration in Simulation Mode (~350ms baseline scores + shimmers + Abort -> ~950ms citations & checklist)', async () => {

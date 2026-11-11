@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getAuthEnv } from '@/lib/env';
 import {
@@ -7,53 +6,15 @@ import {
   createSessionToken,
   verifySameOrigin,
 } from '@/lib/auth';
-
-export const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 10;
-export const LOGIN_RATE_LIMIT_WINDOW_MS = 60_000;
-
-const failedAttemptsByIp = new Map<string, number[]>();
-
-export function resetLoginRateLimiter(): void {
-  failedAttemptsByIp.clear();
-}
-
-export function constantTimePasswordEquals(provided: string, expected: string): boolean {
-  const providedDigest = createHash('sha256').update(provided, 'utf8').digest();
-  const expectedDigest = createHash('sha256').update(expected, 'utf8').digest();
-  return timingSafeEqual(providedDigest, expectedDigest);
-}
-
-function resolveClientIp(request: Request): string {
-  const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-  if (forwardedFor) return forwardedFor;
-  const realIp = request.headers.get('x-real-ip')?.trim();
-  if (realIp) return realIp;
-  return '127.0.0.1';
-}
-
-function getRecentFailures(ip: string, now: number): number[] {
-  const existing = failedAttemptsByIp.get(ip);
-  if (!existing) return [];
-  const recent = existing.filter((ts) => now - ts < LOGIN_RATE_LIMIT_WINDOW_MS);
-  if (recent.length === 0) {
-    failedAttemptsByIp.delete(ip);
-  } else if (recent.length !== existing.length) {
-    failedAttemptsByIp.set(ip, recent);
-  }
-  return recent;
-}
-
-function recordFailure(ip: string, now: number): void {
-  const recent = getRecentFailures(ip, now);
-  if (!failedAttemptsByIp.has(ip) && failedAttemptsByIp.size >= 5000) {
-    const oldestKey = failedAttemptsByIp.keys().next().value;
-    if (oldestKey !== undefined) {
-      failedAttemptsByIp.delete(oldestKey);
-    }
-  }
-  recent.push(now);
-  failedAttemptsByIp.set(ip, recent);
-}
+import {
+  LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+  LOGIN_RATE_LIMIT_WINDOW_MS,
+  clearLoginFailures,
+  constantTimePasswordEquals,
+  getRecentLoginFailures,
+  recordLoginFailure,
+  resolveClientIp,
+} from '@/lib/login-security';
 
 export async function POST(request: Request) {
   if (!verifySameOrigin(request)) {
@@ -73,7 +34,7 @@ export async function POST(request: Request) {
 
   const now = Date.now();
   const clientIp = resolveClientIp(request);
-  const recentFailures = getRecentFailures(clientIp, now);
+  const recentFailures = getRecentLoginFailures(clientIp, now);
   if (recentFailures.length >= LOGIN_RATE_LIMIT_MAX_ATTEMPTS) {
     const retryAfterSeconds = Math.max(
       1,
@@ -98,11 +59,11 @@ export async function POST(request: Request) {
       constantTimePasswordEquals(candidatePassword, expectedPassword);
 
     if (!isMatch) {
-      recordFailure(clientIp, now);
+      recordLoginFailure(clientIp, now);
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
 
-    failedAttemptsByIp.delete(clientIp);
+    clearLoginFailures(clientIp);
     const token = await createSessionToken(expectedPassword);
     const response = NextResponse.json({ success: true });
     response.cookies.set({

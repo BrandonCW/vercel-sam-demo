@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { COOKIE_NAME, verifySameOrigin } from '@/lib/auth';
 
-export async function POST(request?: Request) {
-  if (request && !verifySameOrigin(request)) {
+export async function POST(request: Request) {
+  if (!verifySameOrigin(request)) {
     return NextResponse.json({ error: 'Cross-origin request forbidden' }, { status: 403 });
   }
 

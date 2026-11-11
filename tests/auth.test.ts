@@ -11,12 +11,12 @@ import {
   verifySameOrigin,
   COOKIE_NAME,
 } from '@/lib/auth';
+import { POST as loginPost } from '@/app/api/auth/login/route';
 import {
-  POST as loginPost,
   constantTimePasswordEquals,
   resetLoginRateLimiter,
   LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
-} from '@/app/api/auth/login/route';
+} from '@/lib/login-security';
 import { POST as logoutPost } from '@/app/api/auth/logout/route';
 import { POST as crmResetPost } from '@/app/api/crm/reset/route';
 import { GET as crmOpportunityGet } from '@/app/api/crm/opportunity/route';

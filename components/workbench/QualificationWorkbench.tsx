@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useReducer, useRef, useState, useTransition } from 'react';
+import React, { useCallback, useEffect, useReducer, useRef, useState, useTransition } from 'react';
 import { Ban } from 'lucide-react';
 import type { Opportunity, StageGateEvaluation } from '@/lib/types/crm';
 import { DEFAULT_SYSTEM2_MODEL, type System2ModelOption } from '@/lib/types/crm';
@@ -100,7 +100,9 @@ export function QualificationWorkbench({
   const isSynthesizingProgressive =
     simState.workflowState === 'ANALYZING' && simProgressiveBaseline !== null;
 
-  function clearSimTimers() {
+  const prevInitialScenarioIdRef = useRef(initialScenarioId);
+
+  const clearSimTimers = useCallback(() => {
     if (step1TimerRef.current) {
       clearTimeout(step1TimerRef.current);
       step1TimerRef.current = null;
@@ -109,29 +111,33 @@ export function QualificationWorkbench({
       clearTimeout(step2TimerRef.current);
       step2TimerRef.current = null;
     }
-  }
+  }, []);
 
-  function handleScenarioChange(newScenarioId: string) {
-    clearSimTimers();
-    setSimProgressiveBaseline(null);
-    const newFixture = getSimulationFixture(newScenarioId);
-    setScenarioId(newScenarioId);
-    setActiveFixture(newFixture);
-    setSavedFormData({});
-    setSavedManualNotes('');
-    setBaselineAssessment(null);
-    setActiveStageView('blank');
+  const handleScenarioChange = useCallback(
+    (newScenarioId: string) => {
+      clearSimTimers();
+      setSimProgressiveBaseline(null);
+      const newFixture = getSimulationFixture(newScenarioId);
+      setScenarioId(newScenarioId);
+      setActiveFixture(newFixture);
+      setSavedFormData({});
+      setSavedManualNotes('');
+      setBaselineAssessment(null);
+      setActiveStageView('blank');
 
-    if (mode === 'simulation') {
-      dispatch({ type: 'SWITCH_SCENARIO', scenarioId: newScenarioId, fixture: newFixture });
-    }
-  }
+      if (mode === 'simulation') {
+        dispatch({ type: 'SWITCH_SCENARIO', scenarioId: newScenarioId, fixture: newFixture });
+      }
+    },
+    [clearSimTimers, mode]
+  );
 
   useEffect(() => {
-    if (initialScenarioId && initialScenarioId !== scenarioId) {
+    if (initialScenarioId && initialScenarioId !== prevInitialScenarioIdRef.current) {
+      prevInitialScenarioIdRef.current = initialScenarioId;
       handleScenarioChange(initialScenarioId);
     }
-  }, [initialScenarioId]);
+  }, [initialScenarioId, handleScenarioChange]);
 
   // Synchronize activeStageView with WorkflowState transitions guarded by prevWorkflowStateRef
   useEffect(() => {
@@ -164,7 +170,7 @@ export function QualificationWorkbench({
     return () => {
       clearSimTimers();
     };
-  }, []);
+  }, [clearSimTimers]);
 
   function handleAbortSimulation() {
     clearSimTimers();
