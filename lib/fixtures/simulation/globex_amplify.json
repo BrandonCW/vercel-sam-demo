@@ -13,7 +13,7 @@
     "sa_notes": "Security team has strict egress IP filtering requirements. Investigating Vercel Secure Compute and Edge Functions. AWS Amplify offering $100k AWS credits to stay on AWS stack.",
     "suggested_next_steps": null,
     "qualification_status": "unqualified",
-    "meddpicc_score": 48,
+    "meddpicc_score": 56,
     "meddpicc_breakdown": {
       "identifyPain": {
         "key": "identifyPain",
@@ -131,7 +131,7 @@
   "baseline": {
     "jevResult": {
       "opportunityId": "opp_globex_fintech_002",
-      "overallScore": 48,
+      "overallScore": 56,
       "dimensions": {
         "identifyPain": {
           "key": "identifyPain",
@@ -358,7 +358,7 @@
     "notesDelta": "Security Criteria verified: VP Eng and InfoSec Lead confirmed Vercel Secure Compute with dedicated static egress IPs satisfies all regulatory filtering criteria. Paper process verified: SOC2 Type II and ISO 27001 compliance packet pre-approved.",
     "rescoreJevResult": {
       "opportunityId": "opp_globex_fintech_002",
-      "overallScore": 78,
+      "overallScore": 80,
       "dimensions": {
         "identifyPain": {
           "key": "identifyPain",
@@ -397,7 +397,7 @@
           "label": "Decision Process",
           "weight": 0.1,
           "score": 7,
-          "status": "verified",
+          "status": "partial",
           "confidence": 0.85
         },
         "metrics": {
@@ -445,9 +445,9 @@
     "status": "written_back",
     "opportunityId": "opp_globex_fintech_002",
     "qualificationStatus": "qualified",
-    "baselineScore": 48,
-    "finalScore": 78,
-    "delta": 30,
+    "baselineScore": 56,
+    "finalScore": 80,
+    "delta": 24,
     "nextSteps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Sarah Miller (SA). Action: Coordinate Secure Compute VPC peering architecture review with CISO team. Counter AWS Amplify credits with developer productivity and total cost of ownership model.",
     "writebackId": "wb_sim_globex_002",
     "feedback": "recorded",
@@ -464,7 +464,7 @@
       "sa_notes": "Security team has strict egress IP filtering requirements. Investigating Vercel Secure Compute and Edge Functions. AWS Amplify offering $100k AWS credits to stay on AWS stack.\n\n[SA Discovery Update - 2026-10-01T12:05:00.000Z]\n• Confirmed Vercel Secure Compute VPC peering and dedicated egress IP architecture?: Confirmed Secure Compute VPC peering satisfies egress filtering\n• Confirmed InfoSec SOC2 Type II audit checklist: SOC2 Type II + ISO 27001 packet pre-approved by InfoSec\n• Additional SA Notes: Security Criteria verified: VP Eng and InfoSec Lead confirmed Vercel Secure Compute with dedicated static egress IPs satisfies all regulatory filtering criteria. Paper process verified: SOC2 Type II and ISO 27001 compliance packet pre-approved.",
       "suggested_next_steps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Sarah Miller (SA). Action: Coordinate Secure Compute VPC peering architecture review with CISO team. Counter AWS Amplify credits with developer productivity and total cost of ownership model.",
       "qualification_status": "qualified",
-      "meddpicc_score": 78,
+      "meddpicc_score": 80,
       "meddpicc_breakdown": {
         "identifyPain": {
           "key": "identifyPain",
@@ -521,7 +521,7 @@
           "label": "Decision Process",
           "weight": 0.1,
           "score": 7,
-          "status": "verified",
+          "status": "partial",
           "confidence": 0.85,
           "evidence": [
             "Target decision date before Q4 procurement cycle"
