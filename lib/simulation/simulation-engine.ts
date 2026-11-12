@@ -583,8 +583,9 @@ export function simulationReducer(
         const nextState = getStateForWorkflow('EVALUATING', activeFixture);
         const explicitFormSubmission = action.formResponses !== undefined;
         const submittedResponses = action.formResponses ?? activeFixture.feedback.formResponses;
-        const submittedNotes =
-          action.notesDelta !== undefined ? action.notesDelta : activeFixture.feedback.notesDelta;
+        const submittedNotes = explicitFormSubmission
+          ? action.notesDelta ?? ''
+          : action.notesDelta ?? activeFixture.feedback.notesDelta;
         const deltaBlock = formatSaDiscoveryDelta(
           submittedResponses,
           submittedNotes,

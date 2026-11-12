@@ -197,5 +197,6 @@ describe('simulation-engine state transitions, cleared gaps, verdict posture & n
     expect(partialState.stageGate.gateReady).toBe(false);
     expect(partialState.opportunity.qualification_status).toBe('in_review');
     expect(partialState.statusLabel).toBe('[IN REVIEW]');
+    expect(partialState.opportunity.sa_notes).not.toContain('Economic Buyer verified');
   });
 });
