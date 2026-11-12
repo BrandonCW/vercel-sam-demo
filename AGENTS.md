@@ -56,3 +56,11 @@ Key routing rules:
 - Save progress → invoke /context-save
 - Resume context → invoke /context-restore
 - Author a backlog-ready spec/issue → invoke /spec
+
+## Verification
+<!-- agy-verify: npm test -->
+- Test suite (Vitest): `npm test`
+- Typecheck (TypeScript): `npx tsc --noEmit`
+- Production build: `npm run build`
+- Lint: `npm run lint`
+

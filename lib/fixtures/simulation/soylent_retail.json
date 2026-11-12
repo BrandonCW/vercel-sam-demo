@@ -13,7 +13,7 @@
     "sa_notes": "Evaluation criteria: Core Web Vitals (LCP < 1.5s), automated preview branches for marketing team, Sanity CMS webhooks. Current architecture uses legacy Akamai/Fastly CDN edge rules that require migration or cache-control parity.",
     "suggested_next_steps": null,
     "qualification_status": "unqualified",
-    "meddpicc_score": 52,
+    "meddpicc_score": 64,
     "meddpicc_breakdown": {
       "identifyPain": {
         "key": "identifyPain",
@@ -96,7 +96,7 @@
         "label": "Competition",
         "weight": 0.1,
         "score": 7,
-        "status": "verified",
+        "status": "partial",
         "confidence": 0.85,
         "evidence": [
           "Evaluating legacy Akamai/Fastly CDN renewal vs Vercel Edge Network"
@@ -129,7 +129,7 @@
   "baseline": {
     "jevResult": {
       "opportunityId": "opp_soylent_retail_003",
-      "overallScore": 52,
+      "overallScore": 64,
       "dimensions": {
         "identifyPain": {
           "key": "identifyPain",
@@ -184,7 +184,7 @@
           "label": "Competition",
           "weight": 0.1,
           "score": 7,
-          "status": "verified",
+          "status": "partial",
           "confidence": 0.85
         },
         "paperProcess": {
@@ -354,7 +354,7 @@
     "notesDelta": "Decision Criteria verified: Head of Engineering confirmed technical requirement of LCP < 1.5s on mobile and Vercel Edge Middleware caching parity. Decision Process verified: 2-week technical validation schedule locked for Oct 14-28 ahead of Nov 1 code freeze.",
     "rescoreJevResult": {
       "opportunityId": "opp_soylent_retail_003",
-      "overallScore": 80,
+      "overallScore": 82,
       "dimensions": {
         "identifyPain": {
           "key": "identifyPain",
@@ -441,9 +441,9 @@
     "status": "written_back",
     "opportunityId": "opp_soylent_retail_003",
     "qualificationStatus": "qualified",
-    "baselineScore": 52,
-    "finalScore": 80,
-    "delta": 28,
+    "baselineScore": 64,
+    "finalScore": 82,
+    "delta": 18,
     "nextSteps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Liam Chen (SA). Action: Run Next.js App Router performance benchmark on Vercel Edge Middleware against Shopify Plus storefront before Nov 1 freeze.",
     "writebackId": "wb_sim_soylent_003",
     "feedback": "recorded",
@@ -460,7 +460,7 @@
       "sa_notes": "Evaluation criteria: Core Web Vitals (LCP < 1.5s), automated preview branches for marketing team, Sanity CMS webhooks. Current architecture uses legacy Akamai/Fastly CDN edge rules that require migration or cache-control parity.\n\n[SA Discovery Update - 2026-10-01T12:05:00.000Z]\n• Confirmed technical criteria for Core Web Vitals and edge caching: Confirmed LCP < 1.5s on mobile + Edge Middleware caching parity\n• Did Head of Engineering confirm pre-freeze POC schedule before Nov 1?: Confirmed 2-week technical validation starting Oct 14\n• Additional SA Notes: Decision Criteria verified: Head of Engineering confirmed technical requirement of LCP < 1.5s on mobile and Vercel Edge Middleware caching parity. Decision Process verified: 2-week technical validation schedule locked for Oct 14-28 ahead of Nov 1 code freeze.",
       "suggested_next_steps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Liam Chen (SA). Action: Run Next.js App Router performance benchmark on Vercel Edge Middleware against Shopify Plus storefront before Nov 1 freeze.",
       "qualification_status": "qualified",
-      "meddpicc_score": 80,
+      "meddpicc_score": 82,
       "meddpicc_breakdown": {
         "identifyPain": {
           "key": "identifyPain",

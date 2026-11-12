@@ -26,11 +26,7 @@ function walk(dir: string): string[] {
   });
 }
 
-describe('eve agent tools', () => {
-  beforeEach(async () => {
-    await resetCrmDatabase('scenario_acme_netlify');
-  });
-
+describe('eve agent tools (static & schema invariants)', () => {
   it('every model call lives in agent/: nothing in lib/, app/ or components/ calls a model', () => {
     const modelCall = /from ['"]eve\/ai['"]|\b(generateText|generateObject|streamText|streamObject|gateway)\s*\(/;
     const offenders = ['lib', 'app', 'components']
@@ -42,11 +38,6 @@ describe('eve agent tools', () => {
   it('no tool under agent/ uses z.any()', () => {
     const offenders = walk('agent').filter((f) => f.endsWith('.ts') && /z\.any\(/.test(fs.readFileSync(f, 'utf8')));
     expect(offenders).toEqual([]);
-  });
-
-  it('crm_read_deal reads the opportunity', async () => {
-    const result = (await crmReadDealTool.execute({ opportunityId: ACME }, ctx)) as any;
-    expect(result.opportunity.name).toBe('Acme Corp - Next.js Migration');
   });
 
   it('the Assessment Session is one run_assessment workflow tool; the per-step root tools are gone', () => {
@@ -67,6 +58,17 @@ describe('eve agent tools', () => {
     expect(schema.safeParse({ opportunityId: ACME, model: 'anthropic/claude-haiku-5.5' }).success).toBe(true);
     expect(schema.safeParse({ opportunityId: ACME, model: 'google/gemini-3.8-flash' }).success).toBe(true);
     expect(schema.safeParse({ opportunityId: ACME, model: 'claude-3-5-sonnet' }).success).toBe(false);
+  });
+});
+
+describe.skipIf(!process.env.POSTGRES_URL)('eve agent tools', () => {
+  beforeEach(async () => {
+    await resetCrmDatabase('scenario_acme_netlify');
+  });
+
+  it('crm_read_deal reads the opportunity', async () => {
+    const result = (await crmReadDealTool.execute({ opportunityId: ACME }, ctx)) as any;
+    expect(result.opportunity.name).toBe('Acme Corp - Next.js Migration');
   });
 
   describe('without AI_GATEWAY_API_KEY', () => {

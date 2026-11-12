@@ -1,9 +1,17 @@
 // @vitest-environment happy-dom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { DynamicDiscoveryForm } from '@/components/workbench/DynamicDiscoveryForm';
+import { TopNavBar } from '@/components/workbench/TopNavBar';
+import { StepperBar } from '@/components/workbench/StepperBar';
+import { DealContextCard } from '@/components/workbench/DealContextCard';
 import { JsonRenderForm } from '@/lib/ui/json-render-schema';
+import { opportunity } from './fixtures/qualification';
+
+afterEach(() => {
+  cleanup();
+});
 
 const mockComprehensiveForm: JsonRenderForm = {
   opportunityId: 'opp_acme_corp_001',
@@ -98,9 +106,11 @@ const mockComprehensiveForm: JsonRenderForm = {
 
 describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-renderer.test.tsx)', () => {
   describe('1. Input Generation & Layout Rendering', () => {
-    it('renders all sections, callout banners, and schema fields with labels and badges', () => {
+    it('renders all sections, monochrome callout banners, and schema fields with zero System 1/2 jargon', () => {
       const handleSubmit = vi.fn();
-      render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+      const { container } = render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
+
+      expect(container.textContent).not.toMatch(/System 1|System 2|\bJev\b/i);
 
       // Form Header
       expect(screen.getByText('Technical Qualification & Discovery Validation')).toBeTruthy();
@@ -148,6 +158,12 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       // Optional manual SA notes field
       expect(screen.getByLabelText(/Additional SA Notes & Observations/i)).toBeTruthy();
     });
+
+    it('renders zero System 1/2 jargon in empty discovery state', () => {
+      const { container } = render(<DynamicDiscoveryForm form={null} onSubmit={vi.fn()} />);
+      expect(screen.getByText(/No discovery questions generated for this opportunity\./i)).toBeTruthy();
+      expect(container.textContent).not.toMatch(/System 1|System 2|\bJev\b/i);
+    });
   });
 
   describe('2. Field Constraints & Validation Enforcement', () => {
@@ -158,25 +174,17 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       const submitBtn = screen.getByRole('button', { name: /Submit Discovery Findings/i });
       fireEvent.click(submitBtn);
 
-      // Submission should be blocked
       expect(handleSubmit).not.toHaveBeenCalled();
 
-      // Radio required error
       expect(
         screen.getByText(/Has the VP of E-Commerce confirmed sole discretionary budget authority\? is required\./i)
       ).toBeTruthy();
-
-      // Textarea required error
       expect(
         screen.getByText(/Quantified revenue impact of deploy bottlenecks is required\./i)
       ).toBeTruthy();
-
-      // Select required error
       expect(
         screen.getByText(/Customer perception of Netlify renewal discount is required\./i)
       ).toBeTruthy();
-
-      // Checkbox group required error
       expect(
         screen.getByText(/Mandatory Architectural Capabilities is required\. Please select at least one option\./i)
       ).toBeTruthy();
@@ -186,26 +194,21 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       const handleSubmit = vi.fn();
       render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
-      // Trigger errors
       const submitBtn = screen.getByRole('button', { name: /Submit Discovery Findings/i });
       fireEvent.click(submitBtn);
       expect(screen.getByText(/Quantified revenue impact of deploy bottlenecks is required\./i)).toBeTruthy();
 
-      // Fill textarea
       const textarea = screen.getByPlaceholderText('Enter dollar impact...');
       fireEvent.change(textarea, { target: { value: '$120k lost annually in developer downtime' } });
 
-      // Error should be immediately cleared
       expect(screen.queryByText(/Quantified revenue impact of deploy bottlenecks is required\./i)).toBeNull();
 
-      // Select checkbox option
       expect(
         screen.getByText(/Mandatory Architectural Capabilities is required\. Please select at least one option\./i)
       ).toBeTruthy();
       const checkbox = screen.getByLabelText(/App Router & RSC/i);
       fireEvent.click(checkbox);
 
-      // Checkbox error cleared
       expect(
         screen.queryByText(/Mandatory Architectural Capabilities is required\. Please select at least one option\./i)
       ).toBeNull();
@@ -217,35 +220,28 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       const handleSubmit = vi.fn();
       render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
-      // 1. Select Radio option
       const radioOption = screen.getByText('Confirmed sole authority up to $250k');
       fireEvent.click(radioOption);
 
-      // 2. Fill Textarea
       const textarea = screen.getByPlaceholderText('Enter dollar impact...');
       fireEvent.change(textarea, { target: { value: '$150k idle developer cost per quarter.' } });
 
-      // 3. Select Dropdown option
       const select = screen.getByRole('combobox');
       fireEvent.change(select, { target: { value: 'confirmed_switch' } });
 
-      // 4. Fill optional Text input
       const textInput = screen.getByPlaceholderText('e.g. LCP < 1.5s');
       fireEvent.change(textInput, { target: { value: 'LCP < 1.2s on mobile' } });
 
-      // 5. Select Checkbox options (multiple)
       const cb1 = screen.getByLabelText(/App Router & RSC/i);
       const cb2 = screen.getByLabelText(/Turborepo Remote Caching/i);
       fireEvent.click(cb1);
       fireEvent.click(cb2);
 
-      // 6. Enter Manual SA Notes
       const notesInput = screen.getByLabelText(/Additional SA Notes & Observations/i);
       fireEvent.change(notesInput, {
         target: { value: 'Meeting with Head of Platform was highly productive; requested POC next Tuesday.' },
       });
 
-      // Submit
       const submitBtn = screen.getByRole('button', { name: /Submit Discovery Findings/i });
       fireEvent.click(submitBtn);
 
@@ -266,18 +262,13 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       const handleSubmit = vi.fn();
       render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
-      // Radio
       fireEvent.click(screen.getByText('Confirmed sole authority up to $250k'));
-      // Textarea
       fireEvent.change(screen.getByPlaceholderText('Enter dollar impact...'), {
         target: { value: 'Critical queue delays' },
       });
-      // Select
       fireEvent.change(screen.getByRole('combobox'), { target: { value: 'confirmed_switch' } });
-      // Checkbox
       fireEvent.click(screen.getByLabelText(/Edge Middleware/i));
 
-      // Submit
       const submitBtn = screen.getByRole('button', { name: /Submit Discovery Findings/i });
       fireEvent.click(submitBtn);
 
@@ -306,18 +297,13 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
         />
       );
 
-      // Inputs should be disabled
       const textarea = screen.getByPlaceholderText('Enter dollar impact...');
       expect(textarea.getAttribute('disabled')).not.toBeNull();
-
-      // Submit button should not be rendered
       expect(screen.queryByRole('button', { name: /Submit Discovery Findings/i })).toBeNull();
-
-      // Manual notes should not be rendered
       expect(screen.queryByLabelText(/Additional SA Notes & Observations/i)).toBeNull();
     });
 
-    it('disables submit button and shows loading spinner when isSubmitting is true', () => {
+    it('disables submit button and shows Deal Desk re-scoring copy when isSubmitting is true', () => {
       const handleSubmit = vi.fn();
       render(
         <DynamicDiscoveryForm
@@ -329,7 +315,7 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
 
       const submitBtn = screen.getByRole('button');
       expect(submitBtn.getAttribute('disabled')).not.toBeNull();
-      expect(screen.getByText('Executing Delta Re-scoring...')).toBeTruthy();
+      expect(screen.getByText('Re-scoring Deal & Updating CRM…')).toBeTruthy();
     });
   });
 
@@ -337,7 +323,6 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
     it('renders formatted score chip "{targetDim.label}: {targetDim.score}/10" with 10-segment score bar', () => {
       render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={vi.fn()} />);
 
-      // Formatted score chips
       expect(screen.getByText('Economic Buyer: 3/10')).toBeTruthy();
       expect(screen.getByText('Identify Pain: 9/10')).toBeTruthy();
       expect(screen.getByText('Competition: 7/10')).toBeTruthy();
@@ -367,7 +352,6 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       expect((opt1 as HTMLInputElement).checked).toBe(true);
       expect((opt2 as HTMLInputElement).checked).toBe(true);
 
-      // Uncheck opt1
       fireEvent.click(opt1);
       expect((opt1 as HTMLInputElement).checked).toBe(false);
       expect((opt2 as HTMLInputElement).checked).toBe(true);
@@ -389,13 +373,83 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       expect((radio2 as HTMLInputElement).checked).toBe(true);
     });
 
-    it('supports select option changes and updates form state', () => {
+    it('supports select option changes and updates form state with custom 40px appearance-none styling', () => {
       const handleSubmit = vi.fn();
       render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={handleSubmit} />);
 
       const select = screen.getByRole('combobox');
+      expect(select.className).toContain('appearance-none');
+      expect(select.className).toContain('min-h-10');
+      expect(select.className).toContain('text-sm');
+
       fireEvent.change(select, { target: { value: 'confirmed_switch' } });
       expect((select as HTMLSelectElement).value).toBe('confirmed_switch');
+    });
+
+    it('renders quiet 1-line helper captions without bordered HelpCircle boxes or [E] mono brackets', () => {
+      const { container } = render(<DynamicDiscoveryForm form={mockComprehensiveForm} onSubmit={vi.fn()} />);
+
+      const helperCaption = screen.getByText('Stage Gate requirement: Verified budget authority is required.');
+      expect(helperCaption.tagName).toBe('P');
+      expect(helperCaption.className).toContain('text-xs');
+      expect(helperCaption.className).toContain('text-[#636772]');
+      expect(helperCaption.className).not.toContain('border');
+      expect(container.textContent).not.toContain('[E]');
+      expect(container.textContent).not.toContain('[I]');
+    });
+  });
+
+  describe('6. Shell, Settings Custom Selects, Stepper & Left-Pane De-duplication', () => {
+    it('styles TopNavBar Settings selects with appearance-none min-h-10 and omits static DD avatar', () => {
+      render(
+        <TopNavBar
+          mode="live"
+          onScenarioChange={vi.fn()}
+          onModelChange={vi.fn()}
+          settingsOpen={true}
+        />
+      );
+
+      expect(screen.queryByLabelText('Deal Desk Operator')).toBeNull();
+
+      const scenarioSelect = screen.getByLabelText('Select active opportunity');
+      const modelSelect = screen.getByLabelText('Select analysis model');
+      for (const el of [scenarioSelect, modelSelect]) {
+        expect(el.className).toContain('appearance-none');
+        expect(el.className).toContain('min-h-10');
+        expect(el.className).toContain('text-sm');
+      }
+    });
+
+    it('renders clean StepperBar labels without parenthetical spoilers or duplicate inline spinners', () => {
+      const { container } = render(
+        <StepperBar activeStageView="stage1" workflowState="ANALYZING" />
+      );
+
+      expect(screen.getByText('Initial Deal Audit')).toBeTruthy();
+      expect(screen.getByText('Field Discovery')).toBeTruthy();
+      expect(screen.getByText('Updated Assessment')).toBeTruthy();
+      expect(container.textContent).not.toMatch(/Gaps Identified|In-Context|\(Qualified\)|Evaluating…|Re-scoring…/);
+      expect(container.querySelector('.animate-spin')).toBeNull();
+    });
+
+    it('omits duplicate CRM Qualification Writeback and Current Stage from DealContextCard and formats SA Discovery Update cleanly', () => {
+      const opp = opportunity({
+        qualification_status: 'qualified',
+        suggested_next_steps: '[QUALIFIED] Advance to Stage 3 | Owner: SA | Focus: ISR | Watch: Netlify',
+        sa_notes:
+          'Baseline SA technical brief.\n\n[SA Discovery Update - 2026-10-01T12:05:00.000Z]\n• Confirmed technical criteria: Build speed <5m',
+      });
+      const { container } = render(<DealContextCard opportunity={opp} />);
+
+      expect(screen.getByTestId('crm-qualification-status').textContent).toBe('Qualified');
+      expect(screen.queryByTestId('crm-writeback-card')).toBeNull();
+      expect(container.textContent).not.toContain('CRM Qualification Writeback');
+      expect(container.textContent).not.toContain('Current Stage');
+      expect(container.textContent).not.toContain('[SA Discovery Update -');
+      expect(screen.getAllByText('SA Discovery Update · 2026-10-01').length).toBeGreaterThanOrEqual(1);
+      expect(container.querySelector('.briefs-box')?.className).not.toContain('lg:max-h-[680px]');
+      expect(screen.getByText('Acme Global')).toBeTruthy();
     });
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Gauge, Settings, X, RotateCcw } from 'lucide-react';
+import { Gauge, Settings, X, RotateCcw, ChevronDown } from 'lucide-react';
 import type { Opportunity, System2ModelOption } from '@/lib/types/crm';
 import { SYSTEM2_MODELS } from '@/lib/types/crm';
 import { DEMO_SCENARIOS } from '@/lib/db/scenarios';
@@ -10,11 +10,11 @@ import type { WorkbenchMode } from '@/lib/simulation/types';
 export interface TopNavBarProps {
   opportunity?: Opportunity;
   mode?: WorkbenchMode;
-  onModeChange?: (mode: WorkbenchMode) => void;
+  onModeChange?: (mode: WorkbenchMode) => void | Promise<void>;
   onReset?: () => void | Promise<void>;
   isResetting?: boolean;
   currentScenarioId?: string;
-  onScenarioChange?: (scenarioId: string) => void;
+  onScenarioChange?: (scenarioId: string) => void | Promise<void>;
   selectedModel?: System2ModelOption;
   onModelChange?: (model: System2ModelOption) => void;
   controlsLocked?: boolean;
@@ -24,7 +24,6 @@ export interface TopNavBarProps {
 }
 
 export function TopNavBar({
-  opportunity,
   mode = 'simulation',
   onModeChange,
   onReset,
@@ -41,8 +40,12 @@ export function TopNavBar({
   const isOpen = settingsOpen !== undefined ? settingsOpen : internalOpen;
   const setIsOpen = onSettingsOpenChange || setInternalOpen;
 
+  const modePillRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+
+  const isLive = mode === 'live';
 
   // Focus trap and keyboard dismissal for accessible dialog
   useEffect(() => {
@@ -53,7 +56,7 @@ export function TopNavBar({
         e.preventDefault();
         e.stopPropagation();
         setIsOpen(false);
-        triggerRef.current?.focus();
+        (lastTriggerRef.current ?? triggerRef.current)?.focus();
       } else if (e.key === 'Tab') {
         if (!dialogRef.current) return;
         const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
@@ -90,24 +93,54 @@ export function TopNavBar({
 
   return (
     <header className="border-b border-[#E2E0D8] bg-[#FFFFFF]">
-      <div className="mx-auto flex max-w-[1500px] items-center justify-between px-5 py-4 lg:px-8">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3.5 sm:px-6">
         {/* Deal Operations Title & Logo */}
         <div className="flex items-center gap-3">
           <div className="flex size-9 items-center justify-center rounded-md bg-[#111215] text-[#FFFFFF]">
             <Gauge className="size-5 text-[#FFFFFF]" aria-hidden="true" />
           </div>
           <div>
-            <p className="font-display text-[11px] font-semibold tracking-[0.05em] uppercase text-[#787C87]">
+            <p className="font-sans text-kicker font-semibold uppercase text-[#636772]">
               DEAL OPERATIONS
             </p>
-            <h1 className="font-display text-base font-bold tracking-[-0.03em] text-[#111215] sm:text-lg">
+            <span className="block font-sans text-base font-bold tracking-tight text-[#111215] leading-tight">
               Qualification System
-            </h1>
+            </span>
           </div>
         </div>
 
-        {/* Right Section: Settings Trigger & User Avatar */}
-        <div className="flex items-center gap-3 text-xs text-[#52545D]">
+        {/* Right Section: Monochrome Mode Pill & Settings Trigger */}
+        <div className="flex items-center gap-2 font-sans text-xs text-[#52545D]">
+          {/* Monochrome Execution Mode Pill */}
+          <button
+            ref={modePillRef}
+            type="button"
+            title={
+              isLive
+                ? 'Live AI inference via Gateway — click to configure'
+                : 'AI Simulation mode (deterministic responses) — click to switch to Live AI'
+            }
+            onClick={() => {
+              lastTriggerRef.current = modePillRef.current;
+              setIsOpen(!isOpen);
+            }}
+            className={
+              isLive
+                ? 'h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#111215] bg-[#111215] px-3 font-sans text-xs font-medium leading-none text-[#FFFFFF] hover:bg-[#111215]/90 transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]'
+                : 'h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 font-sans text-xs font-medium leading-none text-[#111215] hover:border-[#111215] transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]'
+            }
+          >
+            <span
+              aria-hidden="true"
+              className={
+                isLive
+                  ? 'size-2 shrink-0 rounded-full bg-[#FFFFFF]'
+                  : 'size-2 shrink-0 rounded-full border-[1.5px] border-[#636772]'
+              }
+            />
+            <span className="leading-none">{isLive ? 'Live' : 'Simulation'}</span>
+          </button>
+
           {/* Settings Trigger Button */}
           <button
             ref={triggerRef}
@@ -115,23 +148,15 @@ export function TopNavBar({
             aria-label="Workbench settings"
             aria-haspopup="dialog"
             aria-expanded={isOpen}
-            onClick={() => setIsOpen(!isOpen)}
-            className="flex items-center gap-2 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 text-xs font-medium text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer shadow-xs focus:outline-none focus:ring-1 focus:ring-[#111215]"
+            onClick={() => {
+              lastTriggerRef.current = triggerRef.current;
+              setIsOpen(!isOpen);
+            }}
+            className="h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]"
           >
-            <Settings className="size-4 text-[#52545D]" aria-hidden="true" />
-            <span className="hidden sm:inline">Settings</span>
+            <Settings className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+            <span className="leading-none hidden sm:inline">Settings</span>
           </button>
-
-          {/* User Avatar */}
-          <div className="flex size-8 items-center justify-center rounded-full bg-[#F1F0EC] border border-[#E2E0D8] font-semibold text-[#111215] text-xs">
-            {opportunity?.sa_name
-              ? opportunity.sa_name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .slice(0, 2)
-              : 'AC'}
-          </div>
         </div>
       </div>
 
@@ -142,7 +167,7 @@ export function TopNavBar({
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setIsOpen(false);
-              triggerRef.current?.focus();
+              (lastTriggerRef.current ?? triggerRef.current)?.focus();
             }
           }}
         >
@@ -151,21 +176,23 @@ export function TopNavBar({
             role="dialog"
             aria-label="Workbench settings"
             aria-modal="true"
-            className="w-full max-w-sm rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-5 shadow-xl transition space-y-5 animate-in fade-in zoom-in-95 duration-150"
+            className="w-full max-w-[26rem] rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-5 font-sans shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] transition space-y-5 animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="flex items-center justify-between border-b border-[#E2E0D8] pb-3">
               <div className="flex items-center gap-2">
                 <Settings className="size-4 text-[#111215]" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-[#111215]">Workbench Settings</h2>
+                <h2 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
+                  Workbench Settings
+                </h2>
               </div>
               <button
                 type="button"
                 aria-label="Close settings"
                 onClick={() => {
                   setIsOpen(false);
-                  triggerRef.current?.focus();
+                  (lastTriggerRef.current ?? triggerRef.current)?.focus();
                 }}
-                className="rounded p-1 text-[#787C87] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
+                className="rounded p-1 text-[#636772] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
               >
                 <X className="size-4" aria-hidden="true" />
               </button>
@@ -173,85 +200,124 @@ export function TopNavBar({
 
             {/* Execution Mode Segmented Control */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-[#111215]">Execution Mode</label>
-              <div className="grid grid-cols-2 gap-1.5 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] p-1">
+              <label className="block font-sans text-xs font-semibold text-[#111215]">
+                Execution Mode
+              </label>
+              <div className="grid grid-cols-2 gap-1 rounded-md bg-[#F1F0EC] p-1">
                 <button
                   type="button"
-                  onClick={() => onModeChange?.('simulation')}
-                  className={`rounded px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                  disabled={controlsLocked}
+                  aria-pressed={mode === 'simulation'}
+                  onClick={() => {
+                    void onModeChange?.('simulation');
+                  }}
+                  className={`min-h-8 rounded px-2.5 py-1.5 font-sans text-xs font-medium transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                     mode === 'simulation'
-                      ? 'bg-[#FFFFFF] text-[#111215] shadow-xs'
+                      ? 'bg-[#FFFFFF] text-[#111215] font-semibold shadow-sm'
                       : 'text-[#52545D] hover:text-[#111215]'
                   }`}
                 >
-                  Simulation mode
+                  Simulated AI (Instant Replay)
                 </button>
                 <button
                   type="button"
-                  onClick={() => onModeChange?.('live')}
-                  className={`rounded px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                  disabled={controlsLocked}
+                  aria-pressed={mode === 'live'}
+                  onClick={() => {
+                    void onModeChange?.('live');
+                  }}
+                  className={`min-h-8 rounded px-2.5 py-1.5 font-sans text-xs font-medium transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                     mode === 'live'
-                      ? 'bg-[#FFFFFF] text-[#111215] shadow-xs'
+                      ? 'bg-[#FFFFFF] text-[#111215] font-semibold shadow-sm'
                       : 'text-[#52545D] hover:text-[#111215]'
                   }`}
                 >
-                  Live AI mode
+                  Live AI Inference
                 </button>
               </div>
+              <p className="font-sans text-xs text-[#636772] leading-relaxed">
+                {mode === 'simulation'
+                  ? 'Deterministic AI evaluation replay against the simulated Salesforce CRM.'
+                  : 'Live AI Gateway evaluation and writeback to the simulated Salesforce CRM.'}
+              </p>
             </div>
 
-            {/* Scenario Selector */}
+            {/* Active Opportunity Selector */}
             {onScenarioChange && (
               <div className="space-y-1.5">
                 <label
                   htmlFor="workbench-scenario-select"
-                  className="block text-xs font-semibold text-[#111215]"
+                  className="block font-sans text-xs font-semibold text-[#111215]"
                 >
-                  Demo Scenario
+                  Active Opportunity
                 </label>
-                <select
-                  id="workbench-scenario-select"
-                  aria-label="Select Scenario"
-                  value={currentScenarioId}
-                  onChange={(e) => onScenarioChange(e.target.value)}
-                  disabled={controlsLocked}
-                  className="w-full rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-2 text-xs font-medium text-[#111215] focus:outline-none focus:ring-1 focus:ring-[#111215] disabled:opacity-50 cursor-pointer"
-                >
-                  {Object.entries(DEMO_SCENARIOS).map(([id, scenario]) => (
-                    <option key={id} value={id} className="bg-white text-[#111215]">
-                      {scenario.title}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    id="workbench-scenario-select"
+                    aria-label="Select active opportunity"
+                    value={currentScenarioId}
+                    onChange={(e) => {
+                      void onScenarioChange(e.target.value);
+                    }}
+                    disabled={controlsLocked}
+                    className="w-full min-h-10 appearance-none rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:opacity-100"
+                  >
+                    {Object.entries(DEMO_SCENARIOS).map(([id, scenario]) => (
+                      <option key={id} value={id} className="bg-white text-[#111215]">
+                        {scenario.title}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ${
+                      controlsLocked ? 'text-[#636772]' : 'text-[#52545D]'
+                    }`}
+                  />
+                </div>
               </div>
             )}
 
-            {/* System 2 Model Selector */}
+            {/* Gap & Discovery Analysis Model Selector */}
             {onModelChange && (
               <div className="space-y-1.5">
                 <label
                   htmlFor="workbench-model-select"
-                  className="block text-xs font-semibold text-[#111215]"
+                  className="block font-sans text-xs font-semibold text-[#111215]"
                 >
-                  System 2 Intelligence Model
+                  Gap &amp; Discovery Analysis Model
                 </label>
-                <select
-                  id="workbench-model-select"
-                  aria-label="Select System 2 Model"
-                  value={selectedModel}
-                  onChange={(e) => onModelChange(e.target.value as System2ModelOption)}
-                  className="w-full rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-2 text-xs font-medium text-[#111215] focus:outline-none focus:ring-1 focus:ring-[#111215] cursor-pointer"
-                >
-                  {SYSTEM2_MODELS.map((m) => (
-                    <option key={m.id} value={m.id} className="bg-white text-[#111215]">
-                      {m.label} ({m.badge})
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    id="workbench-model-select"
+                    aria-label="Select analysis model"
+                    value={selectedModel}
+                    disabled={controlsLocked || mode === 'simulation'}
+                    onChange={(e) => onModelChange(e.target.value as System2ModelOption)}
+                    className="w-full min-h-10 appearance-none rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:opacity-100"
+                  >
+                    {SYSTEM2_MODELS.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-white text-[#111215]">
+                        {m.label} ({m.badge})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ${
+                      controlsLocked || mode === 'simulation' ? 'text-[#636772]' : 'text-[#52545D]'
+                    }`}
+                  />
+                </div>
+                {mode === 'simulation' && (
+                  <p className="font-sans text-xs text-[#636772]">
+                    Model selection applies in Live AI mode
+                  </p>
+                )}
               </div>
             )}
 
-            {/* Reset Demo Button */}
+            {/* Reset Opportunity Baseline Button */}
             {onReset && (
               <div className="pt-2 border-t border-[#E2E0D8]">
                 <button
@@ -260,11 +326,11 @@ export function TopNavBar({
                     await onReset();
                   }}
                   disabled={isResetting || controlsLocked}
-                  aria-label="Reset Demo"
-                  className="flex w-full items-center justify-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-2 text-xs font-semibold text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:opacity-50"
+                  aria-label="Reset Opportunity Baseline"
+                  className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-2 font-sans text-xs font-semibold leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <RotateCcw className={`size-3.5 ${isResetting ? 'animate-spin' : ''}`} />
-                  <span>Reset Demo</span>
+                  <RotateCcw className={`size-3.5 shrink-0 ${isResetting ? 'animate-spin' : ''}`} />
+                  <span className="ui-pill-label">Reset Opportunity Baseline</span>
                 </button>
               </div>
             )}

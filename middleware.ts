@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { COOKIE_NAME, verifySessionToken, shouldBypassAuth } from './lib/auth';
+import {
+  COOKIE_NAME,
+  verifySessionToken,
+  shouldBypassAuth,
+  sanitizeRedirectPath,
+} from './lib/auth';
 
-const PUBLIC_PATHS = ['/login', '/api/auth/login'];
+const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -16,12 +21,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Bypass in local development or if APP_PASSWORD is unset
+  // 2. Bypass in local development
   if (shouldBypassAuth()) {
     return NextResponse.next();
   }
 
-  // 3. Allow public paths
+  // 3. Allow public paths (including logout so expired cookies can be cleared with 200)
   if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(path + '/'))) {
     return NextResponse.next();
   }
@@ -44,7 +49,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const loginUrl = new URL('/login', request.url);
-  loginUrl.searchParams.set('redirect', pathname);
+  loginUrl.searchParams.set('redirect', sanitizeRedirectPath(pathname));
   return NextResponse.redirect(loginUrl);
 }
 

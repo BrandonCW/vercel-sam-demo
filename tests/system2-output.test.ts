@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { System2ModelOutputSchema, toSystem2AnalysisResult, type System2ModelOutput } from '@/lib/agents/system2';
+import {
+  clearVerifiedDimensionGaps,
+  System2ModelOutputSchema,
+  toSystem2AnalysisResult,
+  type System2ModelOutput,
+} from '@/lib/agents/system2';
 import { JsonRenderFormSchema } from '@/lib/ui/json-render-schema';
+import { jev, system2 } from './fixtures/qualification';
 
 /** Every property the model sees must be required: optional/default fields are what it silently omits. */
 function optionalPaths(schema: z.ZodTypeAny, path = '$'): string[] {
@@ -102,5 +108,27 @@ describe('System 2 structured output', () => {
         { opportunityId: 'opp_x', model: 'google/gemini-3.8-flash' }
       )
     ).toThrow();
+  });
+
+  it('clears Turn-1 gaps on dimensions whose post-feedback status reached verified while keeping citations', () => {
+    const s2 = system2();
+    expect(s2.dimensionFindings.economicBuyer.gaps).toEqual(['No confirmed sign-off authority']);
+
+    const rescored = jev({
+      dimensions: {
+        ...jev().dimensions,
+        economicBuyer: {
+          key: 'economicBuyer',
+          label: 'Economic Buyer',
+          weight: 0.15,
+          score: 8,
+          status: 'verified',
+          confidence: 0.88,
+        },
+      },
+    });
+    const reconciled = clearVerifiedDimensionGaps(s2, rescored);
+    expect(reconciled.dimensionFindings.economicBuyer.gaps).toEqual([]);
+    expect(reconciled.dimensionFindings.economicBuyer.citations).toEqual(['VP of E-Commerce mentioned budget']);
   });
 });

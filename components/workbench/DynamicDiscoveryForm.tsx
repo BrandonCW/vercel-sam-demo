@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Check, AlertTriangle, Lightbulb, Info, HelpCircle, ArrowLeft } from 'lucide-react';
+import { Info, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { JsonRenderForm, JsonRenderSection, FormField } from '@/lib/ui/json-render-schema';
 import { TenSegmentBar } from './MeddpiccScorecard';
@@ -33,6 +33,7 @@ export interface DynamicDiscoveryFormProps {
   dimensions?: Record<string, any>;
   onBack?: () => void;
   onCancel?: () => void;
+  onReturnToStage3?: () => void;
   onDraftChange?: (
     answers: Record<string, string | string[]>,
     manualNotes: string
@@ -52,6 +53,7 @@ export function DynamicDiscoveryForm({
   dimensions,
   onBack,
   onCancel,
+  onReturnToStage3,
   onDraftChange,
 }: DynamicDiscoveryFormProps) {
   const activeForm = form ?? dynamicForm;
@@ -172,34 +174,10 @@ export function DynamicDiscoveryForm({
   const renderCalloutBanner = (section: JsonRenderSection) => {
     if (!section.calloutText) return null;
 
-    const bannerConfig = {
-      tip: {
-        bg: 'bg-[#F1F0EC]',
-        border: 'border-[#E2E0D8]',
-        text: 'text-[#111215]',
-        icon: <Lightbulb className="size-3.5 text-[#0F52BA] shrink-0" aria-hidden="true" />,
-      },
-      warning: {
-        bg: 'bg-[#DC2626]/5',
-        border: 'border-[#DC2626]/20',
-        text: 'text-[#DC2626]',
-        icon: <AlertTriangle className="size-3.5 text-[#DC2626] shrink-0" aria-hidden="true" />,
-      },
-      info: {
-        bg: 'bg-[#0F52BA]/5',
-        border: 'border-[#0F52BA]/20',
-        text: 'text-[#0F52BA]',
-        icon: <Info className="size-3.5 text-[#0F52BA] shrink-0" aria-hidden="true" />,
-      },
-    }[section.calloutType || 'info'];
-
     return (
-      <div
-        className={`flex items-center gap-2 px-3 py-2 rounded-md border text-xs ${bannerConfig.bg} ${bannerConfig.border} ${bannerConfig.text}`}
-      >
-        {bannerConfig.icon}
-        <span className="font-medium">{section.calloutText}</span>
-      </div>
+      <p className="border-l-2 border-[#D4D1C7] pl-3 font-sans text-xs text-[#52545D] leading-relaxed">
+        {section.calloutText}
+      </p>
     );
   };
 
@@ -218,19 +196,20 @@ export function DynamicDiscoveryForm({
         ? dimensions[targetKey].score
         : defaultMeta.score;
 
+    const inputBorderClass = error
+      ? 'border-[#111215] focus:border-[#111215]'
+      : 'border-[#E2E0D8] hover:border-[#C8C5BA] focus:border-[#111215]';
+
     return (
       <div
         key={field.id}
-        className="q-card rounded-md border border-[#E2E0D8] bg-[#FFFFFF] shadow-2xs overflow-hidden"
+        className="q-card py-4 border-b border-[#E2E0D8] last:border-b-0 font-sans"
       >
         {/* Desk OS Q-Card Header with Target Dimension & Embedded TenSegmentBar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#F8F8F6] px-4 py-2.5">
-          <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-baseline gap-1.5">
             {targetKey && <span className="sr-only">{targetKey}</span>}
-            <span className="font-mono text-xs font-bold text-[#787C87] uppercase">
-              [{defaultMeta.code}]
-            </span>
-            <span className="text-xs font-semibold text-[#111215] tabular-nums">
+            <span className="font-sans text-xs font-semibold text-[#111215] tabular-nums">
               {defaultMeta.label}: {currentDimScore}/10
             </span>
           </div>
@@ -245,19 +224,19 @@ export function DynamicDiscoveryForm({
           </div>
         </div>
 
-        <div className="p-4 space-y-2.5">
+        <div className="space-y-2.5">
           <div className="flex items-start justify-between gap-2">
             <label
               htmlFor={field.id}
-              className="block text-xs font-semibold text-[#111215]"
+              className="block font-sans text-sm font-semibold text-[#111215]"
             >
               {field.label}
-              {field.required && <span className="text-[#DC2626] ml-0.5">*</span>}
+              {field.required && <span className="text-[#111215] ml-0.5">*</span>}
             </label>
           </div>
 
           {field.description && (
-            <p className="text-[11px] text-[#787C87] leading-relaxed">{field.description}</p>
+            <p className="font-sans text-xs text-[#52545D] leading-relaxed">{field.description}</p>
           )}
 
           {/* 1. Text Field */}
@@ -272,9 +251,7 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${
-                error ? 'border-[#DC2626] focus:ring-[#DC2626]' : 'border-[#E2E0D8] focus:ring-[#111215]'
-              } bg-[#F1F0EC]/50 px-3 py-2 text-xs text-[#111215] outline-none focus:ring-1 focus:bg-white disabled:opacity-50`}
+              className={`w-full min-h-10 rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm text-[#111215] leading-normal transition-colors focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#636772]`}
             />
           )}
 
@@ -290,50 +267,54 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${
-                error ? 'border-[#DC2626] focus:ring-[#DC2626]' : 'border-[#E2E0D8] focus:ring-[#111215]'
-              } bg-[#F1F0EC]/50 px-3 py-2 text-xs text-[#111215] outline-none focus:ring-1 focus:bg-white disabled:opacity-50 resize-y`}
+              className={`w-full rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm leading-relaxed text-[#111215] transition-colors focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#636772] resize-y`}
             />
           )}
 
           {/* 3. Select Field */}
           {field.type === 'select' && (
-            <select
-              id={field.id}
-              name={field.name}
-              disabled={readOnly}
-              value={(value as string) || ''}
-              onChange={(e) => handleTextChange(field.id, e.target.value)}
-              aria-invalid={Boolean(error)}
-              aria-required={field.required}
-              className={`w-full rounded-md border ${
-                error ? 'border-[#DC2626] focus:ring-[#DC2626]' : 'border-[#E2E0D8] focus:ring-[#111215]'
-              } bg-[#F1F0EC]/50 px-3 py-2 text-xs text-[#111215] outline-none focus:ring-1 focus:bg-white cursor-pointer disabled:opacity-50`}
-            >
-              <option value="" disabled>
-                Select an option...
-              </option>
-              {field.options?.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+            <div className="relative">
+              <select
+                id={field.id}
+                name={field.name}
+                disabled={readOnly}
+                value={(value as string) || ''}
+                onChange={(e) => handleTextChange(field.id, e.target.value)}
+                aria-invalid={Boolean(error)}
+                aria-required={field.required}
+                className={`w-full min-h-10 appearance-none rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#636772]`}
+              >
+                <option value="" disabled>
+                  Select an option…
                 </option>
-              ))}
-            </select>
+                {field.options?.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-white text-[#111215]">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className={`pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ${
+                  readOnly ? 'text-[#636772]' : 'text-[#52545D]'
+                }`}
+              />
+            </div>
           )}
 
           {/* 4. Radio Group Field */}
           {field.type === 'radio' && (
-            <div className="space-y-1.5 pt-0.5" role="radiogroup" aria-required={field.required}>
+            <div className="space-y-2 pt-0.5" role="radiogroup" aria-required={field.required}>
               {field.options?.map((opt) => {
                 const checked = value === opt.value;
                 return (
                   <label
                     key={opt.value}
-                    className={`flex items-start gap-2.5 p-2.5 rounded-md border cursor-pointer transition ${
+                    className={`flex items-start gap-2.5 p-3 rounded-md border cursor-pointer transition ${
                       checked
                         ? 'border-[#111215] bg-[#F1F0EC] text-[#111215]'
-                        : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#787C87] text-[#52545D]'
-                    } ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#636772] text-[#52545D]'
+                    } ${readOnly ? 'cursor-not-allowed bg-[#F8F8F6]' : ''}`}
                   >
                     <input
                       type="radio"
@@ -342,12 +323,12 @@ export function DynamicDiscoveryForm({
                       checked={checked}
                       disabled={readOnly}
                       onChange={() => handleTextChange(field.id, opt.value)}
-                      className="mt-0.5 accent-[#0F52BA]"
+                      className="mt-1 accent-[#111215]"
                     />
-                    <div className="text-xs">
-                      <div className="font-semibold text-[#111215]">{opt.label}</div>
+                    <div className="font-sans text-sm">
+                      <div className="font-medium text-[#111215]">{opt.label}</div>
                       {opt.description && (
-                        <div className="text-[11px] text-[#787C87] mt-0.5 leading-relaxed">
+                        <div className="font-sans text-xs text-[#636772] mt-0.5 leading-relaxed">
                           {opt.description}
                         </div>
                       )}
@@ -360,18 +341,18 @@ export function DynamicDiscoveryForm({
 
           {/* 5. Checkbox Group Field */}
           {field.type === 'checkbox_group' && (
-            <div className="space-y-1.5 pt-0.5">
+            <div className="space-y-2 pt-0.5">
               {field.options?.map((opt) => {
                 const selectedList = (value as string[]) || [];
                 const checked = selectedList.includes(opt.value);
                 return (
                   <label
                     key={opt.value}
-                    className={`flex items-start gap-2.5 p-2.5 rounded-md border cursor-pointer transition ${
+                    className={`flex items-start gap-2.5 p-3 rounded-md border cursor-pointer transition ${
                       checked
                         ? 'border-[#111215] bg-[#F1F0EC] text-[#111215]'
-                        : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#787C87] text-[#52545D]'
-                    } ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#636772] text-[#52545D]'
+                    } ${readOnly ? 'cursor-not-allowed bg-[#F8F8F6]' : ''}`}
                   >
                     <input
                       type="checkbox"
@@ -379,12 +360,12 @@ export function DynamicDiscoveryForm({
                       checked={checked}
                       disabled={readOnly}
                       onChange={() => handleCheckboxToggle(field.id, opt.value)}
-                      className="mt-0.5 rounded accent-[#0F52BA]"
+                      className="mt-1 rounded accent-[#111215]"
                     />
-                    <div className="text-xs">
-                      <div className="font-semibold text-[#111215]">{opt.label}</div>
+                    <div className="font-sans text-sm">
+                      <div className="font-medium text-[#111215]">{opt.label}</div>
                       {opt.description && (
-                        <div className="text-[11px] text-[#787C87] mt-0.5 leading-relaxed">
+                        <div className="font-sans text-xs text-[#636772] mt-0.5 leading-relaxed">
                           {opt.description}
                         </div>
                       )}
@@ -396,69 +377,77 @@ export function DynamicDiscoveryForm({
           )}
 
           {field.helpCallout && (
-            <div className="flex items-start gap-1.5 mt-1 text-[11px] text-[#787C87] bg-[#F1F0EC] px-2.5 py-1.5 rounded-md border border-[#E2E0D8]">
-              <HelpCircle className="size-3.5 text-[#52545D] shrink-0 mt-0.5" />
-              <span>{field.helpCallout}</span>
-            </div>
+            <p className="mt-1.5 font-sans text-xs text-[#636772]">{field.helpCallout}</p>
           )}
 
-          {error && <p className="text-[11px] text-[#DC2626] font-medium mt-1">{error}</p>}
+          {error && <p className="font-sans text-xs text-[#111215] font-semibold mt-1">{error}</p>}
         </div>
       </div>
     );
   };
 
-  const defaultSubmitText = 'Submit Discovery Findings & Re-Score Deal →';
+  const defaultSubmitText = 'Submit Discovery Findings & Re-Score\u00A0Deal\u00A0→';
   const effectiveSubmitText = submitButtonText || defaultSubmitText;
 
   return (
-    <section className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] shadow-xs">
+    <section className="bg-[#FFFFFF] font-sans">
       {/* Desk OS Stage 2 Header with Back to Audit & Answered Counter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] px-5 py-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Search className="size-4 text-[#0F52BA]" aria-hidden="true" />
-            <h3 className="font-semibold text-sm text-[#111215]">
-              {activeForm?.title || 'Field Discovery Checklist'}
-            </h3>
-          </div>
-          <p className="mt-1 text-xs text-[#787C87]">
-            {activeForm?.summary || 'Close the qualification blind spots identified in baseline scoring.'}
-          </p>
-        </div>
+      <div className="border-b border-[#E2E0D8] pb-4 mb-5">
+        <div className="stage-header-row flex flex-col sm:flex-row sm:min-h-9 sm:items-center justify-between gap-3">
+          <h2 className="flex min-h-9 items-center font-sans text-base font-semibold tracking-tight text-[#111215]">
+            {activeForm?.title || 'Field Discovery'}
+          </h2>
 
-        <div className="flex items-center gap-3">
-          <span
-            className="font-mono text-xs text-[#787C87] font-medium"
-            role="status"
-            aria-live="polite"
-          >
-            Answered {answeredCount} of {totalFields}
-          </span>
+          <div className="flex min-h-9 flex-wrap shrink-0 items-center gap-3">
+            {onReturnToStage3 && (
+              <button
+                type="button"
+                onClick={onReturnToStage3}
+                className="inline-flex min-h-9 items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
+              >
+                <span className="ui-pill-label">
+                  Return to Updated Assessment (Stage 3) →
+                </span>
+              </button>
+            )}
 
-          {(onBack || onCancel) && (
-            <button
-              type="button"
-              onClick={onBack || onCancel}
-              className="flex items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-2.5 py-1.5 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer"
+            <span
+              className="whitespace-nowrap font-sans text-xs text-[#636772] font-medium tabular-nums"
+              role="status"
+              aria-live="polite"
             >
-              <ArrowLeft className="size-3" aria-hidden="true" />
-              <span>Back to Audit</span>
-            </button>
-          )}
+              Answered {answeredCount} of {totalFields}
+            </span>
+
+            {(onBack || onCancel) && (
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={onBack || onCancel}
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:cursor-not-allowed"
+              >
+                <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="ui-pill-label">Back to Audit</span>
+              </button>
+            )}
+          </div>
         </div>
+
+        <p className="mt-1 font-sans text-xs text-[#636772]">
+          {activeForm?.summary || 'Close the qualification blind spots identified in baseline scoring.'}
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         {activeForm && activeForm.sections && activeForm.sections.length > 0 ? (
           activeForm.sections.map((section) => (
             <div key={section.id} className="space-y-3.5">
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-[#787C87]">
+                <div className="font-sans text-xs font-semibold text-[#636772]">
                   {section.title}
-                </h4>
+                </div>
                 {section.description && (
-                  <p className="text-xs text-[#787C87] leading-relaxed mt-0.5">
+                  <p className="font-sans text-xs text-[#636772] leading-relaxed mt-1">
                     {section.description}
                   </p>
                 )}
@@ -466,17 +455,17 @@ export function DynamicDiscoveryForm({
 
               {renderCalloutBanner(section)}
 
-              <div className="space-y-3.5 pt-0.5">{section.fields.map(renderField)}</div>
+              <div className="divide-y divide-[#E2E0D8] pt-0.5">{section.fields.map(renderField)}</div>
             </div>
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-md border border-dashed border-[#E2E0D8] bg-[#FAFAF7]">
-            <Info className="size-6 text-[#787C87] mb-2" />
-            <p className="text-xs font-medium text-[#111215]">
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center border-b border-[#E2E0D8]">
+            <Info className="size-6 text-[#636772] mb-2" aria-hidden="true" />
+            <p className="font-sans text-sm font-medium text-[#111215]">
               No discovery questions generated for this opportunity.
             </p>
-            <p className="text-[11px] text-[#787C87] mt-1 max-w-sm">
-              Discovery questions are automatically generated from System 2 analysis when gaps are identified in baseline scoring.
+            <p className="font-sans text-xs text-[#636772] mt-1 max-w-sm leading-relaxed">
+              Discovery questions are generated automatically when qualification blind spots or stage-gate blockers are identified in the baseline audit.
             </p>
           </div>
         )}
@@ -485,50 +474,52 @@ export function DynamicDiscoveryForm({
           <div className="space-y-2 pt-2 border-t border-[#E2E0D8]">
             <label
               htmlFor="sa_manual_notes"
-              className="block text-xs font-semibold text-[#111215]"
+              className="block font-sans text-sm font-semibold text-[#111215]"
             >
-              Additional SA Notes &amp; Observations <span className="text-[#787C87] font-normal">(Optional)</span>
+              Additional SA Notes &amp; Observations <span className="text-[#636772] font-normal">(Optional)</span>
             </label>
             <textarea
               id="sa_manual_notes"
               aria-label="Additional SA Notes & Observations"
               rows={3}
-              placeholder="Document any additional customer architecture context or meeting observations..."
+              disabled={isSubmitting}
+              placeholder="Document any additional customer architecture context or meeting observations…"
               value={manualNotes}
               onChange={(e) => handleNotesChange(e.target.value)}
-              className="w-full rounded-md border border-[#E2E0D8] bg-[#F1F0EC]/50 px-3 py-2 text-xs text-[#111215] outline-none focus:ring-1 focus:ring-[#111215] focus:bg-white"
+              className="w-full rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm leading-relaxed text-[#111215] transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#636772]"
             />
           </div>
         )}
 
         {!readOnly && totalFields > 0 && (
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-[#E2E0D8]">
+          <div className="pt-3 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3 border-t border-[#E2E0D8]">
             {(onCancel || onBack) && (
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={onCancel || onBack}
-                className="rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-2 text-xs font-medium text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] cursor-pointer"
+                className="inline-flex min-h-9 w-full justify-center sm:w-auto items-center rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3.5 py-2 font-sans text-xs sm:text-sm font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:cursor-not-allowed"
               >
-                Cancel
+                <span className="ui-pill-label">Cancel</span>
               </button>
             )}
 
             <Button
               type="submit"
               disabled={isSubmitting || isLocked}
-              aria-label={effectiveSubmitText}
-              className="w-full bg-[#0F52BA] text-white hover:bg-[#0C4196] sm:w-fit cursor-pointer disabled:opacity-50 text-xs font-semibold py-2 h-auto"
+              aria-busy={isSubmitting || undefined}
+              className="min-h-9 w-full bg-[#0F52BA] text-white hover:bg-[#0C4196] sm:w-fit cursor-pointer disabled:opacity-100 disabled:bg-[#0F52BA] font-sans text-xs sm:text-sm font-semibold px-4 py-2"
             >
               {isSubmitting ? (
                 <>
-                  <span className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
-                  <span>Executing Delta Re-scoring...</span>
+                  <span
+                    className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                    aria-hidden="true"
+                  />
+                  <span>Re-scoring Deal &amp; Updating CRM…</span>
                 </>
               ) : (
-                <>
-                  <span>{effectiveSubmitText}</span>
-                  <Check className="size-4 ml-1.5" />
-                </>
+                <span>{effectiveSubmitText}</span>
               )}
             </Button>
           </div>

@@ -3,10 +3,14 @@ import type {
   SimulationDimension,
   SimulationDimensionFinding,
   SimulationState,
+  SubmittedSimulationFeedback,
   WorkflowState,
 } from './types';
 import type { SimulationFixture } from './fixture-schema';
+import type { JevScoringResult } from '@/lib/agents/jev-schema';
+import { computeCompositeScore, evaluateStageGate } from '@/lib/agents/jev-scorer';
 import { formatSaDiscoveryDelta } from '@/lib/agents/feedback-schema';
+import type { MEDDPICCBreakdown, QualificationStatus, StageGateEvaluation } from '@/lib/types/crm';
 import acmeFixtureRaw from '@/lib/fixtures/simulation/acme_migration.json';
 import globexFixtureRaw from '@/lib/fixtures/simulation/globex_amplify.json';
 import soylentFixtureRaw from '@/lib/fixtures/simulation/soylent_retail.json';
@@ -23,18 +27,41 @@ export function getSimulationFixture(scenarioId: string = 'scenario_acme_netlify
   return FIXTURES_BY_SCENARIO[scenarioId] || (acmeFixtureRaw as SimulationFixture);
 }
 
+const NEGATIVE_DISCOVERY_ANSWER_PATTERN =
+  /(?:^|[^a-z0-9])(no[_ ]contact|undefined|unknown|none|not[_ ]yet|blocked|unconfirmed|unaddressed|rejected|declined)(?:$|[^a-z0-9])/i;
+
+export function isNegativeDiscoveryValue(raw: string): boolean {
+  return NEGATIVE_DISCOVERY_ANSWER_PATTERN.test(raw.trim());
+}
+
+function statusLabelForQualification(status: QualificationStatus): string {
+  switch (status) {
+    case 'qualified':
+      return '[QUALIFIED]';
+    case 'disqualified':
+      return '[DISQUALIFIED]';
+    case 'in_review':
+      return '[IN REVIEW]';
+    default:
+      return '[UNQUALIFIED]';
+  }
+}
+
 function buildDimensions(
   dimensionsInput: Record<string, any>,
   findingsInput: Record<string, any>,
   isCompleted: boolean,
-  fallbackBreakdown?: Record<string, any>
+  fallbackBreakdown?: MEDDPICCBreakdown
 ): Record<string, SimulationDimension> {
   const result: Record<string, SimulationDimension> = {};
   for (const [key, dim] of Object.entries(dimensionsInput)) {
     const finding = findingsInput[key] || { citations: [], gaps: [] };
-    const fb = fallbackBreakdown?.[key];
+    const fbEntry = fallbackBreakdown?.[key];
+    const fb = fbEntry && 'score' in fbEntry ? fbEntry : undefined;
     const quotes =
-      finding.citations?.length
+      isCompleted && fb?.evidence?.length
+        ? fb.evidence
+        : finding.citations?.length
         ? finding.citations
         : fb?.evidence?.length
         ? fb.evidence
@@ -42,12 +69,14 @@ function buildDimensions(
         ? dim.evidence
         : dim.quote
         ? [dim.quote]
-        : fb?.quote
-        ? [fb.quote]
         : [];
-    const gaps = isCompleted && (key === 'economicBuyer' || key === 'decisionCriteria')
-      ? []
-      : (finding.gaps || []);
+    const gaps = isCompleted
+      ? Array.isArray(fb?.gaps)
+        ? fb.gaps
+        : dim.status === 'verified'
+        ? []
+        : finding.gaps || []
+      : finding.gaps || [];
     result[key] = {
       key,
       label: dim.label || key,
@@ -132,9 +161,10 @@ function buildUnassessedDimensions(): Record<string, SimulationDimension> {
   return result;
 }
 
-const UNASSESSED_STAGE_GATE = {
-  gate: 'Gate 2',
+const UNASSESSED_STAGE_GATE: StageGateEvaluation = {
   gateReady: false,
+  currentStage: 'Stage 2 - Discovery',
+  targetStage: 'Stage 3 - Technical Validation',
   gateBlockers: [
     'identifyPain (score: 0, minimum: 6)',
     'champion (score: 0, minimum: 5)',
@@ -142,8 +172,254 @@ const UNASSESSED_STAGE_GATE = {
     'economicBuyer (score: 0, minimum: 4)',
     'Composite score 0 is below the Gate 2 threshold (50)',
   ],
-  satisfiedCriteria: [],
+  blockingDimensions: ['identifyPain', 'champion', 'metrics', 'economicBuyer'],
 };
+
+interface EvaluatedFeedbackOutcome {
+  hasNegativeAnswers: boolean;
+  unresolvedDimensions: Set<string>;
+  positivelyConfirmedDimensions: Set<string>;
+}
+
+function inspectSubmittedFeedback(
+  fixture: SimulationFixture,
+  submitted?: SubmittedSimulationFeedback | null
+): EvaluatedFeedbackOutcome {
+  const unresolvedDimensions = new Set<string>();
+  const positivelyConfirmedDimensions = new Set<string>();
+
+  if (!submitted || !submitted.explicitFormSubmission) {
+    return {
+      hasNegativeAnswers: false,
+      unresolvedDimensions,
+      positivelyConfirmedDimensions,
+    };
+  }
+
+  const { formResponses } = submitted;
+  const fields = fixture.baseline.system2Result.phase3Form.sections.flatMap((s) => s.fields);
+  let hasNegativeAnswers = false;
+
+  for (const field of fields) {
+    const rawValue = formResponses[field.name] ?? formResponses[field.id];
+    const values = Array.isArray(rawValue)
+      ? rawValue
+      : typeof rawValue === 'string' && rawValue.trim()
+      ? [rawValue]
+      : [];
+
+    if (values.length === 0) {
+      continue;
+    }
+
+    const matchesNegative = values.some((val) => {
+      if (isNegativeDiscoveryValue(val)) return true;
+      const option = field.options?.find((opt) => opt.value === val);
+      return Boolean(option && isNegativeDiscoveryValue(option.label));
+    });
+
+    if (matchesNegative) {
+      hasNegativeAnswers = true;
+      if (field.dimensionTarget) {
+        unresolvedDimensions.add(field.dimensionTarget);
+      }
+    } else if (field.dimensionTarget) {
+      positivelyConfirmedDimensions.add(field.dimensionTarget);
+    }
+  }
+
+  for (const [key, rawValue] of Object.entries(formResponses)) {
+    if (!(key in DIMENSION_LABELS)) continue;
+    const values = Array.isArray(rawValue)
+      ? rawValue
+      : typeof rawValue === 'string' && rawValue.trim()
+      ? [rawValue]
+      : [];
+    if (values.some((val) => isNegativeDiscoveryValue(val))) {
+      hasNegativeAnswers = true;
+      unresolvedDimensions.add(key);
+      positivelyConfirmedDimensions.delete(key);
+    }
+  }
+
+  return {
+    hasNegativeAnswers,
+    unresolvedDimensions,
+    positivelyConfirmedDimensions,
+  };
+}
+
+function buildCompletedStateFromFeedback(
+  fixture: SimulationFixture,
+  submitted?: SubmittedSimulationFeedback | null,
+  updatedSaNotes?: string
+): SimulationState {
+  const dimensionFindings = buildDimensionFindings(
+    fixture.baseline.system2Result.dimensionFindings
+  );
+  const previousScore = fixture.baseline.jevResult.overallScore;
+  const outcome = inspectSubmittedFeedback(fixture, submitted);
+
+  if (!outcome.hasNegativeAnswers) {
+    const dimensions = buildDimensions(
+      fixture.feedback.rescoreJevResult.dimensions,
+      fixture.baseline.system2Result.dimensionFindings,
+      true,
+      fixture.verdict.opportunity.meddpicc_breakdown
+    );
+    const currentScore = fixture.feedback.rescoreJevResult.overallScore;
+    const overallDelta = currentScore - previousScore;
+    const qualificationStatus: QualificationStatus =
+      fixture.verdict.qualificationStatus || 'qualified';
+
+    for (const [key, dim] of Object.entries(dimensions)) {
+      const baseDim = (fixture.baseline.jevResult.dimensions as Record<string, { score: number }>)[key];
+      if (baseDim) {
+        dim.previousScore = baseDim.score;
+        dim.delta = dim.score - baseDim.score;
+      }
+    }
+
+    return {
+      workflowState: 'COMPLETED',
+      opportunity: {
+        ...fixture.verdict.opportunity,
+        ...(updatedSaNotes ? { sa_notes: updatedSaNotes } : {}),
+        qualification_status: qualificationStatus,
+        meddpicc_score: currentScore,
+        suggested_next_steps: fixture.verdict.nextSteps,
+      },
+      score: currentScore,
+      previousScore,
+      delta: overallDelta,
+      dimensionFindings,
+      dimensions,
+      stageGate: fixture.feedback.rescoreJevResult.stageGate,
+      statusLabel: statusLabelForQualification(qualificationStatus),
+      suggestedNextSteps: fixture.verdict.nextSteps,
+      discoveryForm: fixture.baseline.system2Result.phase3Form,
+      submittedFeedback: submitted ?? null,
+    };
+  }
+
+  // Honest re-score when 1+ discovery checklist answers remain negative / unconfirmed:
+  const baseDims = fixture.baseline.jevResult.dimensions;
+  const rescoreDims = fixture.feedback.rescoreJevResult.dimensions;
+  const effectiveJevDimensions = {} as JevScoringResult['dimensions'];
+  const effectiveBreakdown: MEDDPICCBreakdown = {};
+
+  for (const key of Object.keys(DIMENSION_LABELS) as (keyof JevScoringResult['dimensions'])[]) {
+    const isResolvedPositive =
+      outcome.positivelyConfirmedDimensions.has(key) && !outcome.unresolvedDimensions.has(key);
+
+    if (isResolvedPositive) {
+      effectiveJevDimensions[key] = rescoreDims[key];
+      const verdictDim = fixture.verdict.opportunity.meddpicc_breakdown?.[key];
+      if (verdictDim && 'score' in verdictDim) {
+        effectiveBreakdown[key] = verdictDim;
+      }
+    } else {
+      effectiveJevDimensions[key] = baseDims[key];
+      const baseFinding = fixture.baseline.system2Result.dimensionFindings[key];
+      effectiveBreakdown[key] = {
+        key,
+        label: baseDims[key].label,
+        weight: baseDims[key].weight,
+        score: baseDims[key].score,
+        status: baseDims[key].status,
+        confidence: baseDims[key].confidence,
+        evidence: baseFinding?.citations || [],
+        gaps: baseFinding?.gaps || [],
+      };
+    }
+  }
+
+  const scoreMap = Object.fromEntries(
+    Object.entries(effectiveJevDimensions).map(([k, d]) => [k, d.score])
+  ) as Record<keyof JevScoringResult['dimensions'], number>;
+
+  const currentScore = computeCompositeScore(scoreMap);
+  const overallDelta = currentScore - previousScore;
+
+  const dimensions = buildDimensions(
+    effectiveJevDimensions,
+    fixture.baseline.system2Result.dimensionFindings,
+    true,
+    effectiveBreakdown
+  );
+
+  for (const [key, dim] of Object.entries(dimensions)) {
+    const baseDim = (baseDims as Record<string, { score: number }>)[key];
+    if (baseDim) {
+      dim.previousScore = baseDim.score;
+      dim.delta = dim.score - baseDim.score;
+    }
+  }
+
+  const computedGate = evaluateStageGate(
+    fixture.opportunity.stage_name,
+    effectiveJevDimensions,
+    currentScore
+  );
+  const blockingDimensions = new Set<string>(computedGate.blockingDimensions || []);
+  const gateBlockers = [...computedGate.gateBlockers];
+
+  const baseGate = fixture.baseline.jevResult.stageGate;
+  for (const dimKey of outcome.unresolvedDimensions) {
+    blockingDimensions.add(dimKey);
+    const matchingBaseBlocker = baseGate.gateBlockers.find((msg) =>
+      msg.toLowerCase().includes((DIMENSION_LABELS[dimKey] || dimKey).toLowerCase())
+    );
+    if (matchingBaseBlocker && !gateBlockers.includes(matchingBaseBlocker)) {
+      gateBlockers.push(matchingBaseBlocker);
+    } else if (!matchingBaseBlocker) {
+      const dim = effectiveJevDimensions[dimKey as keyof JevScoringResult['dimensions']];
+      const fallbackMsg = `${DIMENSION_LABELS[dimKey] || dimKey} remains unconfirmed in discovery (${dim?.score ?? 0}/10)`;
+      if (!gateBlockers.includes(fallbackMsg)) {
+        gateBlockers.push(fallbackMsg);
+      }
+    }
+  }
+
+  const stageGate: StageGateEvaluation = {
+    gateReady: gateBlockers.length === 0,
+    currentStage: computedGate.currentStage,
+    targetStage: computedGate.targetStage,
+    gateBlockers,
+    blockingDimensions: Array.from(blockingDimensions),
+  };
+
+  const unresolvedLabels = Array.from(outcome.unresolvedDimensions).map(
+    (k) => DIMENSION_LABELS[k] || k
+  );
+  const focusSummary =
+    unresolvedLabels.length > 0
+      ? `Close unconfirmed ${unresolvedLabels.join(' & ')} gaps before advancing to ${stageGate.targetStage}`
+      : `Resolve remaining discovery gaps before advancing to ${stageGate.targetStage}`;
+  const honestNextSteps = `[IN REVIEW] Hold in ${fixture.opportunity.stage_name} | Owner: ${fixture.opportunity.sa_name} (SA) | Focus: ${focusSummary} | Watch: ${fixture.baseline.system2Result.primaryRisk}`;
+
+  return {
+    workflowState: 'COMPLETED',
+    opportunity: {
+      ...fixture.opportunity,
+      ...(updatedSaNotes ? { sa_notes: updatedSaNotes } : {}),
+      qualification_status: 'in_review',
+      meddpicc_score: currentScore,
+      meddpicc_breakdown: effectiveBreakdown,
+      suggested_next_steps: honestNextSteps,
+    },
+    score: currentScore,
+    previousScore,
+    delta: overallDelta,
+    dimensionFindings,
+    dimensions,
+    stageGate,
+    statusLabel: '[IN REVIEW]',
+    suggestedNextSteps: honestNextSteps,
+    discoveryForm: fixture.baseline.system2Result.phase3Form,
+    submittedFeedback: submitted,
+  };
+}
 
 export function getStateForWorkflow(
   workflowState: WorkflowState,
@@ -161,16 +437,17 @@ export function getStateForWorkflow(
         opportunity: {
           ...fixture.opportunity,
           qualification_status: 'unqualified',
-          meddpicc_score: null as any,
+          meddpicc_score: null,
           suggested_next_steps: null,
         },
         score: 0,
         dimensionFindings: {},
         dimensions,
-        stageGate: UNASSESSED_STAGE_GATE as any,
+        stageGate: UNASSESSED_STAGE_GATE,
         statusLabel: '[READY TO ASSESS]',
         suggestedNextSteps: null,
         discoveryForm: null,
+        submittedFeedback: null,
       };
     }
 
@@ -181,16 +458,17 @@ export function getStateForWorkflow(
         opportunity: {
           ...fixture.opportunity,
           qualification_status: 'in_review',
-          meddpicc_score: null as any,
+          meddpicc_score: null,
           suggested_next_steps: null,
         },
         score: 0,
         dimensionFindings: {},
         dimensions,
-        stageGate: UNASSESSED_STAGE_GATE as any,
+        stageGate: UNASSESSED_STAGE_GATE,
         statusLabel: '[IN REVIEW]',
         suggestedNextSteps: null,
         discoveryForm: null,
+        submittedFeedback: null,
       };
     }
 
@@ -215,6 +493,7 @@ export function getStateForWorkflow(
         statusLabel: '[IN REVIEW]',
         suggestedNextSteps: null,
         discoveryForm: fixture.baseline.system2Result.phase3Form,
+        submittedFeedback: null,
       };
     }
 
@@ -239,46 +518,12 @@ export function getStateForWorkflow(
         statusLabel: '[IN REVIEW]',
         suggestedNextSteps: null,
         discoveryForm: fixture.baseline.system2Result.phase3Form,
+        submittedFeedback: null,
       };
     }
 
     case 'COMPLETED': {
-      const dimensions = buildDimensions(
-        fixture.feedback.rescoreJevResult.dimensions,
-        fixture.baseline.system2Result.dimensionFindings,
-        true,
-        fixture.verdict.opportunity.meddpicc_breakdown
-      );
-      const previousScore = fixture.baseline.jevResult.overallScore;
-      const currentScore = fixture.feedback.rescoreJevResult.overallScore;
-      const overallDelta = currentScore - previousScore;
-
-      for (const [key, dim] of Object.entries(dimensions)) {
-        const baseDim = (fixture.baseline.jevResult.dimensions as any)[key];
-        if (baseDim) {
-          dim.previousScore = baseDim.score;
-          dim.delta = dim.score - baseDim.score;
-        }
-      }
-
-      return {
-        workflowState: 'COMPLETED',
-        opportunity: {
-          ...fixture.verdict.opportunity,
-          qualification_status: 'qualified',
-          meddpicc_score: currentScore,
-          suggested_next_steps: fixture.verdict.nextSteps,
-        },
-        score: currentScore,
-        previousScore,
-        delta: overallDelta,
-        dimensionFindings,
-        dimensions,
-        stageGate: fixture.feedback.rescoreJevResult.stageGate,
-        statusLabel: '[QUALIFIED]',
-        suggestedNextSteps: fixture.verdict.nextSteps,
-        discoveryForm: fixture.baseline.system2Result.phase3Form,
-      };
+      return buildCompletedStateFromFeedback(fixture, null);
     }
   }
 }
@@ -336,9 +581,11 @@ export function simulationReducer(
     case 'SUBMIT_FEEDBACK':
       if (state.workflowState === 'PENDING_FEEDBACK' || state.workflowState === 'COMPLETED') {
         const nextState = getStateForWorkflow('EVALUATING', activeFixture);
+        const explicitFormSubmission = action.formResponses !== undefined;
         const submittedResponses = action.formResponses ?? activeFixture.feedback.formResponses;
-        const submittedNotes =
-          action.notesDelta !== undefined ? action.notesDelta : activeFixture.feedback.notesDelta;
+        const submittedNotes = explicitFormSubmission
+          ? action.notesDelta ?? ''
+          : action.notesDelta ?? activeFixture.feedback.notesDelta;
         const deltaBlock = formatSaDiscoveryDelta(
           submittedResponses,
           submittedNotes,
@@ -351,23 +598,23 @@ export function simulationReducer(
             ...nextState.opportunity,
             sa_notes: `${activeFixture.opportunity.sa_notes.trim()}\n\n${deltaBlock}`.trim(),
           },
+          submittedFeedback: {
+            formResponses: submittedResponses,
+            notesDelta: submittedNotes,
+            explicitFormSubmission,
+          },
         };
       }
       return state;
 
     case 'EVALUATION_COMPLETE':
       if (state.workflowState === 'EVALUATING') {
-        const nextState = getStateForWorkflow('COMPLETED', activeFixture);
         const hasDiscoveryUpdate = state.opportunity.sa_notes.includes('[SA Discovery Update -');
-        return hasDiscoveryUpdate
-          ? {
-              ...nextState,
-              opportunity: {
-                ...nextState.opportunity,
-                sa_notes: state.opportunity.sa_notes,
-              },
-            }
-          : nextState;
+        return buildCompletedStateFromFeedback(
+          activeFixture,
+          state.submittedFeedback,
+          hasDiscoveryUpdate ? state.opportunity.sa_notes : undefined
+        );
       }
       return state;
 
@@ -378,6 +625,7 @@ export function simulationReducer(
           ...nextState,
           previousScore: null,
           delta: null,
+          submittedFeedback: null,
         };
       }
       if (state.workflowState === 'PENDING_FEEDBACK' || state.workflowState === 'ANALYZING') {
@@ -386,6 +634,7 @@ export function simulationReducer(
           ...nextState,
           previousScore: null,
           delta: null,
+          submittedFeedback: null,
         };
       }
       return state;
