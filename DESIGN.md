@@ -25,20 +25,20 @@ colors:
   score-unfilled: "#E5E5E0"
 typography:
   display:
-    fontFamily: General Sans
+    fontFamily: Instrument Sans
     fontWeight: 700
     fontSize: clamp(1.25rem, 2vw, 1.75rem)
-    letterSpacing: -0.03em
+    letterSpacing: -0.025em
   body:
     fontFamily: Instrument Sans
     fontSize: 0.875rem
     lineHeight: 1.5
   label:
-    fontFamily: General Sans
+    fontFamily: Instrument Sans
     fontSize: 0.6875rem
     letterSpacing: 0.05em
   mono:
-    fontFamily: JetBrains Mono
+    fontFamily: Instrument Sans
     fontFeature: tnum
 rounded:
   sm: 4px
@@ -97,7 +97,7 @@ components:
 - **Radical Monochrome Restraint:** All surfaces, top navigation chrome, metadata badges, ACV amounts, stage tags, and competitor pills are strictly neutral monochrome.
 - **Quarantined Color Domain:** Color exists exclusively on the 10-segment MEDDPICC score bars (`0–3` Crimson, `4–7` Amber, `8–10` Emerald) and the primary action button (`#0F52BA`).
 - **All 8 MEDDPICC Dimensions Always Open:** Zero collapsible dropdowns or accordions; all 8 pillars show dimension, 10-segment bar, score, verified evidence, and open gap inline for instantaneous vertical scanning.
-- **Clean Inline Parenthetical Deltas:** Stage 3 reflects score gains using plain text `JetBrains Mono` parenthetical notation `(+24)`, `(+6)`, without button or badge styling.
+- **Clean Inline Parenthetical Deltas:** Stage 3 reflects score gains using plain text `Instrument Sans` `tabular-nums` parenthetical notation `(+24)`, `(+6)` directly beside the updated score (`82 / 100 (+24)`, `8/10 (+6)`), without `prev →` prefixes, button borders, or badge styling.
 - **Zero Demo Scaffolding:** Internal enums (`READY_TO_ASSESS`, `PENDING_FEEDBACK`), `$0 compute` banners, `"Salesforce Connected"` pills, and `"⚙ Workspace / Dev Controls"` popovers are strictly forbidden; the sole permitted operational exception is a single strictly monochrome `SIMULATION` / `LIVE` AI execution-mode pill in `TopNavBar` so operators can distinguish deterministic AI fixture replay from live inference without breaking the Quarantined Color Domain.
 
 ## Colors
@@ -117,32 +117,32 @@ Neutrals derive from a warm architectural stone palette (`#F8F8F6` canvas, `#E2E
 
 ## Typography
 
-**Faces & Roles:**
-- **Display & Section Labels:** `General Sans` (Fontshare / Indian Type Foundry Free Font License). Weights: `600`, `700`. Tracking: `-0.03em` on display, `+0.05em` on uppercase section kickers.
-- **Body & UI:** `Instrument Sans` (Google Fonts / SIL OFL). Weights: `400`, `500`, `600`. Line height: `1.5`. Used for all AE/SA briefs, verbatim evidence, and field discovery textareas.
-- **Tabular Numerals & Monospace:** `JetBrains Mono` (Google Fonts / Apache 2.0 / SIL OFL). Feature: `tnum` (tabular figures). Used for all scores (`82 / 100`, `8 / 10`), currency (`$420,000 ACV`), dimension codes (`[M]`, `[E]`), diff payloads, and parenthetical score deltas `(+24)`, `(+6)`.
+**Unified Single-Typeface System (`Instrument Sans` + `tabular-nums`):**
+- **One Cohesive Typeface:** `Instrument Sans` (Google Fonts / SIL OFL, weights `400`, `500`, `600`, `700`) serves every typographic role across display headings, uppercase section kickers, body prose, UI controls, and numeric readouts (`--font-sans`, `--font-display`, and `--font-mono` all resolve to `Instrument Sans`).
+- **Tabular Numerals Everywhere:** All scores (`82 / 100`, `8/10`), currency (`$420,000 ACV`), counters (`Answered 2 of 2`), dates, step numbers, and parenthetical score deltas `(+24)`, `(+6)` apply `font-variant-numeric: tabular-nums` (`"tnum" 1`) in `Instrument Sans`, preserving crisp vertical alignment without jarring font-family or x-height switches.
+- **Zero Bracketed Code Clutter:** Dimension rows and discovery cards display clean human labels (`Identify Pain`, `Economic Buyer: 3/10`) without `[I]` / `[E]` monospace prefix brackets.
 
 **Scale:**
-- Display / Deal Title: `28px` / `1.75rem` (General Sans 700)
-- Section Heading: `18px` / `1.125rem` (General Sans 600)
-- Score Numeric: `32px` / `2.0rem` (JetBrains Mono 700)
-- Body Copy: `14px` / `0.875rem` (Instrument Sans 400)
-- UI Semi-Bold: `13px` / `0.8125rem` (Instrument Sans 600)
-- Monospace Label / Pill: `11px` / `0.6875rem` (JetBrains Mono 500)
-- Uppercase Section Kicker: `11px` / `0.6875rem` (General Sans 600)
+- Display / Deal Title: `28px` / `1.75rem` (Instrument Sans 700, `-0.025em`)
+- Composite Score Numeric: `24px` / `1.5rem` (Instrument Sans 600 `tabular-nums`)
+- Section Heading: `16px–18px` / `1rem–1.125rem` (Instrument Sans 600)
+- Body Copy & Form Controls: `14px` / `0.875rem` (Instrument Sans 400, line-height `1.5`)
+- UI Medium / Semi-Bold: `12px–14px` / `0.75rem–0.875rem` (Instrument Sans 500/600)
+- Uppercase Section Kicker: `11px` / `0.6875rem` (Instrument Sans 600, `+0.05em`)
 
 ## Layout
 
 **Workbench Layout:**
 - Primary Split-Pane Grid: `35% / 65%` ratio separated by a `1px solid #E2E0D8` hairline border.
-- Left Pane (`35%`): Opportunity Metadata, Neutral Competitor Context, and AE/SA Brief blocks.
-- Right Pane (`65%`): Dynamic 3-stage process view container (Audit Ledger, In-Context Discovery Form, Re-scored Qualified Summary).
+- Top Navigation & Deal Header: `TopNavBar` holds brand title + `Simulation`/`Live` pill + `Settings` trigger (no static placeholder user avatars). `MonochromeTopBar` surfaces Opportunity Name, CRM Stage, and ACV once at the top of the sheet.
+- Left Pane (`35%`): Non-redundant 2x2 Opportunity Metadata (`Account Executive`, `Solutions Architect`, `Account`, `Target Close` + CRM status pill), Neutral Competitor Context, and AE/SA Brief blocks. Never duplicates CRM stage or Stage 3's Next Steps writeback in the left pane.
+- Right Pane (`65%`): Dynamic 3-stage process view container navigated via a clean outcome-neutral `StepperBar` (`Initial Deal Audit`, `Field Discovery`, `Updated Assessment`) with zero parenthetical outcome spoilers or duplicate spinners.
 - Maximum container width: `1440px`, centered with `24px` horizontal gutters.
 
 **3-Stage Operational Process Flow:**
-1. **Stage 1: Initial Deal Audit:** All 8 MEDDPICC dimensions open. Low scores highlighted with Crimson/Amber bars. Blocker notice prevents Stage Gate 2 sign-off. Primary CTA triggers discovery: `Answer 3 Discovery Questions →`.
-2. **Stage 2: In-Context Field Discovery Checklist:** SA completes targeted questions directly linked to the gap dimensions. Each question displays the live 10-segment bar of the specific dimension it repairs (`Economic Buyer: currently 2/10`).
-3. **Stage 3: Updated Assessment & Next Steps:** All 8 dimensions update to qualified states. The header and changed dimensions display clean inline parenthetical deltas (`(+24)`, `(+6)`). Suggested Next Steps action block is revealed with 1-click sync.
+1. **Stage 1: Initial Deal Audit:** All 8 MEDDPICC dimensions open with zero redundant sub-label status pills (`Unassessed`/`Partial`/`Verified`) or `Blocker` badges—the 10-segment bar and score communicate tier directly. Primary CTA triggers discovery: `Answer N Discovery Questions →`.
+2. **Stage 2: Field Discovery:** SA completes targeted questions directly linked to gap dimensions (`Economic Buyer: 3/10` + 10-segment bar), using custom-styled `40px` inputs/selects and quiet 1-line helper captions.
+3. **Stage 3: Updated Assessment:** Composite header and changed rows display updated scores with inline parenthetical deltas (`76 / 100 (+18)`, `8/10 (+5)`). `SuggestedNextStepsCard` renders lead action prose above a structured 3-column `OWNER` / `FOCUS` / `WATCH` strip.
 
 ## Elevation & Depth
 
@@ -168,20 +168,25 @@ Neutrals derive from a warm architectural stone palette (`#F8F8F6` canvas, `#E2E
 - **Buttons:**
   - Primary Action: `#0F52BA` background, `#FFFFFF` text, `6px` radius. Hover: `#0C4196`. Active: scale `0.98`.
   - Secondary Action: `#FFFFFF` background, `#111215` text, `1px solid #E2E0D8` border.
-- **Form Inputs & Textareas:**
-  - Neutral `#F1F0EC` recessed background, `1px solid #E2E0D8` border, `6px` radius.
-  - Focus state: `1px solid #111215` crisp obsidian ring with zero colored glow.
-- **Score Delta Readout (`prev → current (+Δ)`):**
-  - Clean inline parenthetical text in `JetBrains Mono` `tabular-nums` (`(+24)`, `(+6)`).
-  - Zero button borders, zero background fills, zero badge styling.
+- **Form Inputs, Textareas & Custom `<select>` Controls:**
+  - Recessed `#F8F8F6` surface (`#F1F0EC` when disabled), `1px solid #E2E0D8` border (`hover:border-[#C8C5BA]`), `6px` radius, `min-h-10` (`40px`) height, `14px` (`text-sm`) `Instrument Sans`.
+  - `<select>` elements MUST use `appearance-none` wrapped in `<div class="relative">` with `pr-10` and a custom right-aligned `ChevronDown` (`size-4`) so macOS/browser native Aqua popup buttons never render.
+  - Focus state: `1px solid #111215` crisp obsidian border on `#FFFFFF` surface with zero colored glow.
+  - Field helper guidance renders as a quiet 1-line caption (`mt-1.5 text-xs text-[#787C87]`) — never inside a bordered beige callout box with a `(?)` icon.
+- **Score Delta Readout (`current (+Δ)`):**
+  - Clean inline parenthetical text in `Instrument Sans` `tabular-nums` (`76 / 100 (+18)`, `8/10 (+5)`).
+  - Zero `prev →` prefixes, zero button borders, zero background fills, zero badge styling.
   - Unchanged dimensions remain quiet without delta tags.
 
 ## Do's and Don'ts
 
 - **Do:** Keep all deal metadata (ACV, Stage, Account, Competitor) strictly monochrome.
 - **Do:** Confine all color to the 10-segment MEDDPICC score bars and the primary action button.
-- **Do:** Render all 8 MEDDPICC dimensions permanently open in a clean, scannable table ledger.
-- **Do:** Format score deltas as clean unadorned parenthetical text `(+Δ)` in JetBrains Mono.
+- **Do:** Render all 8 MEDDPICC dimensions permanently open in a clean, scannable table ledger without redundant `Unassessed`/`Partial`/`Verified`/`Blocker` pills.
+- **Do:** Use `Instrument Sans` with `tabular-nums` for all scores, currency, counters, and parenthetical deltas `(+Δ)` on a single cohesive baseline.
+- **Do:** Style every `<select>` with `appearance-none`, `min-h-10`, `text-sm`, and an explicit `ChevronDown` icon, and show at most one active loading indicator at a time.
+- **Don't:** Never leave native unstyled `<select>` elements or wrap input helper captions in bordered `(?)` boxes.
+- **Don't:** Never duplicate CRM writeback in `DealContextCard` or spoil outcomes in `StepperBar` labels (`(Gaps Identified)`, `(Qualified)`).
 - **Don't:** Never add colored backgrounds (green, orange, red) to ACV pills, stage badges, or competitor pills.
 - **Don't:** Never hide MEDDPICC evidence or blind spots behind accordion dropdowns.
 - **Don't:** Never display raw internal state enums (`READY_TO_ASSESS`, `PENDING_FEEDBACK`) or demo artifacts.
@@ -193,7 +198,7 @@ Neutrals derive from a warm architectural stone palette (`#F8F8F6` canvas, `#E2E
 - **Easing:** enter(`cubic-bezier(0, 0, 0.2, 1)` / `ease-out`), exit(`cubic-bezier(0.4, 0, 1, 1)` / `ease-in`), move(`cubic-bezier(0.4, 0, 0.2, 1)` / `ease-in-out`).
 - **Duration:** micro(`40–80ms`), short(`150–200ms`), medium(`250–350ms`).
 - **The One Authored Moment:**
-  - When Field Discovery is submitted, score counters animate from initial to qualified score (`58 → 82`), and 10-segment tick bars update in a staggered `40ms` wave from Blocker Crimson to Verified Emerald, followed by the appearance of the parenthetical deltas `(+24)`, `(+6)`.
+  - When Field Discovery is submitted, 10-segment tick bars update in a staggered `40ms` wave from Blocker Crimson to Verified Emerald alongside updated `Instrument Sans` `tabular-nums` scores and parenthetical deltas `(+24)`, `(+6)`.
 
 ## Decisions Log
 
@@ -204,5 +209,6 @@ Neutrals derive from a warm architectural stone palette (`#F8F8F6` canvas, `#E2E
 | 2026-10-21 | Zero Demo Artifacts | Removed "Salesforce Connected" indicator, "Workspace / Dev Controls" popovers, and Cmd+K model switcher to ensure 100% production fidelity. |
 | 2026-10-21 | Always-Open MEDDPICC Ledger | Replaced accordion dropdowns with permanently open 8-row table for instantaneous vertical scanning of buyer evidence and gaps. |
 | 2026-10-21 | 3-Stage Process Walkthrough | Codified the interactive journey: Stage 1 (Audit), Stage 2 (In-Context Field Discovery), and Stage 3 (Qualified Re-score). |
-| 2026-10-21 | Clean Parenthetical Score Deltas | User feedback: replaced button-like delta badges with unadorned typographic parentheticals `(+24)` and `(+6)` in JetBrains Mono. |
+| 2026-10-21 | Clean Parenthetical Score Deltas | User feedback: replaced button-like delta badges with unadorned typographic parentheticals `(+24)` and `(+6)`. |
 | 2026-11-11 | Monochrome AI Execution-Mode Pill Carve-Out | Amended Zero Demo Scaffolding to permit a single strictly monochrome `SIMULATION` / `LIVE` pill in `TopNavBar` so operators can tell deterministic AI fixture replay from live Gateway inference while keeping color strictly quarantined. |
+| 2026-11-12 | Single-Typeface Unification, Custom `<select>` Controls & UI De-duplication | Unified all typography onto `Instrument Sans` + `tabular-nums` (retiring `JetBrains Mono` switching, `prev →` score prefixes, and `[I]`/`[E]` brackets), standardized `40px` `appearance-none` `<select>` controls and quiet 1-line helper captions, and removed duplicate left-pane CRM writeback, `DD` avatar, redundant `StepperBar` spoilers/spinners, and redundant dimension/blocker badges. |

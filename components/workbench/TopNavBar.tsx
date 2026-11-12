@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Gauge, Settings, X, RotateCcw } from 'lucide-react';
+import { Gauge, Settings, X, RotateCcw, ChevronDown } from 'lucide-react';
 import type { Opportunity, System2ModelOption } from '@/lib/types/crm';
 import { SYSTEM2_MODELS } from '@/lib/types/crm';
 import { DEMO_SCENARIOS } from '@/lib/db/scenarios';
@@ -109,7 +109,7 @@ export function TopNavBar({
           </div>
         </div>
 
-        {/* Right Section: Monochrome Mode Pill, Settings Trigger & Stable Operator Avatar */}
+        {/* Right Section: Monochrome Mode Pill & Settings Trigger */}
         <div className="flex items-center gap-2 font-sans text-xs text-[#52545D]">
           {/* Monochrome Execution Mode Pill */}
           <button
@@ -157,15 +157,6 @@ export function TopNavBar({
             <Settings className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
             <span className="ui-pill-label hidden sm:inline">Settings</span>
           </button>
-
-          {/* Stable Operator Avatar */}
-          <div
-            title="Deal Desk Operator"
-            aria-label="Deal Desk Operator"
-            className="flex size-8 items-center justify-center rounded-full border border-[#E2E0D8] bg-[#F1F0EC] font-sans text-xs font-semibold leading-none text-[#111215] select-none"
-          >
-            <span className="ui-pill-label">DD</span>
-          </div>
         </div>
       </div>
 
@@ -260,48 +251,64 @@ export function TopNavBar({
                 >
                   Active Opportunity
                 </label>
-                <select
-                  id="workbench-scenario-select"
-                  aria-label="Select active opportunity"
-                  value={currentScenarioId}
-                  onChange={(e) => {
-                    void onScenarioChange(e.target.value);
-                  }}
-                  disabled={controlsLocked}
-                  className="w-full min-h-9 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-2 font-sans text-xs font-medium text-[#111215] focus:outline-none focus:border-[#111215] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {Object.entries(DEMO_SCENARIOS).map(([id, scenario]) => (
-                    <option key={id} value={id} className="bg-white text-[#111215]">
-                      {scenario.title}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    id="workbench-scenario-select"
+                    aria-label="Select active opportunity"
+                    value={currentScenarioId}
+                    onChange={(e) => {
+                      void onScenarioChange(e.target.value);
+                    }}
+                    disabled={controlsLocked}
+                    className="w-full min-h-10 appearance-none rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]"
+                  >
+                    {Object.entries(DEMO_SCENARIOS).map(([id, scenario]) => (
+                      <option key={id} value={id} className="bg-white text-[#111215]">
+                        {scenario.title}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ${
+                      controlsLocked ? 'text-[#A6A7AD]' : 'text-[#52545D]'
+                    }`}
+                  />
+                </div>
               </div>
             )}
 
             {/* Gap & Discovery Analysis Model Selector */}
             {onModelChange && (
-              <div className={`space-y-1.5 ${mode === 'simulation' ? 'opacity-70' : ''}`}>
+              <div className="space-y-1.5">
                 <label
                   htmlFor="workbench-model-select"
                   className="block font-sans text-xs font-semibold text-[#111215]"
                 >
                   Gap &amp; Discovery Analysis Model
                 </label>
-                <select
-                  id="workbench-model-select"
-                  aria-label="Select analysis model"
-                  value={selectedModel}
-                  disabled={controlsLocked || mode === 'simulation'}
-                  onChange={(e) => onModelChange(e.target.value as System2ModelOption)}
-                  className="w-full min-h-9 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-2 font-sans text-xs font-medium text-[#111215] focus:outline-none focus:border-[#111215] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {SYSTEM2_MODELS.map((m) => (
-                    <option key={m.id} value={m.id} className="bg-white text-[#111215]">
-                      {m.label} ({m.badge})
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    id="workbench-model-select"
+                    aria-label="Select analysis model"
+                    value={selectedModel}
+                    disabled={controlsLocked || mode === 'simulation'}
+                    onChange={(e) => onModelChange(e.target.value as System2ModelOption)}
+                    className="w-full min-h-10 appearance-none rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]"
+                  >
+                    {SYSTEM2_MODELS.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-white text-[#111215]">
+                        {m.label} ({m.badge})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ${
+                      controlsLocked || mode === 'simulation' ? 'text-[#A6A7AD]' : 'text-[#52545D]'
+                    }`}
+                  />
+                </div>
                 {mode === 'simulation' && (
                   <p className="font-sans text-xs text-[#787C87]">
                     Model selection applies in Live AI mode
