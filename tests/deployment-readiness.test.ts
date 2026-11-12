@@ -49,4 +49,15 @@ describe('Vercel Release & Deployment Configuration', () => {
       },
     ]);
   });
+
+  it('ships Warm Stone Deal Desk gauge favicon (app/icon.svg) aligned with DESIGN.md tokens', () => {
+    const iconPath = path.join(process.cwd(), 'app', 'icon.svg');
+    expect(fs.existsSync(iconPath)).toBe(true);
+
+    const svgContent = fs.readFileSync(iconPath, 'utf8');
+    expect(svgContent).toContain('<svg');
+    expect(svgContent).toContain('#F8F8F6');
+    expect(svgContent).toContain('#111215');
+    expect(svgContent).toContain('#0F52BA');
+  });
 });
