@@ -100,12 +100,12 @@ export function TopNavBar({
             <Gauge className="size-5 text-[#FFFFFF]" aria-hidden="true" />
           </div>
           <div>
-            <p className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
+            <p className="font-sans text-kicker font-semibold uppercase text-[#636772]">
               DEAL OPERATIONS
             </p>
-            <h1 className="font-sans text-base font-bold tracking-[-0.025em] text-[#111215] sm:text-lg leading-tight">
+            <span className="block font-sans text-base font-bold tracking-tight text-[#111215] sm:text-lg leading-tight">
               Qualification System
-            </h1>
+            </span>
           </div>
         </div>
 
@@ -126,8 +126,8 @@ export function TopNavBar({
             }}
             className={
               isLive
-                ? 'inline-flex min-h-8 items-center gap-2 rounded-md border border-[#111215] bg-[#111215] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#FFFFFF] hover:bg-[#111215]/90 transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]'
-                : 'inline-flex min-h-8 items-center gap-2 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:border-[#111215] transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]'
+                ? 'h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#111215] bg-[#111215] px-3 font-sans text-xs font-medium leading-none text-[#FFFFFF] hover:bg-[#111215]/90 transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]'
+                : 'h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 font-sans text-xs font-medium leading-none text-[#111215] hover:border-[#111215] transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]'
             }
           >
             <span
@@ -135,10 +135,10 @@ export function TopNavBar({
               className={
                 isLive
                   ? 'size-2 shrink-0 rounded-full bg-[#FFFFFF]'
-                  : 'size-2 shrink-0 rounded-full border-[1.5px] border-[#787C87]'
+                  : 'size-2 shrink-0 rounded-full border-[1.5px] border-[#636772]'
               }
             />
-            <span className="ui-pill-label">{isLive ? 'Live' : 'Simulation'}</span>
+            <span className="leading-none">{isLive ? 'Live' : 'Simulation'}</span>
           </button>
 
           {/* Settings Trigger Button */}
@@ -152,10 +152,10 @@ export function TopNavBar({
               lastTriggerRef.current = triggerRef.current;
               setIsOpen(!isOpen);
             }}
-            className="inline-flex min-h-8 items-center gap-2 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]"
+            className="h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]"
           >
             <Settings className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
-            <span className="ui-pill-label hidden sm:inline">Settings</span>
+            <span className="leading-none hidden sm:inline">Settings</span>
           </button>
         </div>
       </div>
@@ -181,7 +181,7 @@ export function TopNavBar({
             <div className="flex items-center justify-between border-b border-[#E2E0D8] pb-3">
               <div className="flex items-center gap-2">
                 <Settings className="size-4 text-[#111215]" aria-hidden="true" />
-                <h2 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
+                <h2 className="font-sans text-lg font-semibold tracking-[-0.015em] text-[#111215]">
                   Workbench Settings
                 </h2>
               </div>
@@ -192,7 +192,7 @@ export function TopNavBar({
                   setIsOpen(false);
                   (lastTriggerRef.current ?? triggerRef.current)?.focus();
                 }}
-                className="rounded p-1 text-[#787C87] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
+                className="rounded p-1 text-[#636772] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
               >
                 <X className="size-4" aria-hidden="true" />
               </button>
@@ -203,7 +203,7 @@ export function TopNavBar({
               <label className="block font-sans text-xs font-semibold text-[#111215]">
                 Execution Mode
               </label>
-              <div className="grid grid-cols-2 gap-1.5 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] p-1">
+              <div className="grid grid-cols-2 gap-1 rounded-md bg-[#F1F0EC] p-1">
                 <button
                   type="button"
                   disabled={controlsLocked}
@@ -213,7 +213,7 @@ export function TopNavBar({
                   }}
                   className={`min-h-8 rounded px-2.5 py-1.5 font-sans text-xs font-medium transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                     mode === 'simulation'
-                      ? 'border border-[#E2E0D8] bg-[#FFFFFF] text-[#111215] font-semibold'
+                      ? 'bg-[#FFFFFF] text-[#111215] font-semibold shadow-sm'
                       : 'text-[#52545D] hover:text-[#111215]'
                   }`}
                 >
@@ -228,14 +228,14 @@ export function TopNavBar({
                   }}
                   className={`min-h-8 rounded px-2.5 py-1.5 font-sans text-xs font-medium transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                     mode === 'live'
-                      ? 'border border-[#E2E0D8] bg-[#FFFFFF] text-[#111215] font-semibold'
+                      ? 'bg-[#FFFFFF] text-[#111215] font-semibold shadow-sm'
                       : 'text-[#52545D] hover:text-[#111215]'
                   }`}
                 >
                   Live AI Inference
                 </button>
               </div>
-              <p className="font-sans text-xs text-[#787C87] leading-relaxed">
+              <p className="font-sans text-xs text-[#636772] leading-relaxed">
                 {mode === 'simulation'
                   ? 'Deterministic AI evaluation replay against the simulated Salesforce CRM.'
                   : 'Live AI Gateway evaluation and writeback to the simulated Salesforce CRM.'}
@@ -260,7 +260,7 @@ export function TopNavBar({
                       void onScenarioChange(e.target.value);
                     }}
                     disabled={controlsLocked}
-                    className="w-full min-h-10 appearance-none rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]"
+                    className="w-full min-h-10 appearance-none rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:opacity-100"
                   >
                     {Object.entries(DEMO_SCENARIOS).map(([id, scenario]) => (
                       <option key={id} value={id} className="bg-white text-[#111215]">
@@ -271,7 +271,7 @@ export function TopNavBar({
                   <ChevronDown
                     aria-hidden="true"
                     className={`pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ${
-                      controlsLocked ? 'text-[#A6A7AD]' : 'text-[#52545D]'
+                      controlsLocked ? 'text-[#636772]' : 'text-[#52545D]'
                     }`}
                   />
                 </div>
@@ -294,7 +294,7 @@ export function TopNavBar({
                     value={selectedModel}
                     disabled={controlsLocked || mode === 'simulation'}
                     onChange={(e) => onModelChange(e.target.value as System2ModelOption)}
-                    className="w-full min-h-10 appearance-none rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]"
+                    className="w-full min-h-10 appearance-none rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:opacity-100"
                   >
                     {SYSTEM2_MODELS.map((m) => (
                       <option key={m.id} value={m.id} className="bg-white text-[#111215]">
@@ -305,12 +305,12 @@ export function TopNavBar({
                   <ChevronDown
                     aria-hidden="true"
                     className={`pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ${
-                      controlsLocked || mode === 'simulation' ? 'text-[#A6A7AD]' : 'text-[#52545D]'
+                      controlsLocked || mode === 'simulation' ? 'text-[#636772]' : 'text-[#52545D]'
                     }`}
                   />
                 </div>
                 {mode === 'simulation' && (
-                  <p className="font-sans text-xs text-[#787C87]">
+                  <p className="font-sans text-xs text-[#636772]">
                     Model selection applies in Live AI mode
                   </p>
                 )}

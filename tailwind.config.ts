@@ -45,6 +45,7 @@ const config: Config = {
         background: "#F8F8F6",
         card: "#FFFFFF",
         "card-border": "#E2E0D8",
+        muted: "#636772",
         accent: {
           DEFAULT: "#0F52BA",
           hover: "#0C4196",
