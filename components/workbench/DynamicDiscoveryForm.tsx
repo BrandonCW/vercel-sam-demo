@@ -384,7 +384,7 @@ export function DynamicDiscoveryForm({
     );
   };
 
-  const defaultSubmitText = 'Submit Discovery Findings & Re-Score Deal →';
+  const defaultSubmitText = 'Submit Discovery Findings & Re-Score\u00A0Deal\u00A0→';
   const effectiveSubmitText = submitButtonText || defaultSubmitText;
 
   return (
@@ -477,13 +477,13 @@ export function DynamicDiscoveryForm({
         )}
 
         {!readOnly && totalFields > 0 && (
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-[#E2E0D8]">
+          <div className="pt-3 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3 border-t border-[#E2E0D8]">
             {(onCancel || onBack) && (
               <button
                 type="button"
                 disabled={isSubmitting}
                 onClick={onCancel || onBack}
-                className="inline-flex min-h-9 items-center rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3.5 py-2 font-sans text-xs sm:text-sm font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex min-h-9 w-full justify-center sm:w-auto items-center rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3.5 py-2 font-sans text-xs sm:text-sm font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="ui-pill-label">Cancel</span>
               </button>

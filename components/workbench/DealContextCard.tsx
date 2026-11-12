@@ -20,6 +20,51 @@ function formatQualificationStatusLabel(status?: Opportunity['qualification_stat
   }
 }
 
+function renderSaNotes(saNotes?: string | null) {
+  if (!saNotes || !saNotes.trim()) {
+    return (
+      <p className="brief-text font-sans text-sm leading-relaxed text-[#52545D] whitespace-pre-wrap text-pretty">
+        No SA technical notes recorded.
+      </p>
+    );
+  }
+
+  const parts = saNotes.split(/\n*\[SA Discovery Update - ([^\]]+)\]\n*/);
+  const baselineText = parts[0]?.trim() || '';
+  const updates: Array<{ dateLabel: string; content: string }> = [];
+
+  for (let i = 1; i < parts.length; i += 2) {
+    const rawIso = parts[i]?.trim() || '';
+    const content = parts[i + 1]?.trim() || '';
+    if (!content) continue;
+    const dateLabel = /^\d{4}-\d{2}-\d{2}/.test(rawIso) ? rawIso.slice(0, 10) : rawIso;
+    updates.push({ dateLabel, content });
+  }
+
+  return (
+    <>
+      {baselineText && (
+        <p className="brief-text font-sans text-sm leading-relaxed text-[#52545D] whitespace-pre-wrap text-pretty">
+          {baselineText}
+        </p>
+      )}
+      {updates.map((update, idx) => (
+        <div
+          key={`${update.dateLabel}-${idx}`}
+          className={baselineText || idx > 0 ? 'mt-3 pt-3 border-t border-[#ECEAE3]' : undefined}
+        >
+          <div className="font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1 tabular-nums">
+            SA Discovery Update · {update.dateLabel}
+          </div>
+          <p className="brief-text font-sans text-sm leading-relaxed text-[#52545D] whitespace-pre-wrap text-pretty">
+            {update.content}
+          </p>
+        </div>
+      ))}
+    </>
+  );
+}
+
 export function DealContextCard({ opportunity }: DealContextCardProps) {
   const flags = opportunity.competitive_flags || [];
   const competitorText = flags.includes('Netlify')
@@ -103,15 +148,13 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
             <div className="brief-heading font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1">
               SA Technical Assessment
             </div>
-            <p className="brief-text font-sans text-sm leading-relaxed text-[#52545D] whitespace-pre-wrap text-pretty">
-              {opportunity.sa_notes || 'No SA technical notes recorded.'}
-            </p>
+            {renderSaNotes(opportunity.sa_notes)}
           </div>
         </div>
       </details>
 
-      {/* Desktop (lg+) Narrative Briefs Container with Constrained Scroll */}
-      <div className="hidden lg:flex lg:flex-col lg:max-h-[680px] lg:overflow-y-auto briefs-box flex-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-4 space-y-4">
+      {/* Desktop (lg+) Narrative Briefs Container */}
+      <div className="hidden lg:flex lg:flex-col briefs-box rounded-md border border-[#E2E0D8] bg-[#FFFFFF] p-4 space-y-4">
         <div className="brief-block border-l-2 border-[#111215] pl-3">
           <div className="brief-heading font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1.5">
             AE Business Brief
@@ -125,9 +168,7 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
           <div className="brief-heading font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1.5">
             SA Technical Assessment
           </div>
-          <p className="brief-text font-sans text-sm leading-relaxed text-[#52545D] whitespace-pre-wrap text-pretty">
-            {opportunity.sa_notes || 'No SA technical notes recorded.'}
-          </p>
+          {renderSaNotes(opportunity.sa_notes)}
         </div>
       </div>
     </div>

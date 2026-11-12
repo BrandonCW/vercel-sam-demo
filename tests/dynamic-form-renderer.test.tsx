@@ -433,10 +433,12 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       expect(container.querySelector('.animate-spin')).toBeNull();
     });
 
-    it('omits duplicate CRM Qualification Writeback and Current Stage from DealContextCard', () => {
+    it('omits duplicate CRM Qualification Writeback and Current Stage from DealContextCard and formats SA Discovery Update cleanly', () => {
       const opp = opportunity({
         qualification_status: 'qualified',
         suggested_next_steps: '[QUALIFIED] Advance to Stage 3 | Owner: SA | Focus: ISR | Watch: Netlify',
+        sa_notes:
+          'Baseline SA technical brief.\n\n[SA Discovery Update - 2026-10-01T12:05:00.000Z]\n• Confirmed technical criteria: Build speed <5m',
       });
       const { container } = render(<DealContextCard opportunity={opp} />);
 
@@ -444,6 +446,9 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       expect(screen.queryByTestId('crm-writeback-card')).toBeNull();
       expect(container.textContent).not.toContain('CRM Qualification Writeback');
       expect(container.textContent).not.toContain('Current Stage');
+      expect(container.textContent).not.toContain('[SA Discovery Update -');
+      expect(screen.getAllByText('SA Discovery Update · 2026-10-01').length).toBeGreaterThanOrEqual(1);
+      expect(container.querySelector('.briefs-box')?.className).not.toContain('lg:max-h-[680px]');
       expect(screen.getByText('Acme Global')).toBeTruthy();
     });
   });
