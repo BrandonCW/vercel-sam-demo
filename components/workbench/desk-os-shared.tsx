@@ -271,7 +271,7 @@ export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
   return (
     <div className="monochrome-top-bar flex flex-col sm:flex-row sm:min-h-12 items-start sm:items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#FFFFFF] px-4 py-2.5 sm:px-5 sm:py-2.5">
       <div className="bar-left flex w-full sm:w-auto min-w-0 sm:flex-1 items-center gap-2.5 sm:gap-3">
-        <div className="bar-logo flex shrink-0 items-center gap-2 font-sans text-kicker font-semibold uppercase text-[#787C87] whitespace-nowrap">
+        <div className="bar-logo flex shrink-0 items-center gap-2 font-sans text-kicker font-semibold uppercase text-[#636772] whitespace-nowrap">
           <svg
             width="14"
             height="14"
@@ -287,18 +287,17 @@ export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
           <span>DEAL DESK</span>
         </div>
         <div className="bar-divider h-4 w-px shrink-0 bg-[#E2E0D8]" aria-hidden="true" />
-        <h2 className="opp-title min-w-0 font-sans text-sm sm:text-base font-semibold tracking-[-0.015em] text-[#111215] truncate">
-          {opportunity.name || 'Acme Corp — Platform Migration'}
-        </h2>
+        <h1 className="opp-title min-w-0 font-sans text-2xl leading-tight font-semibold tracking-tight text-[#111215] truncate">
+          {opportunity.name || 'Acme Corp – Platform Migration'}
+        </h1>
       </div>
 
-      <div className="bar-right flex shrink-0 items-center gap-2 font-sans">
-        <span className="inline-flex min-h-6 items-center whitespace-nowrap rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D] tabular-nums">
-          <span className="ui-pill-label">{stageDisplay}</span>
+      <div className="bar-right flex flex-wrap shrink-0 items-center gap-2 font-sans text-xs sm:text-sm tabular-nums text-[#52545D]">
+        <span>{stageDisplay}</span>
+        <span aria-hidden="true" className="text-[#636772]">
+          ·
         </span>
-        <span className="inline-flex min-h-6 items-center whitespace-nowrap rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#111215] tabular-nums">
-          <span className="ui-pill-label">{formattedAmount}</span>
-        </span>
+        <span className="font-semibold text-[#111215]">{formattedAmount}</span>
       </div>
     </div>
   );
@@ -368,7 +367,7 @@ export function ProblemCauseFixBanner({
           <button
             type="button"
             onClick={onDismiss}
-            className="inline-flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1.5 font-sans text-xs font-medium leading-none text-[#787C87] hover:text-[#111215] cursor-pointer"
+            className="inline-flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1.5 font-sans text-xs font-medium leading-none text-[#636772] hover:text-[#111215] cursor-pointer"
           >
             <XCircle className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="ui-pill-label">Dismiss</span>
@@ -429,13 +428,13 @@ export function SuggestedNextStepsCard({
   }
 
   return (
-    <div className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-5">
+    <div className="pb-5 mb-5 border-b border-[#E2E0D8]">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-3 mb-3.5">
         <div>
-          <h3 className="font-sans text-sm sm:text-base font-semibold tracking-[-0.015em] text-[#111215]">
+          <h2 className="font-sans text-lg font-semibold tracking-tight text-[#111215]">
             Suggested Next Steps
-          </h3>
-          <p className="mt-0.5 font-sans text-xs text-[#787C87]">
+          </h2>
+          <p className="mt-0.5 font-sans text-xs text-[#636772]">
             {syncMode === 'simulation'
               ? 'Simulation preview · Simulated Salesforce CRM'
               : 'Synced to simulated Salesforce CRM'}
@@ -488,7 +487,7 @@ export function SuggestedNextStepsCard({
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-[#E2E0D8] pt-3">
           {structured.metadata.map((meta) => (
             <div key={meta.key} className="min-w-0">
-              <div className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
+              <div className="font-sans text-kicker font-semibold uppercase text-[#636772]">
                 {meta.label}
               </div>
               <div className="mt-0.5 font-sans text-xs font-medium text-[#111215] leading-snug text-pretty">
@@ -546,7 +545,7 @@ export function Stage3HeaderLockup({
           <span className="text-2xl font-semibold tracking-[-0.02em] text-[#111215]">
             {score}
           </span>
-          <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
+          <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
           {hasNonZeroDelta && (
             <span className="ml-1.5 text-sm font-medium text-[#52545D]">
               ({scoreDelta! > 0 ? `+${scoreDelta}` : scoreDelta})
@@ -554,12 +553,14 @@ export function Stage3HeaderLockup({
           )}
         </div>
 
+        <span aria-hidden="true" className="h-4 w-px bg-[#E2E0D8] shrink-0" />
+
         <span
-          className={`inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none tabular-nums ${
+          className={`font-sans text-xs sm:text-sm font-medium tabular-nums ${
             gateReadout.isSatisfied ? 'text-[#111215]' : 'text-[#52545D]'
           }`}
         >
-          <span className="ui-pill-label">{gateReadout.label}</span>
+          {gateReadout.label}
         </span>
       </div>
 
@@ -571,7 +572,7 @@ export function Stage3HeaderLockup({
             onClick={() => {
               void onRerunAudit();
             }}
-            className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:cursor-not-allowed"
           >
             <RefreshCw className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
             <span className="ui-pill-label">Re-run Deal Audit</span>

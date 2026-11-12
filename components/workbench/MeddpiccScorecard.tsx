@@ -164,15 +164,15 @@ export function MeddpiccScorecard({
     mode === 'completed' && delta !== undefined && delta !== null && delta !== 0;
 
   return (
-    <section className="meddpicc-table rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] overflow-hidden font-sans">
+    <section className="meddpicc-table border-t border-b border-[#E2E0D8] bg-[#FFFFFF] overflow-hidden font-sans">
       {/* Standard Header (only when not hidden) */}
       {!hideHeader && mode !== 'loading' && (
         <div className="flex items-center justify-between border-b border-[#E2E0D8] px-5 py-4">
           <div>
-            <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
+            <h2 className="font-sans text-lg font-semibold tracking-tight text-[#111215]">
               MEDDPICC Scorecard
-            </h3>
-            <p className="mt-0.5 font-sans text-xs text-[#787C87]">
+            </h2>
+            <p className="mt-0.5 font-sans text-xs text-[#636772]">
               Eight weighted qualification dimensions
             </p>
           </div>
@@ -180,12 +180,12 @@ export function MeddpiccScorecard({
             <p className="flex items-baseline justify-end font-sans tabular-nums">
               <span
                 className={`text-2xl font-semibold tracking-[-0.02em] ${
-                  mode === 'unassessed' ? 'text-[#787C87]' : 'text-[#111215]'
+                  mode === 'unassessed' ? 'text-[#636772]' : 'text-[#111215]'
                 }`}
               >
                 {mode === 'unassessed' ? '--' : (score ?? 0)}
               </span>
-              <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
+              <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
               {hasHeaderDelta ? (
                 <span className="ml-1.5 text-sm font-medium text-[#52545D]">
                   ({delta! > 0 ? `+${delta}` : delta})
@@ -197,7 +197,7 @@ export function MeddpiccScorecard({
       )}
 
       {/* 4-Column Table Header */}
-      <div className="hidden md:grid md:grid-cols-[172px_152px_1fr_1fr] gap-4 border-b border-[#E2E0D8] bg-[#F8F8F6] px-5 py-2.5 font-sans text-kicker font-semibold uppercase text-[#787C87]">
+      <div className="hidden md:grid md:grid-cols-[172px_152px_1fr_1fr] gap-4 border-b border-[#E2E0D8] bg-[#F8F8F6] px-5 py-2.5 font-sans text-kicker font-semibold uppercase text-[#636772]">
         <div>Dimension</div>
         <div>Score</div>
         <div>Verified Evidence</div>
@@ -261,7 +261,7 @@ function ScorecardRow({
           <div className="font-sans text-sm font-semibold text-[#111215]">
             {dimension.label}
           </div>
-          <div className="mt-0.5 font-sans text-xs text-[#787C87] tabular-nums">
+          <div className="mt-0.5 font-sans text-xs text-[#636772] tabular-nums">
             {dimension.letter} · Weight {dimension.weightLabel}
           </div>
         </div>
@@ -278,12 +278,12 @@ function ScorecardRow({
 
           <div className="mt-1.5 flex items-baseline font-sans text-sm tabular-nums">
             {isUnassessed || isLoading ? (
-              <span className="font-normal text-[#787C87]">--/10</span>
+              <span className="font-normal text-[#636772]">--/10</span>
             ) : (
               <>
                 <span>
                   <span className="font-semibold text-[#111215]">{dimension.score}</span>
-                  <span className="font-normal text-[#787C87]">/10</span>
+                  <span className="font-normal text-[#636772]">/10</span>
                 </span>
                 {hasDimensionDelta && (
                   <span className="ml-1.5 text-sm font-normal text-[#52545D]">
@@ -297,7 +297,7 @@ function ScorecardRow({
 
         {/* Column 3: Verified Evidence */}
         <div className="font-sans text-sm leading-relaxed text-[#52545D]">
-          <div className="md:hidden font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1">
+          <div className="md:hidden font-sans text-kicker font-semibold uppercase text-[#636772] mb-1">
             Verified Evidence
           </div>
           {isLoading ? (
@@ -306,7 +306,7 @@ function ScorecardRow({
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/2" />
             </div>
           ) : isUnassessed ? (
-            <p className="text-sm text-[#787C87]">—</p>
+            <p className="text-sm text-[#636772]">–</p>
           ) : isAnalyzing && quotes.length === 0 ? (
             <div
               className="space-y-1.5 py-0.5"
@@ -327,13 +327,13 @@ function ScorecardRow({
               </p>
             ))
           ) : (
-            <p className="text-sm text-[#787C87]">—</p>
+            <p className="text-sm text-[#636772]">–</p>
           )}
         </div>
 
         {/* Column 4: Open Gap OR Resolution */}
         <div className="font-sans text-sm leading-relaxed text-[#52545D]">
-          <div className="md:hidden font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1">
+          <div className="md:hidden font-sans text-kicker font-semibold uppercase text-[#636772] mb-1">
             {isCompleted ? 'Resolution' : 'Open Gap'}
           </div>
 
@@ -343,7 +343,7 @@ function ScorecardRow({
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/3" />
             </div>
           ) : isUnassessed ? (
-            <p className="text-sm text-[#787C87]">—</p>
+            <p className="text-sm text-[#636772]">–</p>
           ) : isAnalyzing && gaps.length === 0 ? (
             <div
               className="space-y-1.5 py-0.5"
@@ -364,7 +364,7 @@ function ScorecardRow({
                   className="flex items-start gap-2 text-[#52545D] leading-relaxed text-pretty"
                 >
                   <span
-                    className="mt-2 size-1 shrink-0 rounded-full bg-[#787C87]"
+                    className="mt-2 size-1 shrink-0 rounded-full bg-[#636772]"
                     aria-hidden="true"
                   />
                   <span>{gap}</span>
@@ -374,7 +374,7 @@ function ScorecardRow({
           ) : resolvedInDiscovery ? (
             <p className="font-medium text-[#111215]">Resolved in discovery</p>
           ) : (
-            <p className="text-sm text-[#787C87]">—</p>
+            <p className="text-sm text-[#636772]">–</p>
           )}
         </div>
       </div>

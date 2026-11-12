@@ -384,13 +384,14 @@ export function QualificationWorkbench({
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
                     <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
                       <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
-                        <span className="text-2xl font-semibold tracking-[-0.02em] text-[#787C87]">
+                        <span className="text-2xl font-semibold tracking-[-0.02em] text-[#636772]">
                           --
                         </span>
-                        <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
+                        <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
                       </div>
-                      <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D] tabular-nums">
-                        <span className="ui-pill-label">{unassessedGateReadout.label}</span>
+                      <span aria-hidden="true" className="h-4 w-px bg-[#E2E0D8] shrink-0" />
+                      <span className="font-sans text-xs sm:text-sm font-medium text-[#52545D] tabular-nums">
+                        {unassessedGateReadout.label}
                       </span>
                     </div>
 
@@ -458,14 +459,15 @@ export function QualificationWorkbench({
                         <span className="text-2xl font-semibold tracking-[-0.02em] text-[#111215]">
                           {currentScore}
                         </span>
-                        <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
+                        <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
                       </div>
+                      <span aria-hidden="true" className="h-4 w-px bg-[#E2E0D8] shrink-0" />
                       <span
-                        className={`inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none tabular-nums ${
+                        className={`font-sans text-xs sm:text-sm font-medium tabular-nums ${
                           stage1GateReadout.isSatisfied ? 'text-[#111215]' : 'text-[#52545D]'
                         }`}
                       >
-                        <span className="ui-pill-label">{stage1GateReadout.label}</span>
+                        {stage1GateReadout.label}
                       </span>
                     </div>
 
@@ -497,7 +499,7 @@ export function QualificationWorkbench({
                             type="button"
                             disabled={true}
                             aria-busy="true"
-                            className="btn-action-primary inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2 font-sans text-xs sm:text-sm font-semibold leading-none text-[#FFFFFF] opacity-75 cursor-not-allowed"
+                            className="btn-action-primary inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2 font-sans text-xs sm:text-sm font-semibold leading-none text-[#FFFFFF] cursor-not-allowed"
                           >
                             <span
                               className="inline-block size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"
@@ -518,8 +520,8 @@ export function QualificationWorkbench({
                           </span>
                         </button>
                       ) : (
-                        <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D]">
-                          <span className="ui-pill-label">No Open Discovery Questions</span>
+                        <span className="font-sans text-xs sm:text-sm font-medium text-[#52545D]">
+                          No Open Discovery Questions
                         </span>
                       )}
                     </div>
