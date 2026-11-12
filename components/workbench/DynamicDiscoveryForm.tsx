@@ -33,6 +33,7 @@ export interface DynamicDiscoveryFormProps {
   dimensions?: Record<string, any>;
   onBack?: () => void;
   onCancel?: () => void;
+  onReturnToStage3?: () => void;
   onDraftChange?: (
     answers: Record<string, string | string[]>,
     manualNotes: string
@@ -52,6 +53,7 @@ export function DynamicDiscoveryForm({
   dimensions,
   onBack,
   onCancel,
+  onReturnToStage3,
   onDraftChange,
 }: DynamicDiscoveryFormProps) {
   const activeForm = form ?? dynamicForm;
@@ -390,37 +392,50 @@ export function DynamicDiscoveryForm({
   return (
     <section className="bg-[#FFFFFF] font-sans">
       {/* Desk OS Stage 2 Header with Back to Audit & Answered Counter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4 mb-5">
-        <div>
-          <h2 className="font-sans text-base font-semibold tracking-tight text-[#111215]">
+      <div className="border-b border-[#E2E0D8] pb-4 mb-5">
+        <div className="stage-header-row flex flex-col sm:flex-row sm:min-h-9 sm:items-center justify-between gap-3">
+          <h2 className="flex min-h-9 items-center font-sans text-base font-semibold tracking-tight text-[#111215]">
             {activeForm?.title || 'Field Discovery'}
           </h2>
-          <p className="mt-1 font-sans text-xs text-[#636772]">
-            {activeForm?.summary || 'Close the qualification blind spots identified in baseline scoring.'}
-          </p>
-        </div>
 
-        <div className="flex shrink-0 items-center gap-3">
-          <span
-            className="whitespace-nowrap font-sans text-xs text-[#636772] font-medium tabular-nums"
-            role="status"
-            aria-live="polite"
-          >
-            Answered {answeredCount} of {totalFields}
-          </span>
+          <div className="flex min-h-9 flex-wrap shrink-0 items-center gap-3">
+            {onReturnToStage3 && (
+              <button
+                type="button"
+                onClick={onReturnToStage3}
+                className="inline-flex min-h-9 items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
+              >
+                <span className="ui-pill-label">
+                  Return to Updated Assessment (Stage 3) →
+                </span>
+              </button>
+            )}
 
-          {(onBack || onCancel) && (
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={onBack || onCancel}
-              className="inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:cursor-not-allowed"
+            <span
+              className="whitespace-nowrap font-sans text-xs text-[#636772] font-medium tabular-nums"
+              role="status"
+              aria-live="polite"
             >
-              <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
-              <span className="ui-pill-label">Back to Audit</span>
-            </button>
-          )}
+              Answered {answeredCount} of {totalFields}
+            </span>
+
+            {(onBack || onCancel) && (
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={onBack || onCancel}
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:cursor-not-allowed"
+              >
+                <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="ui-pill-label">Back to Audit</span>
+              </button>
+            )}
+          </div>
         </div>
+
+        <p className="mt-1 font-sans text-xs text-[#636772]">
+          {activeForm?.summary || 'Close the qualification blind spots identified in baseline scoring.'}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">

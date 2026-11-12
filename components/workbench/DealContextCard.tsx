@@ -81,7 +81,7 @@ export function DealContextCard({ opportunity }: DealContextCardProps) {
     <div className="workbench-left flex flex-col gap-4 p-5 bg-[#FFFFFF] border-b lg:border-b-0 lg:border-r border-[#E2E0D8] font-sans">
       {/* 2x2 Opportunity Metadata Section */}
       <div className="meta-box pb-4 border-b border-[#E2E0D8]">
-        <div className="flex items-center justify-between gap-2 mb-3.5">
+        <div className="flex min-h-9 items-center justify-between gap-2 mb-3.5">
           <div className="meta-box-title font-sans text-kicker font-semibold uppercase text-[#636772]">
             Opportunity Metadata
           </div>

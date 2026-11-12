@@ -428,7 +428,7 @@ export function SuggestedNextStepsCard({
   }
 
   return (
-    <div className="pb-5 mb-5 border-b border-[#E2E0D8]">
+    <div className="font-sans">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-3 mb-3.5">
         <div>
           <h2 className="font-sans text-base font-semibold tracking-tight text-[#111215]">
@@ -542,12 +542,12 @@ export function Stage3HeaderLockup({
 
   return (
     <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-        <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
+      <div className="flex min-h-9 flex-wrap items-center gap-2.5 sm:gap-3">
+        <div className="flex items-center whitespace-nowrap font-sans tabular-nums">
           <span className="text-sm leading-5 font-semibold text-[#111215]">
             {score}
           </span>
-          <span className="ml-1 text-sm leading-5 font-normal text-[#636772]">
+          <span className="ml-1 text-sm leading-5 font-medium text-[#636772]">
             / 100{hasNonZeroDelta ? ` (${deltaLabel})` : ''}
           </span>
         </div>
@@ -563,7 +563,7 @@ export function Stage3HeaderLockup({
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-h-9 flex-wrap items-center gap-2">
         {onRerunAudit && (
           <button
             type="button"
@@ -571,7 +571,7 @@ export function Stage3HeaderLockup({
             onClick={() => {
               void onRerunAudit();
             }}
-            className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:cursor-not-allowed"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:cursor-not-allowed"
           >
             <RefreshCw className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
             <span className="ui-pill-label">Re-run Deal Audit</span>
@@ -583,7 +583,7 @@ export function Stage3HeaderLockup({
           onClick={() => {
             void onReset();
           }}
-          className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
         >
           <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
           <span className="ui-pill-label">{resetButtonText}</span>

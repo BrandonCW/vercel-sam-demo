@@ -861,8 +861,8 @@ function LiveAssessmentSession({
               {/* 1. Blank Start State */}
               {activeStageView === 'blank' && workflowState === 'READY_TO_ASSESS' && (
                 <div className="space-y-4">
-                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex min-h-9 flex-wrap items-center gap-2.5 sm:gap-3">
                       <div className="flex items-center whitespace-nowrap font-sans tabular-nums">
                         <span className="text-sm leading-5 font-medium text-[#636772]">
                           – / 100
@@ -907,8 +907,8 @@ function LiveAssessmentSession({
               {/* 2. Phase A: Initial Rubric Scan (before jevResult arrives) */}
               {workflowState === 'ANALYZING' && !isSynthesizingDiscovery && (
                 <div className="space-y-4">
-                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="flex items-center gap-2.5">
+                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex min-h-9 items-center gap-2.5">
                       <Loader2
                         className="size-4 shrink-0 animate-spin text-[#52545D]"
                         aria-hidden="true"
@@ -927,7 +927,7 @@ function LiveAssessmentSession({
                       onClick={() => {
                         void agent.cancel();
                       }}
-                      className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
                     >
                       <Ban className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
                       <span className="ui-pill-label">Abort</span>
@@ -946,13 +946,13 @@ function LiveAssessmentSession({
               {/* 3. Stage 1: Initial Deal Audit (Unblocks IMMEDIATELY on jevResult!) */}
               {showStage1 && (
                 <div className="space-y-4">
-                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-                      <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
+                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex min-h-9 flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-center whitespace-nowrap font-sans tabular-nums">
                         <span className="text-sm leading-5 font-semibold text-[#111215]">
                           {stage1Score}
                         </span>
-                        <span className="ml-1 text-sm leading-5 font-normal text-[#636772]">/ 100</span>
+                        <span className="ml-1 text-sm leading-5 font-medium text-[#636772]">/ 100</span>
                       </div>
                       <span aria-hidden="true" className="hidden sm:block h-3.5 w-px bg-[#E2E0D8] shrink-0" />
                       <span
@@ -964,12 +964,12 @@ function LiveAssessmentSession({
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex min-h-9 flex-wrap items-center gap-2">
                       {isComplete && !isSynthesizingDiscovery && (
                         <button
                           type="button"
                           onClick={() => setActiveStageView('stage3')}
-                          className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
+                          className="inline-flex min-h-9 items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
                         >
                           <span className="ui-pill-label">
                             Return to Updated Assessment (Stage 3) →
@@ -1015,7 +1015,7 @@ function LiveAssessmentSession({
                           </span>
                         </button>
                       ) : (
-                        <span className="font-sans text-xs sm:text-sm font-medium text-[#52545D]">
+                        <span className="inline-flex min-h-9 items-center font-sans text-xs sm:text-sm font-medium text-[#52545D]">
                           No Open Discovery Questions
                         </span>
                       )}
@@ -1036,8 +1036,8 @@ function LiveAssessmentSession({
                 <div className="space-y-4">
                   {workflowState === 'EVALUATING' ? (
                     <div className="space-y-4">
-                      <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                        <div className="flex items-center gap-2.5">
+                      <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex min-h-9 items-center gap-2.5">
                           <Loader2
                             className="size-4 shrink-0 animate-spin text-[#52545D]"
                             aria-hidden="true"
@@ -1058,7 +1058,7 @@ function LiveAssessmentSession({
                             setSubmittingRequestId(null);
                             void agent.cancel();
                           }}
-                          className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
+                          className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
                         >
                           <Ban className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
                           <span className="ui-pill-label">Abort</span>
@@ -1072,37 +1072,22 @@ function LiveAssessmentSession({
                       />
                     </div>
                   ) : (
-                    <>
-                      {isComplete && (
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setActiveStageView('stage3')}
-                            className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer"
-                          >
-                            <span className="ui-pill-label">
-                              Return to Updated Assessment (Stage 3) →
-                            </span>
-                          </button>
-                        </div>
-                      )}
-
-                      <DynamicDiscoveryForm
-                        dynamicForm={dynamicForm}
-                        initialValues={savedFormData}
-                        initialNotes={savedManualNotes}
-                        dimensions={stage1Dimensions}
-                        readOnly={isRetrospectiveReadOnly}
-                        isLocked={turnInFlight}
-                        onBack={() => setActiveStageView('stage1')}
-                        onCancel={() => setActiveStageView('stage1')}
-                        onDraftChange={(answers, notes) => {
-                          setSavedFormData(answers);
-                          setSavedManualNotes(notes);
-                        }}
-                        onSubmit={handleSubmitFeedback}
-                      />
-                    </>
+                    <DynamicDiscoveryForm
+                      dynamicForm={dynamicForm}
+                      initialValues={savedFormData}
+                      initialNotes={savedManualNotes}
+                      dimensions={stage1Dimensions}
+                      readOnly={isRetrospectiveReadOnly}
+                      isLocked={turnInFlight}
+                      onBack={() => setActiveStageView('stage1')}
+                      onCancel={() => setActiveStageView('stage1')}
+                      onReturnToStage3={isComplete ? () => setActiveStageView('stage3') : undefined}
+                      onDraftChange={(answers, notes) => {
+                        setSavedFormData(answers);
+                        setSavedManualNotes(notes);
+                      }}
+                      onSubmit={handleSubmitFeedback}
+                    />
                   )}
                 </div>
               )}

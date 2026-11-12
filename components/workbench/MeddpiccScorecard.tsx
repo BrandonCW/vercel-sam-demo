@@ -185,7 +185,7 @@ export function MeddpiccScorecard({
               >
                 {mode === 'unassessed' ? '--' : (score ?? 0)}
               </span>
-              <span className="ml-1 text-sm leading-5 font-normal text-[#636772]">
+              <span className="ml-1 text-sm leading-5 font-medium text-[#636772]">
                 / 100{hasHeaderDelta ? ` (${delta! > 0 ? `+${delta}` : delta})` : ''}
               </span>
             </p>
@@ -275,11 +275,11 @@ function ScorecardRow({
 
           <div className="mt-1.5 flex items-baseline font-sans text-xs leading-4 tabular-nums">
             {isUnassessed || isLoading ? (
-              <span className="font-normal text-[#636772]">–/10</span>
+              <span className="font-medium text-[#636772]">–/10</span>
             ) : (
               <span>
                 <span className="font-semibold text-[#111215]">{dimension.score}</span>
-                <span className="font-normal text-[#636772]">
+                <span className="font-medium text-[#636772]">
                   /10
                   {hasDimensionDelta
                     ? ` (${dimension.delta! > 0 ? `+${dimension.delta}` : dimension.delta})`
