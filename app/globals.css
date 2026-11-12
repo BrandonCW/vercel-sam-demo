@@ -15,8 +15,8 @@
   --border-focus: #111215;
   --text: #111215;
   --text-secondary: #52545D;
-  --text-muted: #787C87;
-  --text-faint: #A6A7AD;
+  --text-muted: #636772;
+  --text-faint: #636772;
   --primary: #0F52BA;
   --primary-hover: #0C4196;
   --score-blocker: #DC2626;
@@ -67,7 +67,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: #E2E0D8;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {

@@ -10,8 +10,8 @@ colors:
   surface-recessed: "#F1F0EC"
   text: "#111215"
   text-secondary: "#52545D"
-  text-muted: "#787C87"
-  text-faint: "#A6A7AD"
+  text-muted: "#636772"
+  text-faint: "#636772"
   border-hairline: "#E2E0D8"
   border-subtle: "#ECEAE3"
   border-focus: "#111215"
@@ -132,12 +132,13 @@ Neutrals derive from a warm architectural stone palette (`#F8F8F6` canvas, `#E2E
 
 ## Layout
 
-**Workbench Layout:**
-- Primary Split-Pane Grid: `35% / 65%` ratio separated by a `1px solid #E2E0D8` hairline border.
-- Top Navigation & Deal Header: `TopNavBar` holds brand title + `Simulation`/`Live` pill + `Settings` trigger (no static placeholder user avatars). `MonochromeTopBar` surfaces Opportunity Name, CRM Stage, and ACV once at the top of the sheet.
-- Left Pane (`35%`): Non-redundant 2x2 Opportunity Metadata (`Account Executive`, `Solutions Architect`, `Account`, `Target Close` + CRM status pill), Neutral Competitor Context, and AE/SA Brief blocks. Never duplicates CRM stage or Stage 3's Next Steps writeback in the left pane.
-- Right Pane (`65%`): Dynamic 3-stage process view container navigated via a clean outcome-neutral `StepperBar` (`Initial Deal Audit`, `Field Discovery`, `Updated Assessment`) with zero parenthetical outcome spoilers or duplicate spinners.
-- Maximum container width: `1440px`, centered with `24px` horizontal gutters.
+- **Workbench Layout:**
+  - Primary Split-Pane Grid: `35% / 65%` ratio inside `.workbench-shell` separated by a `1px solid #E2E0D8` hairline border.
+  - Affordance-Only Borders & Zero Nested Cards: Reserve bordered pill/chip containers strictly for interactive controls (`Simulation`/`Live`, `Settings`, `Copy`, buttons, inputs, selects). Static metadata (`Stage`, `ACV`, `CRM Status`, `Stage Gate Readiness`) renders as unboxed typography separated by hairlines (`|`), middle dots (`·`), or a status dot. Inside `.workbench-shell`, sections divide with full-bleed horizontal hairlines (`border-b border-[#E2E0D8]`) rather than nested 4-sided bordered cards.
+  - Top Navigation & Deal Header: `TopNavBar` holds brand title (`<span>`) + `Simulation`/`Live` button + `Settings` trigger (no static placeholder user avatars). `MonochromeTopBar` surfaces Opportunity Name (`<h1>`), CRM Stage, and ACV once at the top of the sheet.
+  - Left Pane (`35%`): Non-redundant 2x2 Opportunity Metadata (`Account Executive`, `Solutions Architect`, `Account`, `Target Close` + unboxed CRM status indicator), Neutral Competitor Context, and AE/SA Brief blocks separated by hairlines. Never duplicates CRM stage or Stage 3's Next Steps writeback in the left pane.
+  - Right Pane (`65%`): Dynamic 3-stage process view container navigated via a clean horizontal underline tab bar `StepperBar` (`Initial Deal Audit`, `Field Discovery`, `Updated Assessment`) with zero nested pill boxes, parenthetical outcome spoilers, or duplicate spinners.
+  - Maximum container width: `1440px`, centered with `24px` horizontal gutters.
 
 **3-Stage Operational Process Flow:**
 1. **Stage 1: Initial Deal Audit:** All 8 MEDDPICC dimensions open with zero redundant sub-label status pills (`Unassessed`/`Partial`/`Verified`) or `Blocker` badges—the 10-segment bar and score communicate tier directly. Primary CTA triggers discovery: `Answer N Discovery Questions →`.
@@ -172,7 +173,7 @@ Neutrals derive from a warm architectural stone palette (`#F8F8F6` canvas, `#E2E
   - Recessed `#F8F8F6` surface (`#F1F0EC` when disabled), `1px solid #E2E0D8` border (`hover:border-[#C8C5BA]`), `6px` radius, `min-h-10` (`40px`) height, `14px` (`text-sm`) `Instrument Sans`.
   - `<select>` elements MUST use `appearance-none` wrapped in `<div class="relative">` with `pr-10` and a custom right-aligned `ChevronDown` (`size-4`) so macOS/browser native Aqua popup buttons never render.
   - Focus state: `1px solid #111215` crisp obsidian border on `#FFFFFF` surface with zero colored glow.
-  - Field helper guidance renders as a quiet 1-line caption (`mt-1.5 text-xs text-[#787C87]`) — never inside a bordered beige callout box with a `(?)` icon.
+  - Field helper guidance renders as a quiet 1-line caption (`mt-1.5 text-xs text-[#636772]`) — never inside a bordered beige callout box with a `(?)` icon.
 - **Score Delta Readout (`current (+Δ)`):**
   - Clean inline parenthetical text in `Instrument Sans` `tabular-nums` (`76 / 100 (+18)`, `8/10 (+5)`).
   - Zero `prev →` prefixes, zero button borders, zero background fills, zero badge styling.
@@ -212,3 +213,4 @@ Neutrals derive from a warm architectural stone palette (`#F8F8F6` canvas, `#E2E
 | 2026-10-21 | Clean Parenthetical Score Deltas | User feedback: replaced button-like delta badges with unadorned typographic parentheticals `(+24)` and `(+6)`. |
 | 2026-11-11 | Monochrome AI Execution-Mode Pill Carve-Out | Amended Zero Demo Scaffolding to permit a single strictly monochrome `SIMULATION` / `LIVE` pill in `TopNavBar` so operators can tell deterministic AI fixture replay from live Gateway inference while keeping color strictly quarantined. |
 | 2026-11-12 | Single-Typeface Unification, Custom `<select>` Controls & UI De-duplication | Unified all typography onto `Instrument Sans` + `tabular-nums` (retiring `JetBrains Mono` switching, `prev →` score prefixes, and `[I]`/`[E]` brackets), standardized `40px` `appearance-none` `<select>` controls and quiet 1-line helper captions, and removed duplicate left-pane CRM writeback, `DD` avatar, redundant `StepperBar` spoilers/spinners, and redundant dimension/blocker badges. |
+| 2026-11-12 | Affordance-Only Borders, Split-Pane Hairlines & WCAG AA `#636772` Muted Ink | Darkened muted ink from `#787C87` to `#636772` (`>5.0:1` contrast across `#FFFFFF`, `#F8F8F6`, and `#F1F0EC`), unboxed static metadata pills (`Stage`, `ACV`, `CRM Status`, `Stage Gate Readiness`) so borders belong exclusively to interactive controls, converted `StepperBar` to a clean horizontal underline tab bar, and replaced nested cards inside `.workbench-shell` with full-bleed hairline sections. |

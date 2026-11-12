@@ -73,17 +73,17 @@ export default function LoginPage() {
             <Gauge className="size-5 text-[#FFFFFF]" aria-hidden="true" />
           </div>
           <div>
-            <p className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
+            <p className="font-sans text-kicker font-semibold uppercase text-[#636772]">
               DEAL OPERATIONS
             </p>
-            <h1 className="font-sans text-lg font-bold tracking-[-0.025em] text-[#111215] leading-tight">
+            <h1 className="font-sans text-[23px] font-bold tracking-[-0.025em] text-[#111215] leading-tight">
               Qualification System
             </h1>
           </div>
         </div>
 
         <div className="mb-6">
-          <h2 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215] mb-1.5">
+          <h2 className="font-sans text-lg font-semibold tracking-[-0.015em] text-[#111215] mb-1.5">
             Sign in to Deal Desk Workbench
           </h2>
           <p className="font-sans text-sm text-[#52545D] leading-relaxed text-pretty">
@@ -111,7 +111,7 @@ export default function LoginPage() {
               Access Password
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#787C87]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#636772]">
                 <Lock className="w-4 h-4" aria-hidden="true" />
               </div>
               <input
@@ -123,7 +123,7 @@ export default function LoginPage() {
                 placeholder="Enter workspace password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full min-h-10 pl-9 pr-3 py-2.5 bg-[#F1F0EC] border border-[#E2E0D8] rounded-md font-sans text-sm text-[#111215] placeholder-[#787C87] focus:outline-none focus:border-[#111215] transition-colors"
+                className="w-full min-h-10 pl-9 pr-3 py-2.5 bg-[#F1F0EC] border border-[#E2E0D8] rounded-md font-sans text-sm text-[#111215] placeholder-[#636772] focus:outline-none focus:border-[#111215] transition-colors"
               />
             </div>
           </div>

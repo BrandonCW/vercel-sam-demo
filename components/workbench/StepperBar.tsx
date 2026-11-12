@@ -130,7 +130,7 @@ export function StepperBar({
   return (
     <nav
       aria-label="Qualification process progression"
-      className="mb-6 flex flex-col md:flex-row items-stretch md:items-center gap-2 rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-1.5"
+      className="mb-6 flex flex-wrap items-center gap-4 sm:gap-6 border-b border-[#E2E0D8]"
     >
       {DESK_OS_STAGES.map((stage, idx) => {
         const isActive = activeStage === stage.id;
@@ -141,10 +141,10 @@ export function StepperBar({
           <React.Fragment key={stage.id}>
             {idx > 0 && (
               <span
-                className="hidden md:inline-block text-[#787C87] text-xs select-none px-1"
+                className="hidden sm:inline-block text-[#636772] text-xs select-none"
                 aria-hidden="true"
               >
-                →
+                /
               </span>
             )}
 
@@ -157,29 +157,19 @@ export function StepperBar({
                 }
               }}
               aria-current={isActive ? 'step' : undefined}
-              className={`min-h-10 flex-1 min-w-0 flex items-center justify-center md:justify-start gap-2.5 rounded-md px-3.5 py-2 font-sans text-xs sm:text-sm font-medium transition-all text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111215] ${
+              className={`min-h-10 inline-flex items-center gap-2 px-1 sm:px-2 py-2.5 -mb-px border-b-2 font-sans text-xs sm:text-sm transition-colors text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111215] ${
                 isActive
-                  ? 'bg-[#F1F0EC] border border-[#E2E0D8] text-[#111215] font-semibold'
+                  ? 'border-[#111215] font-semibold text-[#111215]'
                   : unlocked
-                  ? 'text-[#52545D] hover:bg-[#F1F0EC]/60 hover:text-[#111215] cursor-pointer'
-                  : 'text-[#A6A7AD] cursor-not-allowed opacity-60'
+                  ? 'border-transparent font-medium text-[#52545D] hover:text-[#111215] cursor-pointer'
+                  : 'border-transparent font-medium text-[#636772] cursor-not-allowed'
               }`}
             >
-              <span
-                className={`flex size-5 shrink-0 items-center justify-center rounded-[4px] border font-sans text-xs font-semibold leading-none tabular-nums ${
-                  completed
-                    ? 'border-[#111215] bg-[#111215] text-[#FFFFFF]'
-                    : isActive
-                    ? 'border-[#111215] bg-[#FFFFFF] text-[#111215]'
-                    : 'border-[#E2E0D8] bg-[#F1F0EC] text-[#787C87]'
-                }`}
-              >
-                {completed ? (
-                  <Check className="size-3 stroke-[2.5]" aria-hidden="true" />
-                ) : (
-                  stage.stepNumber
-                )}
-              </span>
+              {completed ? (
+                <Check className="size-3.5 shrink-0 text-[#111215]" aria-hidden="true" />
+              ) : (
+                <span className="tabular-nums">{stage.stepNumber}.</span>
+              )}
 
               <span className="truncate">{stage.fullTitle}</span>
             </button>
