@@ -10,6 +10,12 @@ export interface ParsedNextStepItem {
   raw: string;
 }
 
+export interface SuggestedNextStepsMetadata {
+  owner?: string | null;
+  focus?: string | null;
+  watch?: string | null;
+}
+
 const LEADING_STATUS_TAG_RE =
   /^\s*\[(?:QUALIFIED|IN[\s_-]?REVIEW|DISQUALIFIED|UNQUALIFIED)\]\s*/i;
 const STRUCTURED_PREFIX_RE = /^(Owner|Focus|Watch|Action|Next Milestone):\s*(.+)$/i;
@@ -52,6 +58,82 @@ export function formatSuggestedNextStepsCopyText(
   if (items.length === 0) return '';
   if (items.length === 1) return items[0].raw;
   return items.map((item, idx) => `${idx + 1}. ${item.raw}`).join('\n');
+}
+
+interface StructuredNextStepsView {
+  leadAction: string;
+  metadata: Array<{ key: 'owner' | 'focus' | 'watch'; label: string; value: string }>;
+}
+
+/**
+ * Separates lead action prose from structured `Owner`, `Focus`, and `Watch`
+ * metadata across both pipe-delimited backend strings and inline fixture prose.
+ */
+export function extractStructuredNextSteps(
+  steps: string | string[] | null | undefined,
+  fallbackMetadata?: SuggestedNextStepsMetadata
+): StructuredNextStepsView | null {
+  const items = parseSuggestedNextSteps(steps);
+  if (items.length === 0) return null;
+
+  const actionParts: string[] = [];
+  let owner: string | undefined;
+  let focus: string | undefined;
+  let watch: string | undefined;
+
+  for (const item of items) {
+    const normalizedLabel = item.label?.toLowerCase();
+    if (normalizedLabel === 'owner') {
+      owner = item.text;
+    } else if (normalizedLabel === 'focus') {
+      focus = item.text;
+    } else if (normalizedLabel === 'watch') {
+      watch = item.text;
+    } else {
+      actionParts.push(item.text);
+    }
+  }
+
+  let leadAction = actionParts.join(' ').trim();
+
+  // Handle single-paragraph fixture prose with inline "Owner: ... . Action: ..."
+  if (!owner && /\bOwner:\s*/i.test(leadAction)) {
+    const ownerMatch = leadAction.match(/\bOwner:\s*([^.|]+?)(?:\.\s*|$)/i);
+    if (ownerMatch) {
+      owner = ownerMatch[1].trim();
+      leadAction = leadAction.replace(ownerMatch[0], ' ').trim();
+    }
+  }
+  if (!focus && /\bFocus:\s*/i.test(leadAction)) {
+    const focusMatch = leadAction.match(/\bFocus:\s*([^.|]+?)(?:\.\s*|$)/i);
+    if (focusMatch) {
+      focus = focusMatch[1].trim();
+      leadAction = leadAction.replace(focusMatch[0], ' ').trim();
+    }
+  }
+  if (!watch && /\bWatch:\s*/i.test(leadAction)) {
+    const watchMatch = leadAction.match(/\bWatch:\s*([^.|]+?)(?:\.\s*|$)/i);
+    if (watchMatch) {
+      watch = watchMatch[1].trim();
+      leadAction = leadAction.replace(watchMatch[0], ' ').trim();
+    }
+  }
+
+  leadAction = leadAction.replace(/\bAction:\s*/gi, '').replace(/\s{2,}/g, ' ').trim();
+
+  const resolvedOwner = owner || fallbackMetadata?.owner?.trim() || undefined;
+  const resolvedFocus = focus || fallbackMetadata?.focus?.trim() || undefined;
+  const resolvedWatch = watch || fallbackMetadata?.watch?.trim() || undefined;
+
+  const metadata: Array<{ key: 'owner' | 'focus' | 'watch'; label: string; value: string }> = [];
+  if (resolvedOwner) metadata.push({ key: 'owner', label: 'OWNER', value: resolvedOwner });
+  if (resolvedFocus) metadata.push({ key: 'focus', label: 'FOCUS', value: resolvedFocus });
+  if (resolvedWatch) metadata.push({ key: 'watch', label: 'WATCH', value: resolvedWatch });
+
+  return {
+    leadAction: leadAction || items[0].text,
+    metadata,
+  };
 }
 
 export function resolveStageGateLabel(
@@ -103,7 +185,8 @@ export function formatStageGateReadout({
     };
   }
 
-  const hasExplicitGate = stageGate !== null && stageGate !== undefined && typeof stageGate.gateReady === 'boolean';
+  const hasExplicitGate =
+    stageGate !== null && stageGate !== undefined && typeof stageGate.gateReady === 'boolean';
   const blockerCount = hasExplicitGate
     ? stageGate.gateReady
       ? 0
@@ -114,7 +197,10 @@ export function formatStageGateReadout({
         )
     : qualificationStatus === 'qualified'
     ? 0
-    : Math.max(fallbackBlockerCount, qualificationStatus === 'in_review' || qualificationStatus === 'disqualified' ? 1 : 0);
+    : Math.max(
+        fallbackBlockerCount,
+        qualificationStatus === 'in_review' || qualificationStatus === 'disqualified' ? 1 : 0
+      );
 
   if (qualificationStatus === 'disqualified') {
     return {
@@ -146,7 +232,9 @@ export function formatStageGateReadout({
   if (phase === 'stage3') {
     return {
       gateLabel,
-      label: `${gateLabel} · ${blockerCount} ${blockerCount === 1 ? 'Blocker' : 'Blockers'} Remaining`,
+      label: `${gateLabel} · ${blockerCount} ${
+        blockerCount === 1 ? 'Blocker' : 'Blockers'
+      } Remaining`,
       isSatisfied: false,
       blockerCount,
     };
@@ -154,7 +242,9 @@ export function formatStageGateReadout({
 
   return {
     gateLabel,
-    label: `${gateLabel} · ${blockerCount} Gate ${blockerCount === 1 ? 'Blocker' : 'Blockers'} Identified`,
+    label: `${gateLabel} · ${blockerCount} Gate ${
+      blockerCount === 1 ? 'Blocker' : 'Blockers'
+    } Identified`,
     isSatisfied: false,
     blockerCount,
   };
@@ -202,11 +292,11 @@ export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
         </h2>
       </div>
 
-      <div className="bar-right mixed-font-lockup flex shrink-0 items-center gap-2 font-sans">
+      <div className="bar-right flex shrink-0 items-center gap-2 font-sans">
         <span className="inline-flex min-h-6 items-center whitespace-nowrap rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D] tabular-nums">
           <span className="ui-pill-label">{stageDisplay}</span>
         </span>
-        <span className="inline-flex min-h-6 items-center whitespace-nowrap rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-mono text-xs font-medium leading-none text-[#111215] tabular-nums">
+        <span className="inline-flex min-h-6 items-center whitespace-nowrap rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#111215] tabular-nums">
           <span className="ui-pill-label">{formattedAmount}</span>
         </span>
       </div>
@@ -295,20 +385,19 @@ interface SuggestedNextStepsCardProps {
   qualificationStatus?: QualificationStatus | string | null;
   stageGate?: (Partial<StageGateEvaluation> & { gate?: string }) | null;
   syncMode?: 'live' | 'simulation';
+  fallbackMetadata?: SuggestedNextStepsMetadata;
 }
 
 export function SuggestedNextStepsCard({
   nextSteps,
-  score = 0,
-  qualificationStatus,
-  stageGate,
   syncMode = 'live',
+  fallbackMetadata,
 }: SuggestedNextStepsCardProps) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const stepsList = parseSuggestedNextSteps(nextSteps);
+  const structured = extractStructuredNextSteps(nextSteps, fallbackMetadata);
   const copyText = formatSuggestedNextStepsCopyText(nextSteps);
 
   useEffect(() => {
@@ -319,7 +408,7 @@ export function SuggestedNextStepsCard({
     };
   }, []);
 
-  if (stepsList.length === 0) return null;
+  if (!structured) return null;
 
   async function handleCopy() {
     if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
@@ -339,48 +428,35 @@ export function SuggestedNextStepsCard({
     }
   }
 
-  const gateReadout = formatStageGateReadout({
-    stageGate,
-    qualificationStatus,
-    phase: 'stage3',
-  });
-
-  const statusBadgeText =
-    qualificationStatus === 'disqualified'
-      ? `Disqualified (${score ?? 0}/100)`
-      : gateReadout.isSatisfied
-      ? `Qualification Finalized (${score ?? 0}/100)`
-      : `In Review · Gate Blocked (${score ?? 0}/100)`;
-
   return (
-    <div className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-5 space-y-3.5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-3">
+    <div className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-3 mb-3.5">
         <div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
-              Suggested Next Steps
-            </h3>
-            <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#111215] tabular-nums">
-              <span className="ui-pill-label">{statusBadgeText}</span>
-            </span>
-          </div>
-          <p className="mt-1 font-sans text-xs text-[#787C87]">
+          <h3 className="font-sans text-sm sm:text-base font-semibold tracking-[-0.015em] text-[#111215]">
+            Suggested Next Steps
+          </h3>
+          <p className="mt-0.5 font-sans text-xs text-[#787C87]">
             {syncMode === 'simulation'
-              ? 'Simulated writeback preview — ready for simulated Salesforce CRM sync.'
-              : 'Synchronized to simulated Salesforce CRM.'}
+              ? 'Simulation preview · Simulated Salesforce CRM'
+              : 'Synced to simulated Salesforce CRM'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {copyFailed && (
-            <span className="font-sans text-xs text-[#52545D] font-medium" role="status" aria-live="polite">
-              Copy Failed — Select text below manually
+            <span
+              className="font-sans text-xs text-[#52545D] font-medium"
+              role="status"
+              aria-live="polite"
+            >
+              Copy failed — select text below manually
             </span>
           )}
 
           <button
             type="button"
             onClick={handleCopy}
+            aria-label="Copy Next Steps"
             className={`inline-flex min-h-8 items-center gap-1.5 rounded-md border px-3 py-1.5 font-sans text-xs font-medium leading-none transition cursor-pointer ${
               copied
                 ? 'border-[#111215] bg-[#F1F0EC] text-[#111215]'
@@ -391,41 +467,37 @@ export function SuggestedNextStepsCard({
               <>
                 <Check className="size-3.5 shrink-0 text-[#111215]" aria-hidden="true" />
                 <span className="ui-pill-label" role="status" aria-live="polite">
-                  ✓ Copied to Clipboard
+                  Copied
                 </span>
               </>
             ) : (
               <>
                 <Clipboard className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
-                <span className="ui-pill-label">Copy Next Steps</span>
+                <span className="ui-pill-label">Copy</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      <div className="space-y-2">
-        {stepsList.map((item, idx) => (
-          <div
-            key={idx}
-            className="flex items-start gap-2.5 rounded-md border border-[#E2E0D8] bg-[#F1F0EC]/40 p-3.5 font-sans text-sm leading-relaxed text-[#111215]"
-          >
-            <span className="font-mono text-xs font-semibold text-[#787C87] shrink-0 mt-0.5 tabular-nums">
-              {idx + 1}.
-            </span>
-            <p className="whitespace-pre-wrap text-pretty">
-              {item.label ? (
-                <>
-                  <strong className="font-semibold text-[#111215]">{item.label}:</strong>{' '}
-                  <span className="text-[#52545D]">{item.text}</span>
-                </>
-              ) : (
-                item.text
-              )}
-            </p>
-          </div>
-        ))}
-      </div>
+      <p className="font-sans text-sm text-[#111215] leading-relaxed text-pretty">
+        {structured.leadAction}
+      </p>
+
+      {structured.metadata.length > 0 && (
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-[#E2E0D8] pt-3">
+          {structured.metadata.map((meta) => (
+            <div key={meta.key} className="min-w-0">
+              <div className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
+                {meta.label}
+              </div>
+              <div className="mt-0.5 font-sans text-xs font-medium text-[#111215] leading-snug text-pretty">
+                {meta.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -446,7 +518,6 @@ export interface Stage3HeaderLockupProps {
 
 export function Stage3HeaderLockup({
   score,
-  baselineScore,
   scoreDelta,
   stageGate,
   qualificationStatus,
@@ -470,17 +541,14 @@ export function Stage3HeaderLockup({
 
   return (
     <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-      <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
-        <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono text-score font-bold text-[#111215] tabular-nums">
-          {baselineScore !== null && baselineScore !== undefined && (
-            <span className="text-sm font-medium text-[#787C87]">
-              {baselineScore} →{' '}
-            </span>
-          )}
-          <span>{score}</span>
-          <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+        <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
+          <span className="text-2xl font-semibold tracking-[-0.02em] text-[#111215]">
+            {score}
+          </span>
+          <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
           {hasNonZeroDelta && (
-            <span className="text-sm font-medium text-[#52545D]">
+            <span className="ml-1.5 text-sm font-medium text-[#52545D]">
               ({scoreDelta! > 0 ? `+${scoreDelta}` : scoreDelta})
             </span>
           )}
