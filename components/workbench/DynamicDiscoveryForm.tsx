@@ -201,10 +201,10 @@ export function DynamicDiscoveryForm({
     return (
       <div
         key={field.id}
-        className="q-card rounded-md border border-[#E2E0D8] bg-[#FFFFFF] overflow-hidden font-sans"
+        className="q-card py-4 border-b border-[#E2E0D8] last:border-b-0 font-sans"
       >
         {/* Desk OS Q-Card Header with Target Dimension & Embedded TenSegmentBar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E0D8] bg-[#F8F8F6] px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
           <div className="flex items-baseline gap-1.5">
             {targetKey && <span className="sr-only">{targetKey}</span>}
             <span className="font-sans text-xs font-semibold text-[#111215] tabular-nums">
@@ -222,7 +222,7 @@ export function DynamicDiscoveryForm({
           </div>
         </div>
 
-        <div className="p-4 space-y-2.5">
+        <div className="space-y-2.5">
           <div className="flex items-start justify-between gap-2">
             <label
               htmlFor={field.id}
@@ -249,7 +249,7 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full min-h-10 rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm text-[#111215] leading-normal transition-colors focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]`}
+              className={`w-full min-h-10 rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm text-[#111215] leading-normal transition-colors focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#636772]`}
             />
           )}
 
@@ -265,7 +265,7 @@ export function DynamicDiscoveryForm({
               placeholder={field.placeholder || undefined}
               aria-invalid={Boolean(error)}
               aria-required={field.required}
-              className={`w-full rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm leading-relaxed text-[#111215] transition-colors focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD] resize-y`}
+              className={`w-full rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm leading-relaxed text-[#111215] transition-colors focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#636772] resize-y`}
             />
           )}
 
@@ -280,7 +280,7 @@ export function DynamicDiscoveryForm({
                 onChange={(e) => handleTextChange(field.id, e.target.value)}
                 aria-invalid={Boolean(error)}
                 aria-required={field.required}
-                className={`w-full min-h-10 appearance-none rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]`}
+                className={`w-full min-h-10 appearance-none rounded-md border ${inputBorderClass} bg-[#F8F8F6] px-3.5 py-2 pr-10 font-sans text-sm font-normal text-[#111215] leading-normal transition-colors focus:bg-[#FFFFFF] focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#636772]`}
               >
                 <option value="" disabled>
                   Select an option…
@@ -294,7 +294,7 @@ export function DynamicDiscoveryForm({
               <ChevronDown
                 aria-hidden="true"
                 className={`pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ${
-                  readOnly ? 'text-[#A6A7AD]' : 'text-[#52545D]'
+                  readOnly ? 'text-[#636772]' : 'text-[#52545D]'
                 }`}
               />
             </div>
@@ -311,8 +311,8 @@ export function DynamicDiscoveryForm({
                     className={`flex items-start gap-2.5 p-3 rounded-md border cursor-pointer transition ${
                       checked
                         ? 'border-[#111215] bg-[#F1F0EC] text-[#111215]'
-                        : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#787C87] text-[#52545D]'
-                    } ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#636772] text-[#52545D]'
+                    } ${readOnly ? 'cursor-not-allowed bg-[#F8F8F6]' : ''}`}
                   >
                     <input
                       type="radio"
@@ -326,7 +326,7 @@ export function DynamicDiscoveryForm({
                     <div className="font-sans text-sm">
                       <div className="font-medium text-[#111215]">{opt.label}</div>
                       {opt.description && (
-                        <div className="font-sans text-xs text-[#787C87] mt-0.5 leading-relaxed">
+                        <div className="font-sans text-xs text-[#636772] mt-0.5 leading-relaxed">
                           {opt.description}
                         </div>
                       )}
@@ -349,8 +349,8 @@ export function DynamicDiscoveryForm({
                     className={`flex items-start gap-2.5 p-3 rounded-md border cursor-pointer transition ${
                       checked
                         ? 'border-[#111215] bg-[#F1F0EC] text-[#111215]'
-                        : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#787C87] text-[#52545D]'
-                    } ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        : 'border-[#E2E0D8] bg-[#FFFFFF] hover:border-[#636772] text-[#52545D]'
+                    } ${readOnly ? 'cursor-not-allowed bg-[#F8F8F6]' : ''}`}
                   >
                     <input
                       type="checkbox"
@@ -363,7 +363,7 @@ export function DynamicDiscoveryForm({
                     <div className="font-sans text-sm">
                       <div className="font-medium text-[#111215]">{opt.label}</div>
                       {opt.description && (
-                        <div className="font-sans text-xs text-[#787C87] mt-0.5 leading-relaxed">
+                        <div className="font-sans text-xs text-[#636772] mt-0.5 leading-relaxed">
                           {opt.description}
                         </div>
                       )}
@@ -375,7 +375,7 @@ export function DynamicDiscoveryForm({
           )}
 
           {field.helpCallout && (
-            <p className="mt-1.5 font-sans text-xs text-[#787C87]">{field.helpCallout}</p>
+            <p className="mt-1.5 font-sans text-xs text-[#636772]">{field.helpCallout}</p>
           )}
 
           {error && <p className="font-sans text-xs text-[#111215] font-semibold mt-1">{error}</p>}
@@ -388,21 +388,21 @@ export function DynamicDiscoveryForm({
   const effectiveSubmitText = submitButtonText || defaultSubmitText;
 
   return (
-    <section className="rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] font-sans">
+    <section className="bg-[#FFFFFF] font-sans">
       {/* Desk OS Stage 2 Header with Back to Audit & Answered Counter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] px-5 py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4 mb-5">
         <div>
-          <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
+          <h2 className="font-sans text-lg font-semibold tracking-tight text-[#111215]">
             {activeForm?.title || 'Field Discovery'}
-          </h3>
-          <p className="mt-1 font-sans text-xs text-[#787C87]">
+          </h2>
+          <p className="mt-1 font-sans text-xs text-[#636772]">
             {activeForm?.summary || 'Close the qualification blind spots identified in baseline scoring.'}
           </p>
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
           <span
-            className="whitespace-nowrap font-sans text-xs text-[#787C87] font-medium tabular-nums"
+            className="whitespace-nowrap font-sans text-xs text-[#636772] font-medium tabular-nums"
             role="status"
             aria-live="polite"
           >
@@ -414,7 +414,7 @@ export function DynamicDiscoveryForm({
               type="button"
               disabled={isSubmitting}
               onClick={onBack || onCancel}
-              className="inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:cursor-not-allowed"
             >
               <ArrowLeft className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="ui-pill-label">Back to Audit</span>
@@ -423,16 +423,16 @@ export function DynamicDiscoveryForm({
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         {activeForm && activeForm.sections && activeForm.sections.length > 0 ? (
           activeForm.sections.map((section) => (
             <div key={section.id} className="space-y-3.5">
               <div>
-                <h4 className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
+                <div className="font-sans text-xs font-semibold text-[#636772]">
                   {section.title}
-                </h4>
+                </div>
                 {section.description && (
-                  <p className="font-sans text-xs text-[#787C87] leading-relaxed mt-1">
+                  <p className="font-sans text-xs text-[#636772] leading-relaxed mt-1">
                     {section.description}
                   </p>
                 )}
@@ -440,16 +440,16 @@ export function DynamicDiscoveryForm({
 
               {renderCalloutBanner(section)}
 
-              <div className="space-y-3.5 pt-0.5">{section.fields.map(renderField)}</div>
+              <div className="divide-y divide-[#E2E0D8] pt-0.5">{section.fields.map(renderField)}</div>
             </div>
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-md border border-dashed border-[#E2E0D8] bg-[#F8F8F6]">
-            <Info className="size-6 text-[#787C87] mb-2" aria-hidden="true" />
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center border-b border-[#E2E0D8]">
+            <Info className="size-6 text-[#636772] mb-2" aria-hidden="true" />
             <p className="font-sans text-sm font-medium text-[#111215]">
               No discovery questions generated for this opportunity.
             </p>
-            <p className="font-sans text-xs text-[#787C87] mt-1 max-w-sm leading-relaxed">
+            <p className="font-sans text-xs text-[#636772] mt-1 max-w-sm leading-relaxed">
               Discovery questions are generated automatically when qualification blind spots or stage-gate blockers are identified in the baseline audit.
             </p>
           </div>
@@ -461,7 +461,7 @@ export function DynamicDiscoveryForm({
               htmlFor="sa_manual_notes"
               className="block font-sans text-sm font-semibold text-[#111215]"
             >
-              Additional SA Notes &amp; Observations <span className="text-[#787C87] font-normal">(Optional)</span>
+              Additional SA Notes &amp; Observations <span className="text-[#636772] font-normal">(Optional)</span>
             </label>
             <textarea
               id="sa_manual_notes"
@@ -471,7 +471,7 @@ export function DynamicDiscoveryForm({
               placeholder="Document any additional customer architecture context or meeting observations…"
               value={manualNotes}
               onChange={(e) => handleNotesChange(e.target.value)}
-              className="w-full rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm leading-relaxed text-[#111215] transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#A6A7AD]"
+              className="w-full rounded-md border border-[#E2E0D8] bg-[#F8F8F6] px-3.5 py-2 font-sans text-sm leading-relaxed text-[#111215] transition-colors hover:border-[#C8C5BA] focus:border-[#111215] focus:bg-[#FFFFFF] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F1F0EC] disabled:text-[#636772]"
             />
           </div>
         )}
@@ -483,7 +483,7 @@ export function DynamicDiscoveryForm({
                 type="button"
                 disabled={isSubmitting}
                 onClick={onCancel || onBack}
-                className="inline-flex min-h-9 w-full justify-center sm:w-auto items-center rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3.5 py-2 font-sans text-xs sm:text-sm font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex min-h-9 w-full justify-center sm:w-auto items-center rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3.5 py-2 font-sans text-xs sm:text-sm font-medium leading-none text-[#52545D] hover:bg-[#F1F0EC] hover:text-[#111215] transition cursor-pointer disabled:bg-[#F8F8F6] disabled:text-[#636772] disabled:cursor-not-allowed"
               >
                 <span className="ui-pill-label">Cancel</span>
               </button>
@@ -493,7 +493,7 @@ export function DynamicDiscoveryForm({
               type="submit"
               disabled={isSubmitting || isLocked}
               aria-busy={isSubmitting || undefined}
-              className="min-h-9 w-full bg-[#0F52BA] text-white hover:bg-[#0C4196] sm:w-fit cursor-pointer disabled:opacity-50 font-sans text-xs sm:text-sm font-semibold px-4 py-2"
+              className="min-h-9 w-full bg-[#0F52BA] text-white hover:bg-[#0C4196] sm:w-fit cursor-pointer disabled:opacity-100 disabled:bg-[#0F52BA] font-sans text-xs sm:text-sm font-semibold px-4 py-2"
             >
               {isSubmitting ? (
                 <>

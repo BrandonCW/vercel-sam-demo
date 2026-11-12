@@ -392,7 +392,7 @@ describe('DynamicDiscoveryForm Component Contract Seam (tests/dynamic-form-rende
       const helperCaption = screen.getByText('Stage Gate requirement: Verified budget authority is required.');
       expect(helperCaption.tagName).toBe('P');
       expect(helperCaption.className).toContain('text-xs');
-      expect(helperCaption.className).toContain('text-[#787C87]');
+      expect(helperCaption.className).toContain('text-[#636772]');
       expect(helperCaption.className).not.toContain('border');
       expect(container.textContent).not.toContain('[E]');
       expect(container.textContent).not.toContain('[I]');
