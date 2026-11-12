@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { middleware } from '@/middleware';
+import { middleware, config as middlewareConfig } from '@/middleware';
 import { createSessionToken, COOKIE_NAME } from '@/lib/auth';
 
 function createRequest(
@@ -115,6 +115,12 @@ describe('Middleware Security Gate (tests/middleware.test.ts)', () => {
       const faviconReq = createRequest('http://localhost:3000/favicon.ico');
       const faviconRes = await middleware(faviconReq);
       expect(faviconRes.status).toBe(200);
+
+      const iconSvgReq = createRequest('http://localhost:3000/icon.svg');
+      const iconSvgRes = await middleware(iconSvgReq);
+      expect(iconSvgRes.status).toBe(200);
+      expect(iconSvgRes.headers.get('x-middleware-next')).toBe('1');
+      expect(middlewareConfig.matcher[0]).toContain('icon.svg');
 
       const staticFolderReq = createRequest('http://localhost:3000/static/images/logo.png');
       const staticFolderRes = await middleware(staticFolderReq);
