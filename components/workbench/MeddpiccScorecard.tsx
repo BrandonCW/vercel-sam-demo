@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Target, CheckCircle2, Loader2, Ban } from 'lucide-react';
 import type { SimulationDimension } from '@/lib/simulation/types';
 
 export interface TenSegmentBarProps {
@@ -103,9 +102,6 @@ export function MeddpiccScorecard({
   delta,
   dimensions,
   mode: explicitMode,
-  loadingStatus,
-  elapsedSeconds,
-  onAbort,
   hideHeader = false,
 }: MeddpiccScorecardProps) {
   // Infer mode if not passed explicitly for backward compatibility
@@ -119,15 +115,23 @@ export function MeddpiccScorecard({
       ? 'completed'
       : 'audit');
 
-  const dimensionList: Array<SimulationDimension & { key: string; weightLabel: string; letter: string }> = Array.isArray(dimensions)
+  const dimensionList: Array<
+    SimulationDimension & { key: string; weightLabel: string; letter: string }
+  > = Array.isArray(dimensions)
     ? dimensions.map((d) => {
-        const meta = DIMENSION_META[d.key] || { letter: d.key.charAt(0).toUpperCase(), label: d.label || d.key };
+        const meta = DIMENSION_META[d.key] || {
+          letter: d.key.charAt(0).toUpperCase(),
+          label: d.label || d.key,
+        };
         return {
           ...d,
           key: d.key,
           label: d.label || meta.label,
           letter: meta.letter,
-          weightLabel: typeof d.weight === 'number' ? `${Math.round(d.weight * 100)}%` : String(d.weight || '10%'),
+          weightLabel:
+            typeof d.weight === 'number'
+              ? `${Math.round(d.weight * 100)}%`
+              : String(d.weight || '10%'),
           quotes: d.quotes || (d.quote ? [d.quote] : (d as any).evidence || []),
           gaps: d.gaps || (d.gap ? [d.gap] : []),
         };
@@ -147,7 +151,10 @@ export function MeddpiccScorecard({
           key,
           label: d.label || meta.label,
           letter: meta.letter,
-          weightLabel: typeof d.weight === 'number' ? `${Math.round(d.weight * 100)}%` : String(d.weight || '10%'),
+          weightLabel:
+            typeof d.weight === 'number'
+              ? `${Math.round(d.weight * 100)}%`
+              : String(d.weight || '10%'),
           quotes: d.quotes || (d.quote ? [d.quote] : (d as any).evidence || []),
           gaps: d.gaps || (d.gap ? [d.gap] : []),
         };
@@ -158,64 +165,32 @@ export function MeddpiccScorecard({
 
   return (
     <section className="meddpicc-table rounded-lg border border-[#E2E0D8] bg-[#FFFFFF] overflow-hidden font-sans">
-      {/* Loading In-Place Shimmer Header */}
-      {mode === 'loading' && (
-        <div className="flex items-center justify-between border-b border-[#E2E0D8] bg-[#F8F8F6] px-5 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <Loader2 className="size-4 animate-spin text-[#111215]" aria-hidden="true" />
-            <span className="font-sans text-sm font-medium text-[#111215]" role="status" aria-live="polite">
-              {loadingStatus || 'Scanning AE & SA notes against MEDDPICC rubric…'}
-            </span>
-            {elapsedSeconds !== undefined && (
-              <span className="inline-flex min-h-6 items-center rounded-[4px] bg-[#E2E0D8] px-2 py-0.5 font-mono text-xs font-medium leading-none text-[#52545D] tabular-nums">
-                <span className="ui-pill-label">{elapsedSeconds}s</span>
-              </span>
-            )}
-          </div>
-
-          {onAbort && (
-            <button
-              type="button"
-              onClick={onAbort}
-              className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
-            >
-              <Ban className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
-              <span className="ui-pill-label">Abort</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Standard Header (if not hidden and not loading) */}
+      {/* Standard Header (only when not hidden) */}
       {!hideHeader && mode !== 'loading' && (
         <div className="flex items-center justify-between border-b border-[#E2E0D8] px-5 py-4">
           <div>
-            <div className="flex items-center gap-2">
-              <Target className="size-4 text-[#111215]" aria-hidden="true" />
-              <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
-                MEDDPICC scorecard
-              </h3>
-            </div>
-            <p className="mt-1 font-sans text-xs text-[#787C87]">
-              Evidence-based qualification across eight weighted dimensions. Permanently open ledger.
+            <h3 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
+              MEDDPICC Scorecard
+            </h3>
+            <p className="mt-0.5 font-sans text-xs text-[#787C87]">
+              Eight weighted qualification dimensions
             </p>
           </div>
           <div className="text-right">
-            <p className="font-mono text-score font-bold text-[#111215] tabular-nums">
-              {mode === 'unassessed' ? (
-                <span className="text-[#787C87]">--</span>
-              ) : (
-                score ?? 0
-              )}
-              <span className="text-sm font-normal text-[#787C87]">/100</span>
+            <p className="flex items-baseline justify-end font-sans tabular-nums">
+              <span
+                className={`text-2xl font-semibold tracking-[-0.02em] ${
+                  mode === 'unassessed' ? 'text-[#787C87]' : 'text-[#111215]'
+                }`}
+              >
+                {mode === 'unassessed' ? '--' : (score ?? 0)}
+              </span>
+              <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
               {hasHeaderDelta ? (
-                <span className="ml-2 text-sm font-medium text-[#52545D]">
+                <span className="ml-1.5 text-sm font-medium text-[#52545D]">
                   ({delta! > 0 ? `+${delta}` : delta})
                 </span>
               ) : null}
-            </p>
-            <p className="font-sans text-kicker font-semibold uppercase text-[#787C87]">
-              Composite score
             </p>
           </div>
         </div>
@@ -224,38 +199,19 @@ export function MeddpiccScorecard({
       {/* 4-Column Table Header */}
       <div className="hidden md:grid md:grid-cols-[172px_152px_1fr_1fr] gap-4 border-b border-[#E2E0D8] bg-[#F8F8F6] px-5 py-2.5 font-sans text-kicker font-semibold uppercase text-[#787C87]">
         <div>Dimension</div>
-        <div>Score &amp; Bar</div>
+        <div>Score</div>
         <div>Verified Evidence</div>
-        <div>{mode === 'completed' ? 'Resolved Status' : 'Open Gap / Blind Spot'}</div>
+        <div>{mode === 'completed' ? 'Resolution' : 'Open Gap'}</div>
       </div>
 
       {/* Permanently Open 8-Row MEDDPICC Ledger */}
       <div className="divide-y divide-[#E2E0D8]">
         {dimensionList.map((dimension) => (
-          <ScorecardRow
-            key={dimension.key}
-            dimension={dimension}
-            mode={mode}
-          />
+          <ScorecardRow key={dimension.key} dimension={dimension} mode={mode} />
         ))}
       </div>
     </section>
   );
-}
-
-function formatDimensionStatusLabel(status?: string): string {
-  switch (status) {
-    case 'verified':
-      return 'Verified';
-    case 'partial':
-      return 'Partial';
-    case 'unaddressed':
-      return 'Unaddressed';
-    default:
-      return status
-        ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
-        : 'Unassessed';
-  }
 }
 
 function ScorecardRow({
@@ -285,60 +241,56 @@ function ScorecardRow({
     dimension.delta !== null &&
     dimension.delta !== 0;
 
-  const statusText = isUnassessed
-    ? 'Unassessed'
-    : formatDimensionStatusLabel(dimension.status);
+  const resolvedInDiscovery =
+    isCompleted &&
+    dimension.status === 'verified' &&
+    gaps.length === 0 &&
+    dimension.delta !== undefined &&
+    dimension.delta !== null &&
+    dimension.delta > 0;
 
   return (
     <div
-      className={`px-5 py-4 transition-colors ${
+      className={`px-5 py-3.5 transition-colors ${
         isBlocker ? 'bg-[#F1F0EC]' : 'bg-[#FFFFFF] hover:bg-[#F8F8F6]/60'
       }`}
     >
       <div className="grid grid-cols-1 md:grid-cols-[172px_152px_1fr_1fr] gap-4 items-start">
-        {/* Column 1: Dimension Letter + Label + Weight */}
+        {/* Column 1: Dimension Name + Quiet Letter/Weight Sublabel */}
         <div>
-          <div className="mixed-font-lockup flex items-baseline gap-1.5 text-left">
-            <span className="font-mono text-xs font-semibold text-[#787C87] uppercase">
-              [{dimension.letter}]
-            </span>
-            <span className="font-sans text-sm font-semibold text-[#111215]">
-              {dimension.label}
-            </span>
+          <div className="font-sans text-sm font-semibold text-[#111215]">
+            {dimension.label}
           </div>
-          <div className="mt-1 font-sans text-xs text-[#787C87] tabular-nums">
-            Weight {dimension.weightLabel}
+          <div className="mt-0.5 font-sans text-xs text-[#787C87] tabular-nums">
+            {dimension.letter} · Weight {dimension.weightLabel}
           </div>
-          <span className="mt-1.5 inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2 py-0.5 font-sans text-xs font-medium leading-none text-[#52545D]">
-            <span className="ui-pill-label">{statusText}</span>
-          </span>
         </div>
 
-        {/* Column 2: 10-Segment Discrete Score Bar & Monospace Score */}
+        {/* Column 2: 10-Segment Discrete Score Bar & Uniform-Height Tabular Score */}
         <div className="pt-0.5">
           <div className="flex items-center gap-2">
             <TenSegmentBar
-              score={isUnassessed ? null : dimension.score}
+              score={isUnassessed || isLoading ? null : dimension.score}
               previousScore={dimension.previousScore}
               animateStagger={isCompleted}
             />
           </div>
 
-          <div className="mt-1.5 font-mono text-sm tabular-nums text-[#111215]">
+          <div className="mt-1.5 flex items-baseline font-sans text-sm tabular-nums">
             {isUnassessed || isLoading ? (
-              <span className="text-[#787C87]">--/10</span>
-            ) : hasDimensionDelta ? (
-              <div className="flex items-baseline gap-1">
-                <span className="text-xs text-[#787C87] font-medium">
-                  {dimension.previousScore} →
-                </span>
-                <span className="font-bold">{dimension.score}/10</span>
-                <span className="text-xs text-[#52545D] font-normal">
-                  ({dimension.delta! > 0 ? `+${dimension.delta}` : dimension.delta})
-                </span>
-              </div>
+              <span className="font-normal text-[#787C87]">--/10</span>
             ) : (
-              <span className="font-bold">{dimension.score}/10</span>
+              <>
+                <span>
+                  <span className="font-semibold text-[#111215]">{dimension.score}</span>
+                  <span className="font-normal text-[#787C87]">/10</span>
+                </span>
+                {hasDimensionDelta && (
+                  <span className="ml-1.5 text-sm font-normal text-[#52545D]">
+                    ({dimension.delta! > 0 ? `+${dimension.delta}` : dimension.delta})
+                  </span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -346,87 +298,83 @@ function ScorecardRow({
         {/* Column 3: Verified Evidence */}
         <div className="font-sans text-sm leading-relaxed text-[#52545D]">
           <div className="md:hidden font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1">
-            Buyer Evidence
+            Verified Evidence
           </div>
           {isLoading ? (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 py-0.5">
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-3/4" />
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/2" />
             </div>
           ) : isUnassessed ? (
-            <p className="text-sm italic text-[#787C87]">— Awaiting initial assessment</p>
+            <p className="text-sm text-[#787C87]">—</p>
           ) : isAnalyzing && quotes.length === 0 ? (
-            <div className="space-y-1.5 py-0.5" aria-busy="true" data-testid={`evidence-shimmer-${dimension.key}`}>
+            <div
+              className="space-y-1.5 py-0.5"
+              aria-busy="true"
+              data-testid={`evidence-shimmer-${dimension.key}`}
+            >
               <span className="sr-only">Extracting buyer evidence citations…</span>
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-4/5" />
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-3/5" />
             </div>
-          ) : quotes.length ? (
+          ) : quotes.length > 0 ? (
             quotes.map((quote, idx) => (
               <p
                 key={idx}
-                className="border-l-2 border-[#111215] pl-2.5 italic text-[#52545D] leading-relaxed text-pretty mb-2 last:mb-0"
+                className="border-l-2 border-[#E2E0D8] pl-2.5 text-[#52545D] leading-relaxed text-pretty mb-2 last:mb-0"
               >
                 “{quote}”
               </p>
             ))
           ) : (
-            <p className="text-[#787C87] italic">No direct buyer evidence cited.</p>
+            <p className="text-sm text-[#787C87]">—</p>
           )}
         </div>
 
-        {/* Column 4: Open Gap / Blind Spot OR Resolved Status */}
+        {/* Column 4: Open Gap OR Resolution */}
         <div className="font-sans text-sm leading-relaxed text-[#52545D]">
           <div className="md:hidden font-sans text-kicker font-semibold uppercase text-[#787C87] mb-1">
-            {isCompleted ? 'Resolved Status' : 'Open Gaps / Blind Spots'}
+            {isCompleted ? 'Resolution' : 'Open Gap'}
           </div>
 
           {isLoading ? (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 py-0.5">
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-2/3" />
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/3" />
             </div>
           ) : isUnassessed ? (
             <p className="text-sm text-[#787C87]">—</p>
           ) : isAnalyzing && gaps.length === 0 ? (
-            <div className="space-y-1.5 py-0.5" aria-busy="true" data-testid={`gap-shimmer-${dimension.key}`}>
+            <div
+              className="space-y-1.5 py-0.5"
+              aria-busy="true"
+              data-testid={`gap-shimmer-${dimension.key}`}
+            >
               <span className="sr-only">Synthesizing qualification blind spots…</span>
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-3/4" />
               <div className="h-3.5 bg-[#E2E0D8]/50 rounded-[2px] animate-pulse w-1/2" />
             </div>
-          ) : isCompleted && dimension.status === 'verified' && gaps.length === 0 ? (
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-[#111215] font-medium">
-                <CheckCircle2 className="size-4 shrink-0 text-[#111215]" aria-hidden="true" />
-                <span>Verified in discovery</span>
-              </div>
-              {dimension.delta !== undefined && dimension.delta !== null && dimension.delta > 0 && (
-                <p className="font-sans text-xs text-[#787C87]">Gap resolved by SA field notes.</p>
-              )}
-            </div>
-          ) : gaps.length ? (
-            <div className="space-y-2">
-              {(dimension.score <= 3 || dimension.status === 'unaddressed') && (
-                <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#111215] bg-[#FFFFFF] px-2 py-0.5 font-sans text-xs font-semibold leading-none text-[#111215]">
-                  <span className="ui-pill-label">Blocker</span>
-                </span>
-              )}
+          ) : gaps.length === 1 ? (
+            <p className="text-[#52545D] leading-relaxed text-pretty">{gaps[0]}</p>
+          ) : gaps.length > 1 ? (
+            <ul className="space-y-1.5">
               {gaps.map((gap, idx) => (
-                <p key={idx} className="flex items-start gap-2 text-[#52545D] leading-relaxed text-pretty">
-                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-[#787C87]" aria-hidden="true" />
+                <li
+                  key={idx}
+                  className="flex items-start gap-2 text-[#52545D] leading-relaxed text-pretty"
+                >
+                  <span
+                    className="mt-2 size-1 shrink-0 rounded-full bg-[#787C87]"
+                    aria-hidden="true"
+                  />
                   <span>{gap}</span>
-                </p>
+                </li>
               ))}
-            </div>
-          ) : dimension.status === 'verified' ? (
-            <p className="flex items-center gap-1.5 text-[#52545D] font-medium">
-              <CheckCircle2 className="size-4 shrink-0 text-[#52545D]" aria-hidden="true" />
-              <span>Criteria verified, no blocking gaps.</span>
-            </p>
-          ) : dimension.status === 'unaddressed' ? (
-            <p className="text-[#787C87] italic">Unaddressed in discovery notes.</p>
+            </ul>
+          ) : resolvedInDiscovery ? (
+            <p className="font-medium text-[#111215]">Resolved in discovery</p>
           ) : (
-            <p className="text-[#787C87]">Partial evidence — additional validation needed.</p>
+            <p className="text-sm text-[#787C87]">—</p>
           )}
         </div>
       </div>
