@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useReducer, useRef, useState, useTransition } from 'react';
-import { Ban } from 'lucide-react';
+import { Ban, Loader2 } from 'lucide-react';
 import type { Opportunity, StageGateEvaluation } from '@/lib/types/crm';
 import { DEFAULT_SYSTEM2_MODEL, type System2ModelOption } from '@/lib/types/crm';
 import type { SimulationDimension, WorkflowState, WorkbenchMode } from '@/lib/simulation/types';
@@ -71,7 +71,9 @@ export function QualificationWorkbench({
   );
 
   // Desk OS 3-Stage State
-  const [activeStageView, setActiveStageView] = useState<'blank' | 'stage1' | 'stage2' | 'stage3'>('blank');
+  const [activeStageView, setActiveStageView] = useState<'blank' | 'stage1' | 'stage2' | 'stage3'>(
+    'blank'
+  );
   const [savedFormData, setSavedFormData] = useState<Record<string, string | string[]>>({});
   const [savedManualNotes, setSavedManualNotes] = useState<string>('');
   const [baselineAssessment, setBaselineAssessment] = useState<{
@@ -282,7 +284,10 @@ export function QualificationWorkbench({
     : 0;
 
   const discoveryQuestionCount = simState.discoveryForm?.sections
-    ? simState.discoveryForm.sections.reduce((acc: number, s: any) => acc + (s.fields?.length || 0), 0)
+    ? simState.discoveryForm.sections.reduce(
+        (acc: number, s: any) => acc + (s.fields?.length || 0),
+        0
+      )
     : 0;
 
   const currentScore =
@@ -295,8 +300,10 @@ export function QualificationWorkbench({
       : simState.score;
 
   const previousScoreDisplay =
-    baselineAssessment?.score ?? simState.previousScore ?? activeFixture.baseline.jevResult.overallScore;
-  const scoreDeltaDisplay = simState.delta ?? (simState.score - previousScoreDisplay);
+    baselineAssessment?.score ??
+    simState.previousScore ??
+    activeFixture.baseline.jevResult.overallScore;
+  const scoreDeltaDisplay = simState.delta ?? simState.score - previousScoreDisplay;
 
   const stage1GateReadout = formatStageGateReadout({
     stageGate: stage1StageGate,
@@ -375,12 +382,12 @@ export function QualificationWorkbench({
               {activeStageView === 'blank' && simState.workflowState === 'READY_TO_ASSESS' && (
                 <div className="space-y-4">
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
-                      <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono tabular-nums">
-                        <span className="text-score font-bold text-[#787C87]">
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
+                        <span className="text-2xl font-semibold tracking-[-0.02em] text-[#787C87]">
                           --
                         </span>
-                        <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                        <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
                       </div>
                       <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D] tabular-nums">
                         <span className="ui-pill-label">{unassessedGateReadout.label}</span>
@@ -406,15 +413,38 @@ export function QualificationWorkbench({
                 </div>
               )}
 
-              {/* 2. Baseline Rubric Scoring Loading (0–350ms before baseline scores hydrate) */}
+              {/* 2. Phase A: Initial Rubric Scan (0–350ms before baseline scores hydrate) */}
               {simState.workflowState === 'ANALYZING' && !isSynthesizingProgressive && (
                 <div className="space-y-4">
+                  <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
+                    <div className="flex items-center gap-2.5">
+                      <Loader2
+                        className="size-4 shrink-0 animate-spin text-[#52545D]"
+                        aria-hidden="true"
+                      />
+                      <span
+                        className="font-sans text-sm font-medium text-[#111215]"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        Scanning MEDDPICC rubric…
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAbortSimulation}
+                      className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
+                    >
+                      <Ban className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+                      <span className="ui-pill-label">Abort</span>
+                    </button>
+                  </div>
+
                   <MeddpiccScorecard
                     mode="loading"
-                    loadingStatus="Scanning AE & SA notes against MEDDPICC rubric…"
                     dimensions={simState.dimensions}
                     hideHeader={true}
-                    onAbort={handleAbortSimulation}
                   />
                 </div>
               )}
@@ -423,12 +453,12 @@ export function QualificationWorkbench({
               {showStage1 && (
                 <div className="space-y-4">
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
-                      <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono tabular-nums">
-                        <span className="text-score font-bold text-[#111215]">
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
+                        <span className="text-2xl font-semibold tracking-[-0.02em] text-[#111215]">
                           {currentScore}
                         </span>
-                        <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                        <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
                       </div>
                       <span
                         className={`inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none tabular-nums ${
@@ -501,43 +531,45 @@ export function QualificationWorkbench({
                     dimensions={stage1Dimensions}
                     hideHeader={true}
                   />
-
-                  {/* Stage 1 Bottom Summary Footer */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md border border-[#E2E0D8] bg-[#F8F8F6] p-4">
-                    <span className="font-sans text-sm text-[#52545D]">
-                      {stage1GateReadout.isSatisfied
-                        ? `All ${stage1GateReadout.gateLabel} exit criteria verified in baseline scoring.`
-                        : `${stage1GateReadout.blockerCount} qualification ${
-                            stage1GateReadout.blockerCount === 1 ? 'blocker' : 'blockers'
-                          } preventing ${stage1GateReadout.gateLabel} advancement.`}
-                    </span>
-
-                    {!isSynthesizingProgressive && discoveryQuestionCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveStageView('stage2')}
-                        className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
-                      >
-                        <span className="ui-pill-label">
-                          Proceed to Stage 2: Field Discovery →
-                        </span>
-                      </button>
-                    )}
-                  </div>
                 </div>
               )}
 
-              {/* 4. Stage 2: Field Discovery Checklist */}
+              {/* 4. Stage 2: Field Discovery Checklist & Phase C Re-scoring */}
               {activeStageView === 'stage2' && simState.workflowState !== 'ANALYZING' && (
                 <div className="space-y-4">
                   {simState.workflowState === 'EVALUATING' ? (
-                    <MeddpiccScorecard
-                      mode="loading"
-                      loadingStatus="Re-scoring Deal & Updating CRM…"
-                      dimensions={simState.dimensions}
-                      hideHeader={true}
-                      onAbort={handleAbortSimulation}
-                    />
+                    <div className="space-y-4">
+                      <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
+                        <div className="flex items-center gap-2.5">
+                          <Loader2
+                            className="size-4 shrink-0 animate-spin text-[#52545D]"
+                            aria-hidden="true"
+                          />
+                          <span
+                            className="font-sans text-sm font-medium text-[#111215]"
+                            role="status"
+                            aria-live="polite"
+                          >
+                            Re-scoring Deal &amp; Updating CRM…
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleAbortSimulation}
+                          className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
+                        >
+                          <Ban className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+                          <span className="ui-pill-label">Abort</span>
+                        </button>
+                      </div>
+
+                      <MeddpiccScorecard
+                        mode="loading"
+                        dimensions={simState.dimensions}
+                        hideHeader={true}
+                      />
+                    </div>
                   ) : (
                     <>
                       {isComplete && (
@@ -575,7 +607,6 @@ export function QualificationWorkbench({
               {/* 5. Stage 3: Updated Assessment & Next Steps */}
               {activeStageView === 'stage3' && isComplete && (
                 <div className="space-y-5">
-                  {/* Stage 3 Header Lockup */}
                   <Stage3HeaderLockup
                     score={simState.score}
                     baselineScore={baselineAssessment?.score ?? simState.previousScore}
@@ -589,16 +620,21 @@ export function QualificationWorkbench({
                     onRerunAudit={handleRerunSimulationAudit}
                   />
 
-                  {/* Suggested Next Steps Block Directly Above the Scorecard */}
                   <SuggestedNextStepsCard
                     nextSteps={simState.suggestedNextSteps}
                     score={simState.score}
                     qualificationStatus={currentOpportunity.qualification_status}
                     stageGate={simState.stageGate}
                     syncMode="simulation"
+                    fallbackMetadata={{
+                      owner: currentOpportunity.sa_name
+                        ? `${currentOpportunity.sa_name} (SA)`
+                        : undefined,
+                      focus: activeFixture.baseline.system2Result.valueFocus,
+                      watch: activeFixture.baseline.system2Result.primaryRisk,
+                    }}
                   />
 
-                  {/* Upgraded 8-Row MEDDPICC Scorecard */}
                   <MeddpiccScorecard
                     mode="completed"
                     score={simState.score}

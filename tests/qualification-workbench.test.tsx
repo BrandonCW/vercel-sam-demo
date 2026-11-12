@@ -14,7 +14,7 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
   const globexBaselineScore = String(globexFixture.baseline.jevResult.overallScore);
   const soylentBaselineScore = String(soylentFixture.baseline.jevResult.overallScore);
 
-  it('renders in Simulation Mode by default with visible monochrome SIMULATION pill, stable avatar, and zero System 1/2 jargon', () => {
+  it('renders in Simulation Mode by default with visible monochrome SIMULATION pill and zero System 1/2 jargon or redundant status pills', () => {
     const { container } = render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
     // Header checks
@@ -30,9 +30,6 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     );
     expect(simPill.className).toContain('bg-[#F1F0EC]');
 
-    // Stable operator avatar
-    expect(screen.getByLabelText('Deal Desk Operator').textContent).toBe('DD');
-
     // Zero raw enums, demo pill, or System 1/2 jargon
     const header = screen.getByRole('banner');
     expect(header.textContent).not.toContain('Salesforce connected');
@@ -41,13 +38,16 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     // Context & Desk OS 3-Stage Stepper
     expect(screen.getAllByText(/Acme Corp/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Initial Deal Audit/i)).toBeDefined();
-    expect(screen.getByText(/Field Discovery Checklist/i)).toBeDefined();
-    expect(screen.getByText(/Updated Assessment & Next Steps/i)).toBeDefined();
+    expect(screen.getByText(/Field Discovery/i)).toBeDefined();
+    expect(screen.getByText(/Updated Assessment/i)).toBeDefined();
 
-    // Blank Start State (Pre-Audit)
+    // Blank Start State (Pre-Audit) — no redundant 'Unassessed' pills or '[I]' brackets
     expect(screen.getByText(/Stage Gate 2 · Unassessed Opportunity/i)).toBeDefined();
     expect(screen.getByRole('button', { name: /Start assessment/i })).toBeDefined();
     expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
+    expect(screen.queryByText('Unassessed')).toBeNull();
+    expect(screen.queryByText('[I]')).toBeNull();
+    expect(screen.getByText(/I · Weight 20%/)).toBeDefined();
   });
 
   it('opens Settings from SIMULATION pill, dims/disables analysis model in Simulation mode, and toggles cleanly to Live AI mode', async () => {
@@ -99,8 +99,8 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
       fireEvent.click(startBtn);
     });
 
-    // 0–350ms: baseline rubric scanning state with Abort button
-    expect(screen.getByText(/Scanning AE & SA notes against MEDDPICC rubric…/i)).toBeDefined();
+    // 0–350ms: single baseline rubric scanning indicator with Abort button
+    expect(screen.getAllByText(/Scanning MEDDPICC rubric…/i)).toHaveLength(1);
     expect(screen.getByRole('button', { name: /^Abort$/i })).toBeDefined();
 
     // Advance past 350ms -> Stage 1 unlocks immediately with baseline score, shimmers, progressive CTA, and Abort
@@ -224,20 +224,31 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
       vi.advanceTimersByTime(1100);
     });
 
-    // Stage 3: Final score, Gate Criteria Satisfied, honest simulation preview subtitle, zero [QUALIFIED] tag
+    // Stage 3: Final score, Gate Criteria Satisfied, honest simulation preview subtitle, structured OWNER/FOCUS/WATCH metadata, zero [QUALIFIED] tag or '58 →' prefix
     expect(screen.getAllByText(acmeFinalScore).length).toBeGreaterThan(0);
     expect(screen.getByText(/Stage Gate 2 · Gate Criteria Satisfied/i)).toBeDefined();
+    expect(screen.getByText('(+18)')).toBeDefined();
+    expect(container.textContent).not.toContain('58 →');
+    expect(container.textContent).not.toContain('3 →');
+    expect(screen.queryByText(/Qualification Finalized/i)).toBeNull();
     expect(screen.getByText(/Suggested Next Steps/i)).toBeDefined();
-    expect(screen.getByText(/Simulated writeback preview/i)).toBeDefined();
+    expect(screen.getByText(/Simulation preview/i)).toBeDefined();
+    expect(screen.getByText('OWNER')).toBeDefined();
+    expect(screen.getByText('David Kross (SA)')).toBeDefined();
+    expect(screen.getByText('FOCUS')).toBeDefined();
+    expect(screen.getByText('WATCH')).toBeDefined();
     expect(container.textContent).not.toContain('[QUALIFIED]');
-    expect(screen.getByTestId('crm-writeback-card')).toBeDefined();
+    expect(screen.getByTestId('crm-qualification-status').textContent).toContain('Qualified');
 
-    // Inspect Stage 1 via StepperBar
+    // Inspect Stage 1 via StepperBar — no redundant Blocker/Verified/Partial pills
     const stage1Step = screen.getByRole('button', { name: /Initial Deal Audit/i });
     await act(async () => {
       fireEvent.click(stage1Step);
     });
     expect(screen.getByText(/Return to Updated Assessment \(Stage 3\) →/i)).toBeDefined();
+    expect(screen.queryByText('Blocker')).toBeNull();
+    expect(screen.queryByText('Verified')).toBeNull();
+    expect(screen.queryByText('Partial')).toBeNull();
 
     // Return to Stage 3
     await act(async () => {
@@ -246,7 +257,7 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     expect(screen.getAllByText(acmeFinalScore).length).toBeGreaterThan(0);
 
     // Inspect Stage 2 via StepperBar — shows baseline 3/10 (not post-rescore 8/10)
-    const stage2Step = screen.getByRole('button', { name: /Field Discovery Checklist/i });
+    const stage2Step = screen.getByRole('button', { name: /Field Discovery/i });
     await act(async () => {
       fireEvent.click(stage2Step);
     });
@@ -342,7 +353,7 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
 
     expect(writeTextMock).toHaveBeenCalled();
     expect(writeTextMock.mock.calls[0][0]).not.toContain('[QUALIFIED]');
-    expect(screen.getByText('✓ Copied to Clipboard')).toBeDefined();
+    expect(screen.getByText('Copied')).toBeDefined();
 
     vi.useRealTimers();
   });
@@ -388,17 +399,16 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     });
 
     expect(writeTextMock).toHaveBeenCalled();
-    expect(screen.getByText('Copy Failed — Select text below manually')).toBeDefined();
+    expect(screen.getByText('Copy failed — select text below manually')).toBeDefined();
 
     vi.useRealTimers();
   });
 
-  it('switches simulation scenarios dynamically while keeping operator avatar stable', async () => {
+  it('switches simulation scenarios dynamically across Acme, Globex, and Soylent', async () => {
     vi.useFakeTimers();
     render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
     expect(screen.getAllByText(/Acme Corp/i).length).toBeGreaterThan(0);
-    expect(screen.getByLabelText('Deal Desk Operator').textContent).toBe('DD');
 
     const settingsBtn = screen.getByRole('button', { name: /Workbench settings/i });
     await act(async () => {
@@ -417,7 +427,6 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     expect(screen.getAllByText(/Globex/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/\$240,000/i)).toBeDefined();
     expect(screen.getAllByText(/AWS Amplify/i).length).toBeGreaterThan(0);
-    expect(screen.getByLabelText('Deal Desk Operator').textContent).toBe('DD');
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
