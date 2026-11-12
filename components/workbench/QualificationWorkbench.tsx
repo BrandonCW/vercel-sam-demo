@@ -389,7 +389,7 @@ export function QualificationWorkbench({
                         </span>
                         <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
                       </div>
-                      <span aria-hidden="true" className="h-4 w-px bg-[#E2E0D8] shrink-0" />
+                      <span aria-hidden="true" className="hidden sm:block h-4 w-px bg-[#E2E0D8] shrink-0" />
                       <span className="font-sans text-xs sm:text-sm font-medium text-[#52545D] tabular-nums">
                         {unassessedGateReadout.label}
                       </span>
@@ -461,7 +461,7 @@ export function QualificationWorkbench({
                         </span>
                         <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
                       </div>
-                      <span aria-hidden="true" className="h-4 w-px bg-[#E2E0D8] shrink-0" />
+                      <span aria-hidden="true" className="hidden sm:block h-4 w-px bg-[#E2E0D8] shrink-0" />
                       <span
                         className={`font-sans text-xs sm:text-sm font-medium tabular-nums ${
                           stage1GateReadout.isSatisfied ? 'text-[#111215]' : 'text-[#52545D]'

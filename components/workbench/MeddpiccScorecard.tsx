@@ -278,7 +278,7 @@ function ScorecardRow({
 
           <div className="mt-1.5 flex items-baseline font-sans text-sm tabular-nums">
             {isUnassessed || isLoading ? (
-              <span className="font-normal text-[#636772]">--/10</span>
+              <span className="font-normal text-[#636772]">–/10</span>
             ) : (
               <>
                 <span>
