@@ -3,7 +3,7 @@
 **Status:** completed  
 **Type:** task  
 **Blocked by:** 25  
-**Parent Epic:** [GitHub Issue #6](https://github.com/BrandonCW/vercel-sam-demo/issues/6)
+**Parent Epic:** GitHub Issue #6
 
 ## Context
 
