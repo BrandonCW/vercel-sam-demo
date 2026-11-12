@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Gauge, Settings, X, RotateCcw, ChevronDown } from 'lucide-react';
+import { Settings, X, RotateCcw, ChevronDown } from 'lucide-react';
+import { DealDeskLogoMark } from '@/components/ui/deal-desk-logo';
 import type { Opportunity, System2ModelOption } from '@/lib/types/crm';
 import { SYSTEM2_MODELS } from '@/lib/types/crm';
 import { DEMO_SCENARIOS } from '@/lib/db/scenarios';
@@ -96,9 +97,7 @@ export function TopNavBar({
       <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3.5 sm:px-6">
         {/* Deal Operations Title & Logo */}
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-md bg-[#111215] text-[#FFFFFF]">
-            <Gauge className="size-5 text-[#FFFFFF]" aria-hidden="true" />
-          </div>
+          <DealDeskLogoMark className="size-9 shrink-0" />
           <div>
             <p className="font-sans text-kicker font-semibold uppercase text-[#636772]">
               DEAL OPERATIONS

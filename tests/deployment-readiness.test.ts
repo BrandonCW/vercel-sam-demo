@@ -50,7 +50,7 @@ describe('Vercel Release & Deployment Configuration', () => {
     ]);
   });
 
-  it('ships Warm Stone Deal Desk gauge favicon (app/icon.svg) aligned with DESIGN.md tokens', () => {
+  it('ships Warm Stone Deal Desk gauge favicon (app/icon.svg) and matching DealDeskLogoMark across TopNavBar and LoginPage', () => {
     const iconPath = path.join(process.cwd(), 'app', 'icon.svg');
     expect(fs.existsSync(iconPath)).toBe(true);
 
@@ -59,5 +59,26 @@ describe('Vercel Release & Deployment Configuration', () => {
     expect(svgContent).toContain('#F8F8F6');
     expect(svgContent).toContain('#111215');
     expect(svgContent).toContain('#0F52BA');
+
+    const logoComponentPath = path.join(process.cwd(), 'components', 'ui', 'deal-desk-logo.tsx');
+    expect(fs.existsSync(logoComponentPath)).toBe(true);
+    const logoContent = fs.readFileSync(logoComponentPath, 'utf8');
+    expect(logoContent).toContain('data-testid="deal-desk-logo-mark"');
+    expect(logoContent).toContain('#F8F8F6');
+    expect(logoContent).toContain('#111215');
+    expect(logoContent).toContain('#0F52BA');
+    expect(logoContent).toContain('M7.5 21.5A9.5 9.5 0 1 1 24.5 21.5');
+    expect(logoContent).toContain('M16 18.5L21.5 11.5');
+
+    const topNavContent = fs.readFileSync(
+      path.join(process.cwd(), 'components', 'workbench', 'TopNavBar.tsx'),
+      'utf8'
+    );
+    expect(topNavContent).toContain('DealDeskLogoMark');
+    expect(topNavContent).not.toContain('Gauge');
+
+    const loginContent = fs.readFileSync(path.join(process.cwd(), 'app', 'login', 'page.tsx'), 'utf8');
+    expect(loginContent).toContain('DealDeskLogoMark');
+    expect(loginContent).not.toContain('Gauge');
   });
 });
