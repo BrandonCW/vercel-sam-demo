@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { assessmentReducer, type AssessmentView } from '@/lib/assessment-results';
 import { assessTurnMessage } from '@/lib/assessment-turns';
 import { saFeedbackKey } from '@/lib/agents/feedback-schema';
@@ -14,7 +14,11 @@ import {
   saveSubmittingRequestId,
 } from '@/lib/ui/saved-assessment-session';
 import { DEFAULT_SYSTEM2_MODEL } from '@/lib/types/crm';
-import { parseSuggestedNextSteps, formatStageGateReadout } from '@/components/workbench/desk-os-shared';
+import {
+  parseSuggestedNextSteps,
+  extractStructuredNextSteps,
+  formatStageGateReadout,
+} from '@/components/workbench/desk-os-shared';
 import { jev, opportunity, system2 } from './fixtures/qualification';
 
 // The workbench drives the Assessment Session through useEveAgent only. The hook is stubbed at
@@ -109,6 +113,11 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     // Clean primary CTA label (not concatenated)
     expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeTruthy();
 
+    // Unassessed scorecard omits redundant 'Unassessed' row pills and '[I]' brackets
+    expect(screen.queryByText('Unassessed')).toBeNull();
+    expect(screen.queryByText('[I]')).toBeNull();
+    expect(screen.getByText(/I · Weight 20%/)).toBeTruthy();
+
     fireEvent.click(screen.getByRole('button', { name: /Workbench settings/i }));
     fireEvent.change(screen.getByLabelText('Select analysis model'), {
       target: { value: 'anthropic/claude-haiku-5.5' },
@@ -120,15 +129,19 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     expect(hook.reset).not.toHaveBeenCalled();
     expect(hook.send).toHaveBeenCalledWith(assessTurnMessage(base.id, 'anthropic/claude-haiku-5.5'));
     expect(fetch).not.toHaveBeenCalled();
+    // Zero routine toast notification when starting an audit
+    expect(screen.queryByText(/Scanning AE & SA notes/i)).toBeNull();
   });
 
-  it('shows Deal Desk rubric evaluation status before baseline scores arrive, keeps Abort visible, and locks Settings controls', () => {
+  it('shows a single rubric scanning indicator before baseline scores arrive, keeps Abort visible, and locks Settings controls', () => {
     hook.state.status = 'streaming';
     hook.state.data = view({ phase: 'assessing', runningTool: 'run_assessment' });
     const { container } = renderShell();
 
-    expect(screen.getByText(/Evaluating MEDDPICC rubric & stage-gate criteria…/i)).toBeTruthy();
-    expect(screen.getByText(/Scanning AE & SA notes against MEDDPICC rubric…/i)).toBeTruthy();
+    // Single loading indicator in Stage 1 header area (no duplicate MeddpiccScorecard loading bar or disabled Evaluating button)
+    expect(screen.getAllByText(/Scanning MEDDPICC rubric…/i)).toHaveLength(1);
+    expect(screen.queryByText(/Evaluating MEDDPICC rubric/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Evaluating Opportunity/i })).toBeNull();
     assertZeroInternalJargon(container);
 
     // Abort button is visible during baseline scoring
@@ -212,9 +225,14 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     expect(screen.getByText('Stage Gate 2 · 1 Gate Blocker Identified')).toBeTruthy();
     expect(screen.getByText(/VP of E-Commerce mentioned budget/)).toBeTruthy();
     expect(screen.getByText(/No confirmed sign-off authority/)).toBeTruthy();
+    // Redundant status pills and 'Blocker' pill are absent from scorecard rows
+    expect(screen.queryByText('Blocker')).toBeNull();
+    expect(screen.queryByText('Verified')).toBeNull();
+    expect(screen.queryByText('Partial')).toBeNull();
+    expect(screen.queryByText('Unaddressed')).toBeNull();
     assertZeroInternalJargon(container);
 
-    // Navigate to Stage 2 (Field Discovery Checklist) to inspect questions
+    // Navigate to Stage 2 (Field Discovery) to inspect questions
     fireEvent.click(screen.getByRole('button', { name: /Answer 1 Discovery Question/i }));
     expect(screen.getByText('Who signs?')).toBeTruthy();
     expect(screen.getByText('Economic Buyer: 3/10')).toBeTruthy();
@@ -283,7 +301,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     expect(options).toBeUndefined();
   });
 
-  it('parses pipe-delimited Suggested Next Steps without raw [QUALIFIED] tags or pipes, surfaces CRM writeback in DealContextCard, and provides Re-run Deal Audit', () => {
+  it('parses pipe-delimited Suggested Next Steps into lead action + OWNER/FOCUS/WATCH metadata without duplicate header badges or arrow prefixes', () => {
     const steps = '[QUALIFIED] Run POC | Owner: AE | Focus: ISR | Watch: Netlify';
     hook.state.data = view({
       phase: 'closed',
@@ -309,18 +327,25 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
 
     // Stage Gate passes at 72/100 when stageGate.gateReady === true (no hardcoded 75 threshold!)
     expect(screen.getByText('Stage Gate 2 · Gate Criteria Satisfied')).toBeTruthy();
-    expect(screen.getByText('Qualification Finalized (72/100)')).toBeTruthy();
-    expect(screen.getByText('Synchronized to simulated Salesforce CRM.')).toBeTruthy();
+    expect(screen.getByText('(+18)')).toBeTruthy();
+    // No 54 → prefix or duplicate "Qualification Finalized (72/100)" badge on SuggestedNextStepsCard
+    expect(container.textContent).not.toContain('54 →');
+    expect(screen.queryByText(/Qualification Finalized/i)).toBeNull();
+    expect(screen.getByText('Synced to simulated Salesforce CRM')).toBeTruthy();
 
-    // Zero raw [QUALIFIED] tags or pipe delimiters in rendered DOM
+    // Zero raw [QUALIFIED] tags or pipe delimiters in rendered DOM; structured 3-column metadata rendered cleanly
     expect(container.textContent).not.toContain('[QUALIFIED]');
     expect(container.textContent).not.toContain(' | ');
     expect(screen.getAllByText('Run POC').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('OWNER')).toBeTruthy();
+    expect(screen.getAllByText('AE').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('FOCUS')).toBeTruthy();
+    expect(screen.getAllByText('ISR').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('WATCH')).toBeTruthy();
+    expect(screen.getAllByText('Netlify').length).toBeGreaterThanOrEqual(1);
 
-    // Surfaced in DealContextCard CRM Writeback block
-    const writebackCard = screen.getByTestId('crm-writeback-card');
-    expect(within(writebackCard).getByText('Qualified')).toBeTruthy();
-    expect(within(writebackCard).getByText('Run POC')).toBeTruthy();
+    // Qualification status surfaced in DealContextCard metadata pill
+    expect(screen.getByTestId('crm-qualification-status').textContent).toContain('Qualified');
 
     // Non-destructive Re-run Deal Audit button sits alongside Reset Opportunity Baseline
     expect(screen.getByRole('button', { name: /Re-run Deal Audit/i })).toBeTruthy();
@@ -334,6 +359,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       dimensions: {
         ...baseline.dimensions,
         identifyPain: { key: 'identifyPain', label: 'Identify Pain', weight: 0.2, score: 9, status: 'verified', confidence: 0.9 },
+        decisionCriteria: { key: 'decisionCriteria', label: 'Decision Criteria', weight: 0.15, score: 8, status: 'verified', confidence: 0.9 }, // improved from 6 -> 8 (+2)
         champion: { key: 'champion', label: 'Champion', weight: 0.15, score: 4, status: 'partial', confidence: 0.8 }, // dropped from 7 -> 4 (-3)
         economicBuyer: { key: 'economicBuyer', label: 'Economic Buyer', weight: 0.15, score: 3, status: 'unaddressed', confidence: 0.8 },
         metrics: { key: 'metrics', label: 'Metrics', weight: 0.1, score: 6, status: 'partial', confidence: 0.8 }, // partial with 0 gaps
@@ -358,21 +384,25 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
         suggested_next_steps: '[IN REVIEW] Hold at Stage 2. | Owner: AE | Focus: EB | Watch: Netlify',
       }),
     });
-    renderShell();
+    const { container } = renderShell();
 
     // Fails Stage Gate despite 76/100 score because stageGate.gateReady === false
     expect(screen.getByText('Stage Gate 2 · 1 Blocker Remaining')).toBeTruthy();
-    expect(screen.getByText('In Review · Gate Blocked (76/100)')).toBeTruthy();
+    // No duplicate "In Review · Gate Blocked" pill or "60 →" / "7 →" prefixes
+    expect(screen.queryByText(/In Review · Gate Blocked/i)).toBeNull();
+    expect(container.textContent).not.toContain('60 →');
+    expect(container.textContent).not.toContain('7 →');
 
     // Preserves negative delta (-3) on Champion (7 -> 4) in unadorned parenthetical notation
     expect(screen.getByText('(-3)')).toBeTruthy();
 
-    // Only status === 'verified' && gaps.length === 0 renders "Verified in discovery" (Identify Pain & Competition = 2 rows, NOT partial Metrics)
-    expect(screen.getAllByText('Verified in discovery')).toHaveLength(2);
-    expect(screen.getAllByText('Partial evidence — additional validation needed.').length).toBeGreaterThan(0);
+    // Only verified dimensions that improved in discovery (delta > 0) with 0 open gaps render "Resolved in discovery" (Decision Criteria 6 -> 8; unchanged Identify Pain & Competition render quiet —)
+    expect(screen.getAllByText('Resolved in discovery')).toHaveLength(1);
+    expect(screen.queryByText('Verified in discovery')).toBeNull();
+    expect(screen.queryByText('Partial evidence — additional validation needed.')).toBeNull();
 
     // Inspecting Stage 2 retrospectively shows baseline 3/10 score on Economic Buyer
-    fireEvent.click(screen.getByRole('button', { name: /Field Discovery Checklist/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Field Discovery/i }));
     expect(screen.getByText('Economic Buyer: 3/10')).toBeTruthy();
   });
 
@@ -640,7 +670,6 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       const header = screen.getByRole('banner');
       expect(header.textContent).not.toContain('READY_TO_ASSESS');
       expect(header.textContent).not.toContain('Salesforce connected');
-      expect(screen.getByLabelText('Deal Desk Operator').textContent).toBe('DD');
 
       fireEvent.click(screen.getByRole('button', { name: /Workbench settings/i }));
       expect(screen.getByText(/Simulated AI \(Instant Replay\)/i)).toBeTruthy();
@@ -805,6 +834,18 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
         { label: 'Focus', text: 'Turborepo & ISR', raw: 'Focus: Turborepo & ISR' },
         { label: 'Watch', text: 'Netlify (high threat)', raw: 'Watch: Netlify (high threat)' },
       ]);
+
+      const structured = extractStructuredNextSteps(
+        '[QUALIFIED] Advance to Stage 3 - Technical Validation. Schedule POC. | Owner: SA (Lead) + AE | Focus: Turborepo & ISR | Watch: Netlify (high threat)'
+      );
+      expect(structured).toEqual({
+        leadAction: 'Advance to Stage 3 - Technical Validation. Schedule POC.',
+        metadata: [
+          { key: 'owner', label: 'OWNER', value: 'SA (Lead) + AE' },
+          { key: 'focus', label: 'FOCUS', value: 'Turborepo & ISR' },
+          { key: 'watch', label: 'WATCH', value: 'Netlify (high threat)' },
+        ],
+      });
     });
 
     it('drives Stage Gate readout strictly from stageGate.gateReady and qualificationStatus', () => {

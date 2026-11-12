@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Ban } from 'lucide-react';
+import { Ban, Loader2 } from 'lucide-react';
 import { useEveAgent } from 'eve/react';
 import type { Opportunity, StageGateEvaluation, System2ModelOption } from '@/lib/types/crm';
 import { DEFAULT_SYSTEM2_MODEL } from '@/lib/types/crm';
@@ -279,7 +279,6 @@ export function LiveQualificationWorkbench({
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setScenarioId(newScenarioId);
       setOpportunity(data);
-      showToast(`Switched active opportunity to: ${data.name}`);
     } catch (err) {
       syncedScenarioRef.current = scenarioId;
       setInternalScenarioId(scenarioId);
@@ -443,6 +442,8 @@ function LiveAssessmentSession({
     initialStageView ??
       (workflowState === 'COMPLETED'
         ? 'stage3'
+        : workflowState === 'EVALUATING'
+        ? 'stage2'
         : workflowState === 'PENDING_FEEDBACK' || isSynthesizingDiscovery
         ? 'stage1'
         : 'blank')
@@ -635,7 +636,6 @@ function LiveAssessmentSession({
     setBaselineAssessment(null);
     setSavedFormData({});
     setSavedManualNotes('');
-    showToast('Scanning AE & SA notes against MEDDPICC rubric…');
     await sendTurn(ASSESS_FAILED, () =>
       agent.send(assessTurnMessage(baseOpportunity.id, selectedModel))
     );
@@ -656,7 +656,6 @@ function LiveAssessmentSession({
     setSavedFormData(formResponses);
     if (notesDelta !== undefined) setSavedManualNotes(notesDelta);
 
-    showToast('Re-scoring Deal & Updating CRM…');
     saveSubmittingRequestId(baseOpportunity.id, pending.requestId);
     setSubmittingRequestId(pending.requestId);
     const text = await saAnswerText(formResponses, notesDelta);
@@ -863,12 +862,12 @@ function LiveAssessmentSession({
               {activeStageView === 'blank' && workflowState === 'READY_TO_ASSESS' && (
                 <div className="space-y-4">
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
-                      <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono tabular-nums">
-                        <span className="text-score font-bold text-[#787C87]">
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
+                        <span className="text-2xl font-semibold tracking-[-0.02em] text-[#787C87]">
                           --
                         </span>
-                        <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                        <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
                       </div>
                       <span className="inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none text-[#52545D] tabular-nums">
                         <span className="ui-pill-label">{unassessedGateReadout.label}</span>
@@ -905,35 +904,41 @@ function LiveAssessmentSession({
                 </div>
               )}
 
-              {/* 2. Baseline Rubric Scoring Loading (before jevResult arrives) */}
+              {/* 2. Phase A: Initial Rubric Scan (before jevResult arrives) */}
               {workflowState === 'ANALYZING' && !isSynthesizingDiscovery && (
                 <div className="space-y-4">
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="score-lockup flex items-center gap-3">
-                      <div className="font-sans text-sm text-[#52545D]">
-                        Evaluating MEDDPICC rubric &amp; stage-gate criteria…
-                      </div>
+                    <div className="flex items-center gap-2.5">
+                      <Loader2
+                        className="size-4 shrink-0 animate-spin text-[#52545D]"
+                        aria-hidden="true"
+                      />
+                      <span
+                        className="font-sans text-sm font-medium text-[#111215]"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        Scanning MEDDPICC rubric…
+                      </span>
                     </div>
 
                     <button
                       type="button"
-                      disabled={true}
-                      aria-label="Evaluating Opportunity…"
-                      className="inline-flex min-h-8 items-center rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#787C87] cursor-not-allowed opacity-75"
+                      onClick={() => {
+                        void agent.cancel();
+                      }}
+                      className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
                     >
-                      <span className="ui-pill-label">Evaluating Opportunity…</span>
+                      <Ban className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+                      <span className="ui-pill-label">Abort</span>
                     </button>
                   </div>
 
                   <MeddpiccScorecard
                     mode="loading"
                     score={0}
-                    loadingStatus="Scanning AE & SA notes against MEDDPICC rubric…"
                     dimensions={liveDimensions}
                     hideHeader={true}
-                    onAbort={() => {
-                      void agent.cancel();
-                    }}
                   />
                 </div>
               )}
@@ -942,12 +947,12 @@ function LiveAssessmentSession({
               {showStage1 && (
                 <div className="space-y-4">
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
-                    <div className="score-lockup flex flex-wrap items-center gap-2.5 sm:gap-3">
-                      <div className="flex items-baseline gap-1.5 whitespace-nowrap font-mono tabular-nums">
-                        <span className="text-score font-bold text-[#111215]">
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
+                        <span className="text-2xl font-semibold tracking-[-0.02em] text-[#111215]">
                           {stage1Score}
                         </span>
-                        <span className="text-sm font-normal text-[#787C87]">/ 100</span>
+                        <span className="ml-1 text-sm font-normal text-[#787C87]">/ 100</span>
                       </div>
                       <span
                         className={`inline-flex min-h-6 items-center rounded-[4px] border border-[#E2E0D8] bg-[#F1F0EC] px-2.5 py-1 font-sans text-xs font-medium leading-none tabular-nums ${
@@ -1022,47 +1027,49 @@ function LiveAssessmentSession({
                     dimensions={stage1Dimensions}
                     hideHeader={true}
                   />
-
-                  {/* Stage 1 Bottom Summary Footer */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md border border-[#E2E0D8] bg-[#F8F8F6] p-4">
-                    <span className="font-sans text-sm text-[#52545D]">
-                      {stage1GateReadout.isSatisfied
-                        ? `All ${stage1GateReadout.gateLabel} exit criteria verified in baseline scoring.`
-                        : `${stage1GateReadout.blockerCount} qualification ${
-                            stage1GateReadout.blockerCount === 1 ? 'blocker' : 'blockers'
-                          } preventing ${stage1GateReadout.gateLabel} advancement.`}
-                    </span>
-
-                    {!isSynthesizingDiscovery && discoveryQuestionCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveStageView('stage2')}
-                        className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
-                      >
-                        <span className="ui-pill-label">
-                          Proceed to Stage 2: Field Discovery →
-                        </span>
-                      </button>
-                    )}
-                  </div>
                 </div>
               )}
 
-              {/* 4. Stage 2: Field Discovery Checklist */}
+              {/* 4. Stage 2: Field Discovery Checklist & Phase C Re-scoring */}
               {activeStageView === 'stage2' && workflowState !== 'ANALYZING' && (
                 <div className="space-y-4">
                   {workflowState === 'EVALUATING' ? (
-                    <MeddpiccScorecard
-                      mode="loading"
-                      loadingStatus="Re-scoring Deal & Updating CRM…"
-                      dimensions={liveDimensions}
-                      hideHeader={true}
-                      onAbort={() => {
-                        clearSubmittingRequestId(baseOpportunity.id);
-                        setSubmittingRequestId(null);
-                        void agent.cancel();
-                      }}
-                    />
+                    <div className="space-y-4">
+                      <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
+                        <div className="flex items-center gap-2.5">
+                          <Loader2
+                            className="size-4 shrink-0 animate-spin text-[#52545D]"
+                            aria-hidden="true"
+                          />
+                          <span
+                            className="font-sans text-sm font-medium text-[#111215]"
+                            role="status"
+                            aria-live="polite"
+                          >
+                            Re-scoring Deal &amp; Updating CRM…
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearSubmittingRequestId(baseOpportunity.id);
+                            setSubmittingRequestId(null);
+                            void agent.cancel();
+                          }}
+                          className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[#E2E0D8] bg-[#FFFFFF] px-3 py-1.5 font-sans text-xs font-medium leading-none text-[#111215] hover:bg-[#F1F0EC] transition cursor-pointer"
+                        >
+                          <Ban className="size-3.5 shrink-0 text-[#52545D]" aria-hidden="true" />
+                          <span className="ui-pill-label">Abort</span>
+                        </button>
+                      </div>
+
+                      <MeddpiccScorecard
+                        mode="loading"
+                        dimensions={liveDimensions}
+                        hideHeader={true}
+                      />
+                    </div>
                   ) : (
                     <>
                       {isComplete && (
@@ -1124,6 +1131,17 @@ function LiveAssessmentSession({
                     qualificationStatus={currentOpportunity.qualification_status}
                     stageGate={stage3StageGate}
                     syncMode="live"
+                    fallbackMetadata={
+                      view.system2Result
+                        ? {
+                            owner: currentOpportunity.sa_name
+                              ? `${currentOpportunity.sa_name} (SA)`
+                              : undefined,
+                            focus: view.system2Result.valueFocus,
+                            watch: view.system2Result.primaryRisk,
+                          }
+                        : undefined
+                    }
                   />
 
                   {/* Upgraded 8-Row MEDDPICC Scorecard */}
