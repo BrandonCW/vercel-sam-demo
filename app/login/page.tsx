@@ -76,7 +76,7 @@ export default function LoginPage() {
             <p className="font-sans text-kicker font-semibold uppercase text-[#636772]">
               DEAL OPERATIONS
             </p>
-            <h1 className="font-sans text-[23px] font-bold tracking-[-0.025em] text-[#111215] leading-tight">
+            <h1 className="font-sans text-2xl font-bold tracking-[-0.025em] text-[#111215] leading-tight">
               Qualification System
             </h1>
           </div>
