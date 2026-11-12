@@ -1,0 +1,3 @@
+# Synthetic non-credential unit-test fixtures in tests/env.test.ts
+postgresql://user:pass@ep-demo.neon.tech
+postgres://user:pass@localhost:5432

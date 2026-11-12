@@ -18,13 +18,26 @@ function getSql() {
   return neon(getPostgresUrl());
 }
 
-export async function getOpportunity(id: string): Promise<Opportunity | null> {
+export async function getOpportunityWithServerTimestamp(
+  id: string
+): Promise<{ opportunity: Opportunity; serverTimestamp: string } | null> {
   const sql = getSql();
   const rows = await sql`
     SELECT o.*,
+      NOW() AS db_server_now,
       (SELECT MAX(created_at) FROM deal_interactions i WHERE i.opportunity_id = o.id AND i.action = 'reset') AS last_reset_at
     FROM opportunities o WHERE o.id = ${id} LIMIT 1;`;
-  return rows.length > 0 ? mapRowToOpportunity(rows[0]) : null;
+  if (rows.length === 0) return null;
+  const { db_server_now, ...rest } = rows[0];
+  return {
+    opportunity: mapRowToOpportunity(rest),
+    serverTimestamp: new Date(db_server_now).toISOString(),
+  };
+}
+
+export async function getOpportunity(id: string): Promise<Opportunity | null> {
+  const snapshot = await getOpportunityWithServerTimestamp(id);
+  return snapshot ? snapshot.opportunity : null;
 }
 
 /** Like getOpportunity, but a missing record throws. */
@@ -46,6 +59,10 @@ export async function listOpportunities(): Promise<Opportunity[]> {
   return rows.map(mapRowToOpportunity);
 }
 
+/**
+ * @internal Test-only convenience mutator. Production code paths MUST use transactional
+ * `recordAssessmentStep`, `appendSaFeedbackOnce`, or `writebackOpportunityQualification`.
+ */
 export async function updateOpportunity(
   id: string,
   updates: Partial<Opportunity>
@@ -93,6 +110,8 @@ export interface QualificationWritebackData {
   meddpicc_breakdown: MEDDPICCBreakdown;
   /** The Assessment Session this writeback closes; each session is written back at most once. */
   sessionId: string;
+  /** Database timestamp when this session began; rejects stale writes if the Opportunity was reset after it. */
+  sessionStartedAt?: string | null;
   /** The single `writeback` audit row, inserted in the same statement as the update. */
   audit: { actor: DealInteraction['actor']; payload: Record<string, unknown> };
 }
@@ -103,10 +122,11 @@ export async function writebackOpportunityQualification(
 ): Promise<{ opportunity: Opportunity; writebackId: string }> {
   const now = new Date().toISOString();
   const sql = getSql();
+  const sessionStartedAt = writeback.sessionStartedAt ?? null;
   const payload = { ...writeback.audit.payload, assessmentSessionId: writeback.sessionId };
   // One transaction, serialised per session: updates ONLY the designated writeback fields
   // (ae_notes and sa_notes are untouched) and inserts the single writeback audit row, or
-  // neither when ae_notes changed or the session is already closed.
+  // neither when ae_notes changed, the Opportunity was reset, or the session is already closed.
   const [, closedRows, rows] = await sql.transaction([
     sql`SELECT pg_advisory_xact_lock(hashtext(${`writeback:${id}:${writeback.sessionId}`}));`,
     sql`SELECT EXISTS (
@@ -123,6 +143,15 @@ export async function writebackOpportunityQualification(
         meddpicc_breakdown = ${JSON.stringify(writeback.meddpicc_breakdown)}::jsonb,
         updated_at = ${now}
       WHERE id = ${id} AND ae_notes = ${writeback.expectedAeNotes}
+        AND (
+          ${sessionStartedAt}::timestamptz IS NULL
+          OR NOT EXISTS (
+            SELECT 1 FROM deal_interactions r
+            WHERE r.opportunity_id = ${id}
+              AND r.action = 'reset'
+              AND r.created_at > ${sessionStartedAt}::timestamptz
+          )
+        )
         AND NOT EXISTS (
           SELECT 1 FROM deal_interactions
           WHERE opportunity_id = ${id} AND action = 'writeback'
@@ -143,6 +172,13 @@ export async function writebackOpportunityQualification(
     }
     const existing = await getOpportunity(id);
     if (!existing) throw new Error(`Opportunity ${id} not found`);
+    if (
+      sessionStartedAt &&
+      existing.last_reset_at &&
+      new Date(existing.last_reset_at).getTime() > new Date(sessionStartedAt).getTime()
+    ) {
+      throw new Error(`Writeback to ${id} rejected: Opportunity was reset after this audit session started.`);
+    }
     throw new Error(`Writeback to ${id} rejected: ae_notes changed since it was read; ae_notes is immutable.`);
   }
   const { writeback_id: writebackId, ...row } = rows[0];
@@ -160,13 +196,24 @@ export async function appendSaFeedbackOnce(input: {
   feedbackKey: string;
   notesDelta: string;
   payload: Record<string, unknown>;
+  sessionStartedAt?: string | null;
 }): Promise<boolean> {
   const sql = getSql();
   const now = new Date().toISOString();
+  const sessionStartedAt = input.sessionStartedAt ?? null;
   const lockKey = `sa_feedback:${input.opportunityId}:${input.sessionId}:${input.feedbackKey}`;
-  const [, inserted] = await sql.transaction([
+  const [, existingRows, inserted] = await sql.transaction([
     // Serialises identical concurrent submissions; released at commit.
     sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}));`,
+    sql`
+      SELECT EXISTS (
+        SELECT 1 FROM deal_interactions
+        WHERE opportunity_id = ${input.opportunityId}
+          AND action = 'sa_feedback'
+          AND payload->>'assessmentSessionId' = ${input.sessionId}
+          AND payload->>'feedbackKey' = ${input.feedbackKey}
+      ) AS already_recorded;
+    `,
     sql`
       WITH existing AS (
         SELECT 1 FROM deal_interactions
@@ -181,7 +228,17 @@ export async function appendSaFeedbackOnce(input: {
             ELSE btrim(sa_notes) || E'\n\n' || ${input.notesDelta}
           END,
           updated_at = ${now}
-        WHERE id = ${input.opportunityId} AND NOT EXISTS (SELECT 1 FROM existing)
+        WHERE id = ${input.opportunityId}
+          AND NOT EXISTS (SELECT 1 FROM existing)
+          AND (
+            ${sessionStartedAt}::timestamptz IS NULL
+            OR NOT EXISTS (
+              SELECT 1 FROM deal_interactions r
+              WHERE r.opportunity_id = ${input.opportunityId}
+                AND r.action = 'reset'
+                AND r.created_at > ${sessionStartedAt}::timestamptz
+            )
+          )
         RETURNING id
       )
       INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
@@ -189,7 +246,22 @@ export async function appendSaFeedbackOnce(input: {
       RETURNING id;
     `,
   ]);
-  return inserted.length > 0;
+  if (inserted.length === 0) {
+    if (existingRows[0]?.already_recorded) return false;
+    const existing = await getOpportunity(input.opportunityId);
+    if (!existing) throw new Error(`Opportunity ${input.opportunityId} not found`);
+    if (
+      sessionStartedAt &&
+      existing.last_reset_at &&
+      new Date(existing.last_reset_at).getTime() > new Date(sessionStartedAt).getTime()
+    ) {
+      throw new Error(
+        `Discovery feedback write to ${input.opportunityId} rejected: Opportunity was reset after this audit session started.`
+      );
+    }
+    return false;
+  }
+  return true;
 }
 
 const NOT_SEEDED_HINT = 'Seed the demo data with `pnpm db:seed` (see README).';
@@ -325,9 +397,11 @@ export interface AssessmentFields {
 export async function recordAssessmentStep(
   id: string,
   fields: AssessmentFields,
-  audit: Pick<DealInteraction, 'actor' | 'action' | 'payload'>
+  audit: Pick<DealInteraction, 'actor' | 'action' | 'payload'>,
+  options?: { sessionStartedAt?: string | null }
 ): Promise<{ opportunity: Opportunity; interaction: DealInteraction }> {
   const sql = getSql();
+  const sessionStartedAt = options?.sessionStartedAt ?? null;
   const rows = await sql`
     WITH updated AS (
       UPDATE opportunities SET
@@ -339,6 +413,15 @@ export async function recordAssessmentStep(
           ELSE qualification_status END,
         updated_at = NOW()
       WHERE id = ${id}
+        AND (
+          ${sessionStartedAt}::timestamptz IS NULL
+          OR NOT EXISTS (
+            SELECT 1 FROM deal_interactions r
+            WHERE r.opportunity_id = ${id}
+              AND r.action = 'reset'
+              AND r.created_at > ${sessionStartedAt}::timestamptz
+          )
+        )
       RETURNING *
     ), audit AS (
       INSERT INTO deal_interactions (opportunity_id, actor, action, payload)
@@ -351,7 +434,20 @@ export async function recordAssessmentStep(
       audit.payload AS audit_payload, audit.created_at AS audit_created_at
     FROM updated, audit;
   `;
-  if (rows.length === 0) throw new Error(`Opportunity ${id} not found`);
+  if (rows.length === 0) {
+    const existing = await getOpportunity(id);
+    if (!existing) throw new Error(`Opportunity ${id} not found`);
+    if (
+      sessionStartedAt &&
+      existing.last_reset_at &&
+      new Date(existing.last_reset_at).getTime() > new Date(sessionStartedAt).getTime()
+    ) {
+      throw new Error(
+        `Assessment step write to ${id} rejected: Opportunity was reset after this audit session started.`
+      );
+    }
+    throw new Error(`Opportunity ${id} could not be updated`);
+  }
   // Plain driver columns (not row_to_json), so both come back in the shape getOpportunity reads.
   const row = rows[0];
   return {

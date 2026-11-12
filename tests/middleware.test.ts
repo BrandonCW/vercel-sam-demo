@@ -42,13 +42,11 @@ describe('Middleware Security Gate (tests/middleware.test.ts)', () => {
     it('bypasses authentication gate when NODE_ENV === "development"', async () => {
       (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
 
-      // Protected page route without session cookie
       const pageReq = createRequest('http://localhost:3000/');
       const pageRes = await middleware(pageReq);
       expect(pageRes.status).toBe(200);
       expect(pageRes.headers.get('location')).toBeNull();
 
-      // Protected API route without session cookie
       const apiReq = createRequest('http://localhost:3000/api/crm/reset');
       const apiRes = await middleware(apiReq);
       expect(apiRes.status).toBe(200);
@@ -123,7 +121,7 @@ describe('Middleware Security Gate (tests/middleware.test.ts)', () => {
       expect(staticFolderRes.status).toBe(200);
     });
 
-    it('allows public paths /login and /api/auth/login through without authentication', async () => {
+    it('allows public paths /login, /api/auth/login, and /api/auth/logout (even with expired cookie) through without 401', async () => {
       const loginPageReq = createRequest('http://localhost:3000/login');
       const loginPageRes = await middleware(loginPageReq);
       expect(loginPageRes.status).toBe(200);
@@ -131,6 +129,13 @@ describe('Middleware Security Gate (tests/middleware.test.ts)', () => {
       const loginApiReq = createRequest('http://localhost:3000/api/auth/login');
       const loginApiRes = await middleware(loginApiReq);
       expect(loginApiRes.status).toBe(200);
+
+      const logoutExpiredCookieReq = createRequest('http://localhost:3000/api/auth/logout', {
+        cookies: { [COOKIE_NAME]: '1000000.expired_or_rotated_sig' },
+      });
+      const logoutRes = await middleware(logoutExpiredCookieReq);
+      expect(logoutRes.status).toBe(200);
+      expect(logoutRes.headers.get('location')).toBeNull();
     });
 
     it('permits authenticated page and API requests with valid session token', async () => {

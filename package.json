@@ -2,6 +2,9 @@
   "name": "deal-qualification-system",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -20,23 +23,26 @@
     "clsx": "^2.1.1",
     "eve": "^0.64.1",
     "lucide-react": "^1.16.0",
-    "next": "^15.1.7",
+    "next": "^15.5.28",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.0.1",
-    "zod": "^3.24.2"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "autoprefixer": "^10.4.20",
-    "happy-dom": "^20.14.5",
-    "postcss": "^8.5.2",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.5.28",
+    "happy-dom": "^21.0.4",
+    "postcss": "^8.5.23",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.23.15",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^3.2.7"
   }
 }

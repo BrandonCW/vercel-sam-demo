@@ -3,7 +3,7 @@ import { resolveAgentModel } from "@/lib/models";
 
 export default defineAgent({
   description:
-    "Enterprise Deal Qualification Agent orchestrating MEDDPICC scoring (Jev), System 2 deep reasoning, and CRM writeback.",
+    "Enterprise Deal Desk Agent orchestrating baseline MEDDPICC rubric scoring, deep gap & citation analysis, interactive discovery, and CRM writeback.",
   defaultTools: false,
   tool: false,
   model: defineDynamic({
@@ -12,8 +12,8 @@ export default defineAgent({
     },
   }),
   limits: {
-    // An Assessment Session idles (zero compute, zero tokens) between assess and SA feedback,
-    // which can be days of customer discovery. Explicit so the durability window is deliberate.
+    // An audit session idles (zero compute, zero tokens) between baseline analysis and discovery answers,
+    // which can span days of customer discovery. Explicit so the durability window is deliberate.
     sessionTimeoutMs: 30 * 24 * 60 * 60 * 1_000,
   },
 });

@@ -8,12 +8,12 @@
     "amount": 180000,
     "close_date": "2026-12-15",
     "ae_name": "Sarah Jenkins",
-    "sa_name": "Alex Chen",
+    "sa_name": "David Kross",
     "ae_notes": "Disco call w/ Priya Raman (Head of Platform) + 2 of her staff engineers. Netlify contract expires in 90 days; they are the incumbent (3 yrs) and Netlify has already offered a 30% discount on a 2-year renewal, which procurement likes. Pain is real and quantified: builds take 45 min on avg, deploy queue backs up on launch days, and their Black Friday preview outage last Nov cost ~$400k in lost orders per their own post-mortem (Priya shared the doc). Priya is driving this: she set up the call, is building the internal business case for Vercel herself, and wants to bring us to leadership. Not clear who signs. Priya assumes the CFO (Mark Ellis) or Jane Doe (VP Eng) would have to approve anything this size, but she has never taken a vendor decision to him, we have no contact, and there is no budget for a switch. ACV unknown; we pencilled ~$180k ourselves.",
     "sa_notes": "Tech call with Priya's engineers. Current stack: Next.js Pages Router migrating to App Router, Turborepo monorepo. Netlify deploy times exceed 45 minutes blocking daily releases. Lead Architect confirmed advocacy for Next.js App Router. Targeting sub-5 minute build pipelines. Renewal deadline in 60 days sets timeline. Netlify Enterprise offering 30% defensive renewal discount.",
     "suggested_next_steps": null,
     "qualification_status": "unqualified",
-    "meddpicc_score": 54,
+    "meddpicc_score": 58,
     "meddpicc_breakdown": {
       "identifyPain": {
         "key": "identifyPain",
@@ -98,7 +98,7 @@
         "label": "Competition",
         "weight": 0.1,
         "score": 7,
-        "status": "verified",
+        "status": "partial",
         "confidence": 0.85,
         "evidence": [
           "Netlify Enterprise offering 30% defensive renewal discount"
@@ -112,12 +112,12 @@
         "label": "Paper Process",
         "weight": 0.05,
         "score": 4,
-        "status": "unaddressed",
+        "status": "partial",
         "confidence": 0.75,
-        "evidence": [],
-        "gaps": [
-          "Standard enterprise MSA and DPA review required"
-        ]
+        "evidence": [
+          "Standard enterprise MSA review expected upon vendor selection"
+        ],
+        "gaps": []
       }
     },
     "competitive_flags": [
@@ -129,7 +129,7 @@
   "baseline": {
     "jevResult": {
       "opportunityId": "opp_acme_corp_001",
-      "overallScore": 54,
+      "overallScore": 58,
       "dimensions": {
         "identifyPain": {
           "key": "identifyPain",
@@ -184,7 +184,7 @@
           "label": "Competition",
           "weight": 0.1,
           "score": 7,
-          "status": "verified",
+          "status": "partial",
           "confidence": 0.85
         },
         "paperProcess": {
@@ -192,7 +192,7 @@
           "label": "Paper Process",
           "weight": 0.05,
           "score": 4,
-          "status": "unaddressed",
+          "status": "partial",
           "confidence": 0.75
         }
       },
@@ -272,10 +272,10 @@
           ]
         },
         "paperProcess": {
-          "citations": [],
-          "gaps": [
-            "Standard enterprise MSA and DPA review required"
-          ]
+          "citations": [
+            "Standard enterprise MSA review expected upon vendor selection"
+          ],
+          "gaps": []
         }
       },
       "phase3Form": {
@@ -441,10 +441,10 @@
     "status": "written_back",
     "opportunityId": "opp_acme_corp_001",
     "qualificationStatus": "qualified",
-    "baselineScore": 54,
+    "baselineScore": 58,
     "finalScore": 76,
-    "delta": 22,
-    "nextSteps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Alex Chen (SA). Action: Schedule POC kick-off architecture session with VP Eng Jane Doe by Oct 12. Counter Netlify 30% discount with developer productivity TCO model.",
+    "delta": 18,
+    "nextSteps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: David Kross (SA). Action: Schedule POC kick-off architecture session with VP Eng Jane Doe by Oct 12. Counter Netlify 30% discount with developer productivity TCO model.",
     "writebackId": "wb_sim_acme_001",
     "feedback": "recorded",
     "opportunity": {
@@ -455,10 +455,10 @@
       "amount": 180000,
       "close_date": "2026-12-15",
       "ae_name": "Sarah Jenkins",
-      "sa_name": "Alex Chen",
+      "sa_name": "David Kross",
       "ae_notes": "Disco call w/ Priya Raman (Head of Platform) + 2 of her staff engineers. Netlify contract expires in 90 days; they are the incumbent (3 yrs) and Netlify has already offered a 30% discount on a 2-year renewal, which procurement likes. Pain is real and quantified: builds take 45 min on avg, deploy queue backs up on launch days, and their Black Friday preview outage last Nov cost ~$400k in lost orders per their own post-mortem (Priya shared the doc). Priya is driving this: she set up the call, is building the internal business case for Vercel herself, and wants to bring us to leadership. Not clear who signs. Priya assumes the CFO (Mark Ellis) or Jane Doe (VP Eng) would have to approve anything this size, but she has never taken a vendor decision to him, we have no contact, and there is no budget for a switch. ACV unknown; we pencilled ~$180k ourselves.",
       "sa_notes": "Tech call with Priya's engineers. Current stack: Next.js Pages Router migrating to App Router, Turborepo monorepo. Netlify deploy times exceed 45 minutes blocking daily releases. Lead Architect confirmed advocacy for Next.js App Router. Targeting sub-5 minute build pipelines. Renewal deadline in 60 days sets timeline. Netlify Enterprise offering 30% defensive renewal discount.\n\n[SA Discovery Update - 2026-10-01T12:05:00.000Z]\n• Did Jane Doe (VP Engineering) formally confirm sponsorship?: Confirmed sponsorship if build times drop <5 min\n• Confirmed technical decision criteria: Build speed <5m + Turborepo caching + ISR\n• Additional SA Notes: Economic Buyer verified: VP Eng Jane Doe confirmed executive sponsorship conditioned on build times < 5m. Technical decision criteria locked: Sub-5 minute builds with Turborepo remote caching and App Router ISR.",
-      "suggested_next_steps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: Alex Chen (SA). Action: Schedule POC kick-off architecture session with VP Eng Jane Doe by Oct 12. Counter Netlify 30% discount with developer productivity TCO model.",
+      "suggested_next_steps": "[QUALIFIED] Advance to Stage 3 - Technical Validation. Owner: David Kross (SA). Action: Schedule POC kick-off architecture session with VP Eng Jane Doe by Oct 12. Counter Netlify 30% discount with developer productivity TCO model.",
       "qualification_status": "qualified",
       "meddpicc_score": 76,
       "meddpicc_breakdown": {
@@ -561,10 +561,10 @@
           "score": 5,
           "status": "partial",
           "confidence": 0.8,
-          "evidence": [],
-          "gaps": [
-            "Standard enterprise MSA and DPA review required"
-          ]
+          "evidence": [
+            "Standard enterprise MSA review expected upon vendor selection"
+          ],
+          "gaps": []
         }
       },
       "competitive_flags": [

@@ -58,8 +58,10 @@ export function evaluateStageGate(
   dimensions: JevScoringResult['dimensions'],
   overallScore: number
 ): StageGateEvaluation {
-  const isStage2 = /stage\s*2|discovery/i.test(stageName);
-  const isStage3 = /stage\s*3|technical validation|validation/i.test(stageName);
+  const stageMatch = /\bstage\s*(\d+)\b/i.exec(stageName);
+  const stageNumber = stageMatch ? Number(stageMatch[1]) : null;
+  const isStage2 = stageNumber !== null ? stageNumber === 2 : /\bdiscovery\b/i.test(stageName);
+  const isStage3 = stageNumber !== null ? stageNumber === 3 : /\btechnical\s+validation\b/i.test(stageName);
 
   if (isStage2) {
     const blockers: string[] = [];
@@ -177,12 +179,18 @@ export function evaluateStageGate(
     };
   }
 
-  // Non-gated stage
+  // Early or unrecognized stage (e.g. Stage 1 - Prospecting): never auto-qualify.
+  const isEarlyStage = stageNumber === 1 || /\b(prospect|lead|inbound)\b/i.test(stageName);
+  const targetStage = isEarlyStage ? 'Stage 2 - Discovery' : stageName;
   return {
-    gateReady: true,
+    gateReady: false,
     currentStage: stageName,
-    targetStage: stageName,
-    gateBlockers: [],
+    targetStage,
+    gateBlockers: [
+      isEarlyStage
+        ? `Opportunity is in early ${stageName || 'Stage 1'}; complete baseline discovery before advancing`
+        : `Stage "${stageName || 'Unknown'}" has no active gate pass; manual deal-desk review required before advancing`,
+    ],
     blockingDimensions: [],
   };
 }
@@ -243,9 +251,14 @@ const THREAT_CRITERIA = {
 };
 
 /**
- * Jev accepts at most 10 levels per score question. Level p (0..9) stands for
- * round(p * 10 / 9) on the rubric's 0-10 scale, worded with that value's rubric band.
- * Jev returns a fractional level position, scaled the same way.
+ * TypeSafe's evaluation endpoint on Vercel AI Gateway enforces a hard 10-level maximum
+ * per `score` question (sending 11 levels fails live with HTTP 400: "TypeSafe Score
+ * questions support at most 10 levels"). Level p (0..9) represents round(p * 10 / 9)
+ * on the rubric's 0-10 scale and carries that value's rubric band. Because the model
+ * returns a continuous expected position in [0, 9] (`sum(p * P(p))`) rather than only
+ * discrete integers, every integer rubric score 0..10 — including 5/10 for expected
+ * positions in [4.05, 4.95) (e.g. 4.5 * 10 / 9 = 5.0) — is reachable without hitting
+ * the Gateway's 10-level cap.
  */
 const SCORE_LEVELS = 10;
 const SCORE_RUNGS = Array.from({ length: SCORE_LEVELS }, (_, p) => {
@@ -304,12 +317,12 @@ function confidenceFor(metadata: JevEvaluation['providerMetadata'], key: Dimensi
   const value =
     typeof raw === 'number' ? raw : raw && typeof raw === 'object' ? (raw as Record<string, unknown>)[key] : undefined;
   if (typeof value !== 'number' || value < 0 || value > 1) {
-    throw new Error(`Jev returned no usable providerMetadata.typesafe.confidence for "${key}"`);
+    throw new Error(`Rubric evaluation returned no usable confidence score for "${key}".`);
   }
   return value;
 }
 
-/** Pure mapping from Jev's typed answers to the System 1 result. Throws on any missing answer. */
+/** Pure mapping from typed evaluation answers to the baseline/delta rubric result. Throws on any missing answer. */
 export function interpretJevEvaluation(
   input: JevScoringInput,
   evaluation: JevEvaluation
@@ -319,7 +332,7 @@ export function interpretJevEvaluation(
   for (const [key, config] of Object.entries(CANONICAL_DIMENSIONS) as [DimensionKey, DimensionConfig][]) {
     const answer = evaluation.answers[key];
     if (answer?.type !== 'score' || typeof answer.score !== 'number') {
-      throw new Error(`Jev returned no score answer for "${key}"`);
+      throw new Error(`Rubric evaluation returned no score answer for "${key}".`);
     }
     const score = toTenPointScore(answer.score);
     scores[key] = score;
@@ -337,7 +350,7 @@ export function interpretJevEvaluation(
   for (const [key, name] of Object.entries(COMPETITOR_TAXONOMY)) {
     const answer = evaluation.answers[`competitor_${key}`];
     if (answer?.type !== 'choice' || !answer.choice) {
-      throw new Error(`Jev returned no choice answer for "competitor_${key}"`);
+      throw new Error(`Rubric evaluation returned no competitive threat classification for "competitor_${key}".`);
     }
     if (answer.choice !== 'absent') {
       competitiveFlags.push({ name, threatLevel: CompetitiveThreatLevelSchema.parse(answer.choice) });

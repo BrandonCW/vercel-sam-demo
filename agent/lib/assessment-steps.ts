@@ -1,13 +1,14 @@
 import { evaluate } from "eve/ai";
 import { gateway, generateText, Output } from "ai";
 import { z } from "zod";
-import { getOpportunity } from "@/lib/db/crm";
+import { getOpportunity, getOpportunityWithServerTimestamp } from "@/lib/db/crm";
 import { buildJevEvaluationRequest, interpretJevEvaluation } from "@/lib/agents/jev-scorer";
 import {
+  finalizeAssessmentWriteback,
   recordJevScoring,
   recordSaFeedback,
   recordSystem2Analysis,
-  writebackQualification,
+  type WritebackInMemoryContext,
 } from "@/lib/db/assessments";
 import { assertAiGatewayConfigured } from "@/lib/env";
 import { resolveJevModel, type System2ModelOption } from "@/lib/models";
@@ -32,17 +33,18 @@ export class FatalError extends Error {
  * `run_assessment` action with its error.
  */
 
-/** System 1: loads the Opportunity and scores it with Jev. Writes nothing. */
+/** Loads the Opportunity (with DB server timestamp) and scores all 8 MEDDPICC dimensions. Writes nothing. */
 export async function scoreWithJev(
   opportunityId: string,
   signal?: AbortSignal
-): Promise<{ opportunity: Opportunity; jevResult: JevScoringResult }> {
+): Promise<{ opportunity: Opportunity; jevResult: JevScoringResult; sessionStartedAt: string }> {
   "use step";
   assertAiGatewayConfigured();
-  const opportunity = await getOpportunity(opportunityId);
-  if (!opportunity) {
+  const snapshot = await getOpportunityWithServerTimestamp(opportunityId);
+  if (!snapshot) {
     throw new FatalError(`Opportunity "${opportunityId}" not found in CRM.`);
   }
+  const { opportunity, serverTimestamp } = snapshot;
   const input = {
     opportunityId: opportunity.id,
     name: opportunity.name,
@@ -52,30 +54,34 @@ export async function scoreWithJev(
     aeNotes: opportunity.ae_notes,
     saNotes: opportunity.sa_notes,
   };
-  // Jev answers typed questions; composite and stage gate are computed in code.
   const evaluation = await evaluate({
     model: resolveJevModel(),
     ...buildJevEvaluationRequest(input),
     abortSignal: signal,
   });
-  return { opportunity, jevResult: interpretJevEvaluation(input, evaluation) };
+  return {
+    opportunity,
+    jevResult: interpretJevEvaluation(input, evaluation),
+    sessionStartedAt: serverTimestamp,
+  };
 }
 scoreWithJev.maxRetries = 0;
 
-/** Persists a System 1 result atomically (scores on the Opportunity plus its `initial_scoring` row). */
+/** Persists a MEDDPICC rubric result atomically (scores on the Opportunity plus its `initial_scoring` row). */
 export async function saveJevScoring(
   opportunity: Opportunity,
   jevResult: JevScoringResult,
-  scope: AssessmentScope
+  scope: AssessmentScope,
+  sessionStartedAt?: string | null
 ): Promise<Opportunity> {
   "use step";
-  return (await recordJevScoring(opportunity, jevResult, scope)).opportunity;
+  return (await recordJevScoring(opportunity, jevResult, scope, { sessionStartedAt })).opportunity;
 }
 saveJevScoring.maxRetries = 0;
 
-const SYSTEM2_PROMPT = `You are the Vercel Enterprise System 2 Deal Qualification Reasoning Engine.
-System 1 (the Jev evaluation model) has already scored the opportunity; it returns scores only, no text.
-Reason over the opportunity notes and the System 1 result to produce discovery and synthesis:
+const SYSTEM2_PROMPT = `You are the Vercel Enterprise Deal Desk Qualification & Gap Analysis Engine.
+Baseline MEDDPICC rubric scores have already been evaluated from the Opportunity notes (scores only, no prose).
+Synthesize verbatim buyer citations, unresolved rubric gaps, and a targeted discovery checklist from the Opportunity notes and baseline rubric scores:
 1. Discovery Form (phase3Form): 3 to 5 questions in total for the Solutions Architect, grouped into 1 to 3 sections (e.g. Stage Gate Blockers, Competitive Validation, Architecture & Metrics). Stage Gate blockers come first.
 
 Form rules (the form is rendered as-is):
@@ -89,11 +95,93 @@ Set fatalBlocker only for a confirmed, unresolvable constraint that rules out Ve
 valueFocus, primaryRisk and nextMilestone are short plain phrases without the "|" character.`;
 
 const SYSTEM2_TIMEOUT_MS = 180_000;
+const GEMINI_THINKING_BUDGET = 1024;
+
+async function runSystem2Inference(
+  opportunity: Opportunity,
+  jevResult: JevScoringResult,
+  model: System2ModelOption,
+  signal?: AbortSignal
+): Promise<System2AnalysisResult> {
+  assertAiGatewayConfigured();
+  const prompt = JSON.stringify({
+    opportunity: {
+      id: opportunity.id,
+      name: opportunity.name,
+      stageName: opportunity.stage_name,
+      amount: Number(opportunity.amount),
+      aeNotes: opportunity.ae_notes,
+      saNotes: opportunity.sa_notes,
+    },
+    baselineRubricResult: {
+      overallScore: jevResult.overallScore,
+      dimensions: jevResult.dimensions,
+      competitiveFlags: jevResult.competitiveFlags,
+      stageGate: jevResult.stageGate,
+    },
+  });
+  const abortSignal = signal
+    ? AbortSignal.any([AbortSignal.timeout(SYSTEM2_TIMEOUT_MS), signal])
+    : AbortSignal.timeout(SYSTEM2_TIMEOUT_MS);
+  const result = await generateText({
+    model: gateway(model),
+    system: SYSTEM2_PROMPT,
+    prompt,
+    output: Output.object({
+      schema: System2ModelOutputSchema,
+      name: "system2_analysis",
+      description: "Per-dimension buyer citations, Solutions Architect discovery form, and gap synthesis.",
+    }),
+    ...(model.startsWith("google/")
+      ? { providerOptions: { google: { thinkingConfig: { thinkingBudget: GEMINI_THINKING_BUDGET } } } }
+      : {}),
+    abortSignal,
+  });
+  if (!result.output) {
+    throw new FatalError(`Analysis model ${model} returned no structured gap analysis output.`);
+  }
+  return toSystem2AnalysisResult(result.output, { opportunityId: opportunity.id, model });
+}
 
 /**
- * System 2: one structured-output call on `model`, validated in full, then persisted with its
- * `questions_generated` checkpoint row. Not streamed: a step returns one value, and only the
- * workflow body's yields reach the workbench (issue 19).
+ * Runs deep gap & citation synthesis against the already-loaded Opportunity in memory so it can
+ * execute concurrently with `saveJevScoring` without waiting on a serial DB barrier or re-reading Neon.
+ */
+export async function generateSystem2Analysis(
+  opportunity: Opportunity,
+  jevResult: JevScoringResult,
+  model: System2ModelOption,
+  signal?: AbortSignal
+): Promise<System2AnalysisResult> {
+  "use step";
+  return runSystem2Inference(opportunity, jevResult, model, signal);
+}
+generateSystem2Analysis.maxRetries = 0;
+
+/** Persists a validated gap & citation analysis result (`questions_generated` checkpoint row) after baseline scoring is saved. */
+export async function saveSystem2Analysis(
+  opportunity: Opportunity,
+  jevResult: JevScoringResult,
+  system2Result: System2AnalysisResult,
+  scope: AssessmentScope,
+  writebackWithoutFeedback?: boolean,
+  sessionStartedAt?: string | null
+): Promise<Opportunity> {
+  "use step";
+  const { opportunity: updated } = await recordSystem2Analysis(
+    opportunity,
+    jevResult,
+    system2Result,
+    scope,
+    writebackWithoutFeedback ? "skipped_feedback" : "pending_feedback",
+    { sessionStartedAt }
+  );
+  return updated;
+}
+saveSystem2Analysis.maxRetries = 0;
+
+/**
+ * Combined structured-output synthesis + persistence step (retained for direct step callers).
  */
 export async function analyzeWithSystem2(
   opportunity: Opportunity,
@@ -108,62 +196,34 @@ export async function analyzeWithSystem2(
   jevResult: JevScoringResult,
   model: System2ModelOption,
   scope: AssessmentScope,
-  options?: { signal?: AbortSignal; writebackWithoutFeedback?: boolean }
+  options?: { signal?: AbortSignal; writebackWithoutFeedback?: boolean; sessionStartedAt?: string | null }
 ): Promise<{ system2Result: System2AnalysisResult; opportunity: Opportunity }>;
 export async function analyzeWithSystem2(
   opportunity: Opportunity,
   jevResult: JevScoringResult,
   model: System2ModelOption,
   scope: AssessmentScope,
-  signalOrOptions?: AbortSignal | { signal?: AbortSignal; writebackWithoutFeedback?: boolean },
+  signalOrOptions?:
+    | AbortSignal
+    | { signal?: AbortSignal; writebackWithoutFeedback?: boolean; sessionStartedAt?: string | null },
   writebackWithoutFeedbackParam?: boolean
 ): Promise<{ system2Result: System2AnalysisResult; opportunity: Opportunity }> {
   "use step";
-  assertAiGatewayConfigured();
   const signal = signalOrOptions instanceof AbortSignal ? signalOrOptions : signalOrOptions?.signal;
   const writebackWithoutFeedback =
     signalOrOptions instanceof AbortSignal
       ? Boolean(writebackWithoutFeedbackParam)
       : Boolean(signalOrOptions?.writebackWithoutFeedback ?? writebackWithoutFeedbackParam);
-  const prompt = JSON.stringify({
-    opportunity: {
-      id: opportunity.id,
-      name: opportunity.name,
-      stageName: opportunity.stage_name,
-      amount: Number(opportunity.amount),
-      aeNotes: opportunity.ae_notes,
-      saNotes: opportunity.sa_notes,
-    },
-    system1JevResult: {
-      overallScore: jevResult.overallScore,
-      dimensions: jevResult.dimensions,
-      competitiveFlags: jevResult.competitiveFlags,
-      stageGate: jevResult.stageGate,
-    },
-  });
-  const abortSignal = signal
-    ? AbortSignal.any([AbortSignal.timeout(SYSTEM2_TIMEOUT_MS), signal])
-    : AbortSignal.timeout(SYSTEM2_TIMEOUT_MS);
-  // Gateway errors, timeouts and schema-invalid output all throw.
-  const result = await generateText({
-    model: gateway(model),
-    system: SYSTEM2_PROMPT,
-    prompt,
-    output: Output.object({
-      schema: System2ModelOutputSchema,
-      name: "system2_analysis",
-      description: "System 2 per-dimension citations, SA discovery form, and gap synthesis.",
-    }),
-    abortSignal,
-  });
-  if (!result.output) throw new FatalError(`System 2 model ${model} returned no structured output`);
-  const system2Result = toSystem2AnalysisResult(result.output, { opportunityId: opportunity.id, model });
+  const sessionStartedAt =
+    signalOrOptions instanceof AbortSignal ? undefined : signalOrOptions?.sessionStartedAt;
+  const system2Result = await runSystem2Inference(opportunity, jevResult, model, signal);
   const { opportunity: updated } = await recordSystem2Analysis(
     opportunity,
     jevResult,
     system2Result,
     scope,
-    writebackWithoutFeedback ? 'skipped_feedback' : 'pending_feedback'
+    writebackWithoutFeedback ? "skipped_feedback" : "pending_feedback",
+    { sessionStartedAt }
   );
   return { system2Result, opportunity: updated };
 }
@@ -198,36 +258,42 @@ export function parseSaAnswer(text: string | undefined): SaAnswer {
 }
 
 /**
- * Records the SA answers once (sa_notes only, never ae_notes). The feedbackKey the workbench
+ * Records the SA answers once (`sa_notes` only, never `ae_notes`). The `feedbackKey` the workbench
  * computed must match the answers, or nothing is written.
  */
 export async function recordFeedback(
   opportunityId: string,
   answer: SaAnswer,
-  scope: AssessmentScope
+  scope: AssessmentScope,
+  options?: { phase3Form?: System2AnalysisResult["phase3Form"]; sessionStartedAt?: string | null }
 ): Promise<{ recorded: boolean; feedbackKey: string }> {
   "use step";
   return recordSaFeedback(
     opportunityId,
     { formResponses: answer.formResponses, notesDelta: answer.notesDelta, expectedKey: answer.feedbackKey },
-    scope
+    scope,
+    options
   );
 }
 recordFeedback.maxRetries = 0;
+
+export interface WriteBackStepContext extends WritebackInMemoryContext {
+  opportunity?: Opportunity;
+}
 
 /** Decides status and Suggested Next Steps in code, writes back atomically (closing the session) and returns the verdict. */
 export async function writeBack(
   opportunityId: string,
   scope: AssessmentScope,
-  feedback: AssessmentResult["feedback"]
+  feedback: AssessmentResult["feedback"],
+  inMemory?: WriteBackStepContext
 ): Promise<AssessmentResult> {
   "use step";
-  const opportunity = await getOpportunity(opportunityId);
+  const opportunity = inMemory?.opportunity ?? (await getOpportunity(opportunityId));
   if (!opportunity) {
     throw new FatalError(`Opportunity "${opportunityId}" not found in CRM.`);
   }
-  const written = await writebackQualification(opportunity, scope);
-  // The verdict is built here, in code, and validated before it leaves the step.
+  const written = await finalizeAssessmentWriteback(opportunity, scope, inMemory);
   return AssessmentResultSchema.parse({
     status: "written_back",
     opportunityId,
