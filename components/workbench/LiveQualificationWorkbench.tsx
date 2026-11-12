@@ -1092,7 +1092,6 @@ function LiveAssessmentSession({
                         initialNotes={savedManualNotes}
                         dimensions={stage1Dimensions}
                         readOnly={isRetrospectiveReadOnly}
-                        isSubmitting={workflowState === 'EVALUATING'}
                         isLocked={turnInFlight}
                         onBack={() => setActiveStageView('stage1')}
                         onCancel={() => setActiveStageView('stage1')}
