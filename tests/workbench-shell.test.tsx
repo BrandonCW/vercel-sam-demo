@@ -45,7 +45,13 @@ vi.mock('eve/react', () => ({
   },
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 const { LiveQualificationWorkbench } = await import('@/components/workbench/LiveQualificationWorkbench');
+const { default: LoginPage } = await import('@/app/login/page');
 
 const base = opportunity({
   meddpicc_score: null,
@@ -678,6 +684,24 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
       expect(screen.getByLabelText('Select analysis model')).toBeTruthy();
       expect(screen.getByRole('button', { name: /Reset Opportunity Baseline/i })).toBeTruthy();
       assertZeroInternalJargon(container);
+    });
+
+    it('renders consistent Warm Stone DealDeskLogoMark in TopNavBar and LoginPage matching app/icon.svg tokens', () => {
+      renderShell();
+      const topNavLogo = screen.getByTestId('deal-desk-logo-mark');
+      expect(topNavLogo.tagName.toLowerCase()).toBe('svg');
+      expect(topNavLogo.getAttribute('viewBox')).toBe('0 0 32 32');
+      const topNavMarkup = topNavLogo.outerHTML;
+      expect(topNavMarkup).toContain('#F8F8F6');
+      expect(topNavMarkup).toContain('#111215');
+      expect(topNavMarkup).toContain('#0F52BA');
+      cleanup();
+
+      render(<LoginPage />);
+      const loginLogo = screen.getByTestId('deal-desk-logo-mark');
+      expect(loginLogo.tagName.toLowerCase()).toBe('svg');
+      expect(loginLogo.getAttribute('viewBox')).toBe('0 0 32 32');
+      expect(loginLogo.outerHTML).toBe(topNavMarkup);
     });
   });
 

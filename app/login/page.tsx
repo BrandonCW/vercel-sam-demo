@@ -2,7 +2,8 @@
 
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, ArrowRight, Gauge, Lock } from 'lucide-react';
+import { AlertCircle, ArrowRight, Lock } from 'lucide-react';
+import { DealDeskLogoMark } from '@/components/ui/deal-desk-logo';
 import { sanitizeRedirectPath } from '@/lib/auth';
 
 function RedirectParamReader({ onResolve }: { onResolve: (path: string) => void }) {
@@ -69,9 +70,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md bg-[#FFFFFF] border border-[#E2E0D8] rounded-lg p-8">
         <div className="flex items-center gap-3 pb-6 mb-6 border-b border-[#E2E0D8]">
-          <div className="flex size-9 items-center justify-center rounded-md bg-[#111215] text-[#FFFFFF]">
-            <Gauge className="size-5 text-[#FFFFFF]" aria-hidden="true" />
-          </div>
+          <DealDeskLogoMark className="size-9 shrink-0" />
           <div>
             <p className="font-sans text-kicker font-semibold uppercase text-[#636772]">
               DEAL OPERATIONS
