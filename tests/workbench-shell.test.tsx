@@ -327,7 +327,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
 
     // Stage Gate passes at 72/100 when stageGate.gateReady === true (no hardcoded 75 threshold!)
     expect(screen.getByText('Stage Gate 2 · Gate Criteria Satisfied')).toBeTruthy();
-    expect(screen.getByText('(+18)')).toBeTruthy();
+    expect(screen.getByText(/\(\+18\)/)).toBeTruthy();
     // No 54 → prefix or duplicate "Qualification Finalized (72/100)" badge on SuggestedNextStepsCard
     expect(container.textContent).not.toContain('54 →');
     expect(screen.queryByText(/Qualification Finalized/i)).toBeNull();
@@ -394,7 +394,7 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     expect(container.textContent).not.toContain('7 →');
 
     // Preserves negative delta (-3) on Champion (7 -> 4) in unadorned parenthetical notation
-    expect(screen.getByText('(-3)')).toBeTruthy();
+    expect(screen.getByText(/\(-3\)/)).toBeTruthy();
 
     // Only verified dimensions that improved in discovery (delta > 0) with 0 open gaps render "Resolved in discovery" (Decision Criteria 6 -> 8; unchanged Identify Pain & Competition render quiet —)
     expect(screen.getAllByText('Resolved in discovery')).toHaveLength(1);

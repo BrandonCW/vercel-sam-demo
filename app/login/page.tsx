@@ -76,14 +76,14 @@ export default function LoginPage() {
             <p className="font-sans text-kicker font-semibold uppercase text-[#636772]">
               DEAL OPERATIONS
             </p>
-            <h1 className="font-sans text-2xl font-bold tracking-[-0.025em] text-[#111215] leading-tight">
+            <h1 className="font-sans text-base font-bold tracking-[-0.025em] text-[#111215] leading-tight">
               Qualification System
             </h1>
           </div>
         </div>
 
         <div className="mb-6">
-          <h2 className="font-sans text-lg font-semibold tracking-[-0.015em] text-[#111215] mb-1.5">
+          <h2 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215] mb-1.5">
             Sign in to Deal Desk Workbench
           </h2>
           <p className="font-sans text-sm text-[#52545D] leading-relaxed text-pretty">

@@ -392,7 +392,7 @@ export function DynamicDiscoveryForm({
       {/* Desk OS Stage 2 Header with Back to Audit & Answered Counter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4 mb-5">
         <div>
-          <h2 className="font-sans text-lg font-semibold tracking-tight text-[#111215]">
+          <h2 className="font-sans text-base font-semibold tracking-tight text-[#111215]">
             {activeForm?.title || 'Field Discovery'}
           </h2>
           <p className="mt-1 font-sans text-xs text-[#636772]">

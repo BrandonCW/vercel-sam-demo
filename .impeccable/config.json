@@ -1,5 +1,5 @@
 {
   "detector": {
-    "ignoreRules": ["overused-font"]
+    "ignoreRules": ["overused-font", "flat-type-hierarchy"]
   }
 }

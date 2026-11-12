@@ -123,9 +123,10 @@ Neutrals derive from a warm architectural stone palette (`#F8F8F6` canvas, `#E2E
 - **Zero Bracketed Code Clutter:** Dimension rows and discovery cards display clean human labels (`Identify Pain`, `Economic Buyer: 3/10`) without `[I]` / `[E]` monospace prefix brackets.
 
 **Scale:**
-- Display / Deal Title: `28px` / `1.75rem` (Instrument Sans 700, `-0.025em`)
-- Composite Score Numeric: `24px` / `1.5rem` (Instrument Sans 600 `tabular-nums`)
-- Section Heading: `16px–18px` / `1rem–1.125rem` (Instrument Sans 600)
+- Compact Desk OS Type Scale (`12px / 14px / 16px` plus `11px` uppercase kicker):
+- Deal Title & Section Headings (`h1`, `h2`): `16px` / `1rem` (Instrument Sans 600, `leading-snug`)
+- Composite Score & Stage Gate Readout: `14px` / `0.875rem` (`text-sm leading-5`, Instrument Sans 600 `tabular-nums`, unified `#636772` `font-normal` on `/ 100 (+Δ)`)
+- Dimension Score & Delta Readout: `12px` / `0.75rem` (`text-xs leading-4`, Instrument Sans 600 `tabular-nums`, unified `#636772` `font-normal` on `/10 (+Δ)`)
 - Body Copy & Form Controls: `14px` / `0.875rem` (Instrument Sans 400, line-height `1.5`)
 - UI Medium / Semi-Bold: `12px–14px` / `0.75rem–0.875rem` (Instrument Sans 500/600)
 - Uppercase Section Kicker: `11px` / `0.6875rem` (Instrument Sans 600, `+0.05em`)

@@ -103,7 +103,7 @@ export function TopNavBar({
             <p className="font-sans text-kicker font-semibold uppercase text-[#636772]">
               DEAL OPERATIONS
             </p>
-            <span className="block font-sans text-base font-bold tracking-tight text-[#111215] sm:text-lg leading-tight">
+            <span className="block font-sans text-base font-bold tracking-tight text-[#111215] leading-tight">
               Qualification System
             </span>
           </div>
@@ -181,7 +181,7 @@ export function TopNavBar({
             <div className="flex items-center justify-between border-b border-[#E2E0D8] pb-3">
               <div className="flex items-center gap-2">
                 <Settings className="size-4 text-[#111215]" aria-hidden="true" />
-                <h2 className="font-sans text-lg font-semibold tracking-[-0.015em] text-[#111215]">
+                <h2 className="font-sans text-base font-semibold tracking-[-0.015em] text-[#111215]">
                   Workbench Settings
                 </h2>
               </div>

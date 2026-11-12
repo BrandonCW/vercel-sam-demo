@@ -863,14 +863,13 @@ function LiveAssessmentSession({
                 <div className="space-y-4">
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
                     <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-                      <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
-                        <span className="text-2xl font-semibold tracking-[-0.02em] text-[#636772]">
-                          --
+                      <div className="flex items-center whitespace-nowrap font-sans tabular-nums">
+                        <span className="text-sm leading-5 font-medium text-[#636772]">
+                          – / 100
                         </span>
-                        <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
                       </div>
-                      <span aria-hidden="true" className="hidden sm:block h-4 w-px bg-[#E2E0D8] shrink-0" />
-                      <span className="font-sans text-xs sm:text-sm font-medium text-[#52545D] tabular-nums">
+                      <span aria-hidden="true" className="hidden sm:block h-3.5 w-px bg-[#E2E0D8] shrink-0" />
+                      <span className="font-sans text-sm leading-5 font-medium text-[#52545D] tabular-nums">
                         {unassessedGateReadout.label}
                       </span>
                     </div>
@@ -950,14 +949,14 @@ function LiveAssessmentSession({
                   <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
                     <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
                       <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
-                        <span className="text-2xl font-semibold tracking-[-0.02em] text-[#111215]">
+                        <span className="text-sm leading-5 font-semibold text-[#111215]">
                           {stage1Score}
                         </span>
-                        <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
+                        <span className="ml-1 text-sm leading-5 font-normal text-[#636772]">/ 100</span>
                       </div>
-                      <span aria-hidden="true" className="hidden sm:block h-4 w-px bg-[#E2E0D8] shrink-0" />
+                      <span aria-hidden="true" className="hidden sm:block h-3.5 w-px bg-[#E2E0D8] shrink-0" />
                       <span
-                        className={`font-sans text-xs sm:text-sm font-medium tabular-nums ${
+                        className={`font-sans text-sm leading-5 font-medium tabular-nums ${
                           stage1GateReadout.isSatisfied ? 'text-[#111215]' : 'text-[#52545D]'
                         }`}
                       >

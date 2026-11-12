@@ -287,7 +287,7 @@ export function MonochromeTopBar({ opportunity }: MonochromeTopBarProps) {
           <span>DEAL DESK</span>
         </div>
         <div className="bar-divider h-4 w-px shrink-0 bg-[#E2E0D8]" aria-hidden="true" />
-        <h1 className="opp-title min-w-0 font-sans text-2xl leading-tight font-semibold tracking-tight text-[#111215] truncate">
+        <h1 className="opp-title min-w-0 font-sans text-base leading-snug font-semibold tracking-tight text-[#111215] truncate">
           {opportunity.name || 'Acme Corp – Platform Migration'}
         </h1>
       </div>
@@ -431,7 +431,7 @@ export function SuggestedNextStepsCard({
     <div className="pb-5 mb-5 border-b border-[#E2E0D8]">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-3 mb-3.5">
         <div>
-          <h2 className="font-sans text-lg font-semibold tracking-tight text-[#111215]">
+          <h2 className="font-sans text-base font-semibold tracking-tight text-[#111215]">
             Suggested Next Steps
           </h2>
           <p className="mt-0.5 font-sans text-xs text-[#636772]">
@@ -537,26 +537,25 @@ export function Stage3HeaderLockup({
 
   const hasNonZeroDelta =
     scoreDelta !== null && scoreDelta !== undefined && scoreDelta !== 0;
+  const deltaLabel =
+    hasNonZeroDelta && scoreDelta ? (scoreDelta > 0 ? `+${scoreDelta}` : String(scoreDelta)) : '';
 
   return (
     <div className="stage-header-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E0D8] pb-4">
       <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
         <div className="flex items-baseline whitespace-nowrap font-sans tabular-nums">
-          <span className="text-2xl font-semibold tracking-[-0.02em] text-[#111215]">
+          <span className="text-sm leading-5 font-semibold text-[#111215]">
             {score}
           </span>
-          <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
-          {hasNonZeroDelta && (
-            <span className="ml-1.5 text-sm font-medium text-[#52545D]">
-              ({scoreDelta! > 0 ? `+${scoreDelta}` : scoreDelta})
-            </span>
-          )}
+          <span className="ml-1 text-sm leading-5 font-normal text-[#636772]">
+            / 100{hasNonZeroDelta ? ` (${deltaLabel})` : ''}
+          </span>
         </div>
 
-        <span aria-hidden="true" className="hidden sm:block h-4 w-px bg-[#E2E0D8] shrink-0" />
+        <span aria-hidden="true" className="hidden sm:block h-3.5 w-px bg-[#E2E0D8] shrink-0" />
 
         <span
-          className={`font-sans text-xs sm:text-sm font-medium tabular-nums ${
+          className={`font-sans text-sm leading-5 font-medium tabular-nums ${
             gateReadout.isSatisfied ? 'text-[#111215]' : 'text-[#52545D]'
           }`}
         >

@@ -227,7 +227,7 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     // Stage 3: Final score, Gate Criteria Satisfied, honest simulation preview subtitle, structured OWNER/FOCUS/WATCH metadata, zero [QUALIFIED] tag or '58 →' prefix
     expect(screen.getAllByText(acmeFinalScore).length).toBeGreaterThan(0);
     expect(screen.getByText(/Stage Gate 2 · Gate Criteria Satisfied/i)).toBeDefined();
-    expect(screen.getByText('(+18)')).toBeDefined();
+    expect(screen.getByText(/\(\+18\)/)).toBeDefined();
     expect(container.textContent).not.toContain('58 →');
     expect(container.textContent).not.toContain('3 →');
     expect(screen.queryByText(/Qualification Finalized/i)).toBeNull();

@@ -169,7 +169,7 @@ export function MeddpiccScorecard({
       {!hideHeader && mode !== 'loading' && (
         <div className="flex items-center justify-between border-b border-[#E2E0D8] px-5 py-4">
           <div>
-            <h2 className="font-sans text-lg font-semibold tracking-tight text-[#111215]">
+            <h2 className="font-sans text-base font-semibold tracking-tight text-[#111215]">
               MEDDPICC Scorecard
             </h2>
             <p className="mt-0.5 font-sans text-xs text-[#636772]">
@@ -179,18 +179,15 @@ export function MeddpiccScorecard({
           <div className="text-right">
             <p className="flex items-baseline justify-end font-sans tabular-nums">
               <span
-                className={`text-2xl font-semibold tracking-[-0.02em] ${
+                className={`text-sm leading-5 font-semibold ${
                   mode === 'unassessed' ? 'text-[#636772]' : 'text-[#111215]'
                 }`}
               >
                 {mode === 'unassessed' ? '--' : (score ?? 0)}
               </span>
-              <span className="ml-1 text-sm font-normal text-[#636772]">/ 100</span>
-              {hasHeaderDelta ? (
-                <span className="ml-1.5 text-sm font-medium text-[#52545D]">
-                  ({delta! > 0 ? `+${delta}` : delta})
-                </span>
-              ) : null}
+              <span className="ml-1 text-sm leading-5 font-normal text-[#636772]">
+                / 100{hasHeaderDelta ? ` (${delta! > 0 ? `+${delta}` : delta})` : ''}
+              </span>
             </p>
           </div>
         </div>
@@ -276,21 +273,19 @@ function ScorecardRow({
             />
           </div>
 
-          <div className="mt-1.5 flex items-baseline font-sans text-sm tabular-nums">
+          <div className="mt-1.5 flex items-baseline font-sans text-xs leading-4 tabular-nums">
             {isUnassessed || isLoading ? (
               <span className="font-normal text-[#636772]">–/10</span>
             ) : (
-              <>
-                <span>
-                  <span className="font-semibold text-[#111215]">{dimension.score}</span>
-                  <span className="font-normal text-[#636772]">/10</span>
+              <span>
+                <span className="font-semibold text-[#111215]">{dimension.score}</span>
+                <span className="font-normal text-[#636772]">
+                  /10
+                  {hasDimensionDelta
+                    ? ` (${dimension.delta! > 0 ? `+${dimension.delta}` : dimension.delta})`
+                    : ''}
                 </span>
-                {hasDimensionDelta && (
-                  <span className="ml-1.5 text-sm font-normal text-[#52545D]">
-                    ({dimension.delta! > 0 ? `+${dimension.delta}` : dimension.delta})
-                  </span>
-                )}
-              </>
+              </span>
             )}
           </div>
         </div>
