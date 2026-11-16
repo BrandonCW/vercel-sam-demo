@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Instrument_Sans } from 'next/font/google';
 import './globals.css';
 
@@ -10,9 +10,30 @@ const instrumentSans = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+  ),
   title: 'Deal Qualification System | Vercel Solutions Engineering',
   description:
     'Enterprise deal qualification workbench evaluating AE and SA discovery notes against MEDDPICC criteria with structured stage-gate scoring and CRM writeback.',
+  openGraph: {
+    title: 'Deal Qualification System | Vercel Solutions Engineering',
+    description:
+      'Enterprise deal qualification workbench evaluating AE and SA discovery notes against MEDDPICC criteria with structured stage-gate scoring and CRM writeback.',
+    type: 'website',
+    siteName: 'Deal Desk OS',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Deal Qualification System | Vercel Solutions Engineering',
+    description:
+      'Enterprise deal qualification workbench evaluating AE and SA discovery notes against MEDDPICC criteria with structured stage-gate scoring and CRM writeback.',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#F8F8F6',
+  colorScheme: 'light',
 };
 
 export default function RootLayout({

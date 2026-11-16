@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { QualificationWorkbench } from '@/components/workbench/QualificationWorkbench';
 import acmeFixture from '@/lib/fixtures/simulation/acme_migration.json';
@@ -8,6 +8,9 @@ import globexFixture from '@/lib/fixtures/simulation/globex_amplify.json';
 import soylentFixture from '@/lib/fixtures/simulation/soylent_retail.json';
 
 describe('QualificationWorkbench Component & Desk OS Flow', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
   const opportunity = acmeFixture.opportunity as any;
   const acmeBaselineScore = String(acmeFixture.baseline.jevResult.overallScore);
   const acmeFinalScore = String(acmeFixture.feedback.rescoreJevResult.overallScore);
@@ -50,7 +53,7 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     expect(screen.getByText(/I · Weight 20%/)).toBeDefined();
   });
 
-  it('opens Settings from SIMULATION pill, dims/disables analysis model in Simulation mode, and toggles cleanly to Live AI mode', async () => {
+  it('toggles directly between Simulation and Live AI mode from the top-bar pill and configures model in Settings', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response(JSON.stringify({ sessionId: 'wrun_PREWARM' }), { status: 200 }))
@@ -58,33 +61,38 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     try {
       render(<QualificationWorkbench initialOpportunity={opportunity} />);
 
+      // Open Settings via Settings button to confirm model selector is disabled in Simulation mode
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Workbench settings/i }));
+      });
+      const modelSelect = screen.getByLabelText('Select analysis model');
+      expect(modelSelect).toHaveProperty('disabled', true);
+      expect(screen.getByText('Model selection applies in Live AI mode')).toBeDefined();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Close settings/i }));
+      });
+
+      // Clicking the SIMULATION pill toggles directly to Live AI mode
       const simPill = screen.getByRole('button', { name: /^SIMULATION$/i });
       await act(async () => {
         fireEvent.click(simPill);
       });
 
-      // In Simulation mode, model selector is disabled with explanatory helper text
-      const modelSelect = screen.getByLabelText('Select analysis model');
-      expect(modelSelect).toHaveProperty('disabled', true);
-      expect(screen.getByText('Model selection applies in Live AI mode')).toBeDefined();
-
-      const liveBtn = screen.getByRole('button', { name: /Live AI Inference/i });
-      await act(async () => {
-        fireEvent.click(liveBtn);
-      });
-
       // TopNavBar pill flips to LIVE and Live workbench renders unified CTA label
-      expect(screen.getByRole('button', { name: /^LIVE$/i })).toBeDefined();
+      const livePill = screen.getByRole('button', { name: /^LIVE$/i });
+      expect(livePill).toBeDefined();
       expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
+      expect(window.location.search).toBe('?mode=live');
 
-      const simBtn = screen.getByRole('button', { name: /Simulated AI \(Instant Replay\)/i });
+      // Clicking the LIVE pill toggles directly back to Simulation Mode
       await act(async () => {
-        fireEvent.click(simBtn);
+        fireEvent.click(livePill);
       });
 
-      // Back in Simulation Mode
+      // Back in Simulation Mode and URL cleans up default mode param
       expect(screen.getByRole('button', { name: /^SIMULATION$/i })).toBeDefined();
       expect(screen.getByText('Run MEDDPICC Deal Audit →')).toBeDefined();
+      expect(window.location.search).toBe('');
     } finally {
       vi.unstubAllGlobals();
     }
@@ -427,6 +435,7 @@ describe('QualificationWorkbench Component & Desk OS Flow', () => {
     expect(screen.getAllByText(/Globex/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/\$240,000/i)).toBeDefined();
     expect(screen.getAllByText(/AWS Amplify/i).length).toBeGreaterThan(0);
+    expect(window.location.search).toBe('?scenario=scenario_globex_amplify');
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Start assessment/i }));
