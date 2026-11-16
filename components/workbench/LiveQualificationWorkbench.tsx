@@ -43,6 +43,7 @@ interface LiveQualificationWorkbenchProps {
   settingsOpen?: boolean;
   onSettingsOpenChange?: (open: boolean) => void;
   initialStageView?: 'blank' | 'stage1' | 'stage2' | 'stage3';
+  forceInitialFetch?: boolean;
 }
 
 const ASSESS_FAILED = 'Assessment failed:';
@@ -171,6 +172,7 @@ export function LiveQualificationWorkbench({
   settingsOpen,
   onSettingsOpenChange,
   initialStageView,
+  forceInitialFetch = false,
 }: LiveQualificationWorkbenchProps) {
   const effectiveInitialScenarioId = controlledScenarioId ?? initialScenarioId;
   const expectedInitialOppId = DEMO_SCENARIOS[effectiveInitialScenarioId]?.default_data.id;
@@ -201,7 +203,7 @@ export function LiveQualificationWorkbench({
 
   // Deduplicates scenario fetches across mount sync & controlled scenario updates
   const syncedScenarioRef = useRef<string | null>(
-    initialMatchesScenario ? effectiveInitialScenarioId : null
+    initialMatchesScenario && !forceInitialFetch ? effectiveInitialScenarioId : null
   );
 
   const scenarioId = controlledScenarioId !== undefined ? controlledScenarioId : internalScenarioId;
@@ -356,6 +358,7 @@ interface LiveAssessmentSessionProps {
   settingsOpen?: boolean;
   onSettingsOpenChange?: (open: boolean) => void;
   initialStageView?: 'blank' | 'stage1' | 'stage2' | 'stage3';
+  forceInitialFetch?: boolean;
 }
 
 function LiveAssessmentSession({
@@ -878,7 +881,11 @@ function LiveAssessmentSession({
                       type="button"
                       onClick={handleStartAssessment}
                       disabled={turnInFlight}
-                      aria-label={turnInFlight ? 'Evaluating Opportunity…' : 'Start assessment'}
+                      aria-label={
+                        turnInFlight
+                          ? 'Evaluating Opportunity…'
+                          : 'Run MEDDPICC Deal Audit — Start assessment'
+                      }
                       className="btn-action-primary inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2 font-sans text-xs sm:text-sm font-semibold leading-none text-[#FFFFFF] hover:bg-[#0C4196] active:scale-[0.98] transition cursor-pointer disabled:opacity-100 disabled:cursor-not-allowed"
                     >
                       {turnInFlight ? (

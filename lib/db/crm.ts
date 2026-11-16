@@ -48,9 +48,16 @@ export async function requireOpportunity(id: string): Promise<Opportunity> {
 }
 
 export async function getOpportunityByScenario(scenarioId: string): Promise<Opportunity | null> {
-  const scenario = (await getScenarios()).find((s) => s.scenario_id === scenarioId);
-  if (!scenario) return null;
-  return getOpportunity(scenario.default_data.id);
+  const sql = getSql();
+  const rows = await sql`
+    SELECT o.*,
+      (SELECT MAX(created_at) FROM deal_interactions i WHERE i.opportunity_id = o.id AND i.action = 'reset') AS last_reset_at
+    FROM deal_scenarios s
+    JOIN opportunities o ON o.id = (s.default_data->>'id')
+    WHERE s.scenario_id = ${scenarioId}
+    LIMIT 1;`;
+  if (rows.length === 0) return null;
+  return mapRowToOpportunity(rows[0]);
 }
 
 export async function listOpportunities(): Promise<Opportunity[]> {

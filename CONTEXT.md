@@ -74,9 +74,9 @@ The Qualification Workbench adheres to a high-density, monochrome Deal Desk OS a
 
 ### Desk OS 3-Stage Lifecycle (`StepperBar`)
 The progression bar routes across three canonical Desk OS stages:
-1. **Stage 1 — Initial Deal Audit (`Initial Deal Audit (Gaps Identified)`)**: Baseline System 1 scoring and System 2 reasoning findings across all 8 MEDDPICC dimensions, highlighting blockers with recessed `#F1F0EC` row indicators and blocker counts.
-2. **Stage 2 — Field Discovery Checklist (`Field Discovery Checklist (In-Context)`)**: In-context discovery form (`DynamicDiscoveryForm`) embedding live 10-segment bars (`TenSegmentBar`) in question headers, live `Answered {K} of {N}` progression, and manual SA observations.
-3. **Stage 3 — Updated Assessment & Next Steps (`Updated Assessment & Next Steps (Qualified)`)**: Finalized deal posture displaying dynamic score deltas, Suggested Next Steps card with 1-click clipboard feedback, and full MEDDPICC ledger with staggered score animations.
+1. **Stage 1 — Initial Deal Audit (`Initial Deal Audit`)**: Baseline System 1 scoring and System 2 reasoning findings across all 8 MEDDPICC dimensions, highlighting blockers with recessed `#F1F0EC` row indicators and blocker counts.
+2. **Stage 2 — Field Discovery (`Field Discovery`)**: In-context discovery form (`DynamicDiscoveryForm`) embedding live 10-segment bars (`TenSegmentBar`) in question headers, live `Answered {K} of {N}` progression, and manual SA observations.
+3. **Stage 3 — Updated Assessment (`Updated Assessment`)**: Finalized deal posture displaying dynamic score deltas, Suggested Next Steps card with 1-click clipboard feedback, and full MEDDPICC ledger with staggered score animations.
 
 ### Non-Destructive Navigation & State Preservation
 Stage switching via `StepperBar`, `← Back to Audit`, or `Cancel` is non-destructive. SA draft responses (`savedFormData`) and manual notes (`savedManualNotes`) are preserved in memory across stage changes until submitted or explicitly reset.

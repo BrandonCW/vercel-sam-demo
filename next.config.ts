@@ -27,6 +27,7 @@ export const SECURITY_HEADERS = [
 export const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  htmlLimitedBots: /.*/,
   async headers() {
     return [
       {

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useReducer, useRef, useState, useTransit
 import { Ban, Loader2 } from 'lucide-react';
 import type { Opportunity, StageGateEvaluation } from '@/lib/types/crm';
 import { DEFAULT_SYSTEM2_MODEL, type System2ModelOption } from '@/lib/types/crm';
+import { DEFAULT_SCENARIO_ID } from '@/lib/db/scenarios';
 import type { SimulationDimension, WorkflowState, WorkbenchMode } from '@/lib/simulation/types';
 import type { SimulationFixture } from '@/lib/simulation/fixture-schema';
 import {
@@ -28,6 +29,8 @@ import {
 interface QualificationWorkbenchProps {
   initialOpportunity: Opportunity;
   initialScenarioId?: string;
+  initialMode?: WorkbenchMode;
+  initialOpportunityFromDb?: boolean;
 }
 
 interface SimProgressiveBaseline {
@@ -59,9 +62,11 @@ function buildProgressiveBaseline(fixture: SimulationFixture): SimProgressiveBas
 
 export function QualificationWorkbench({
   initialOpportunity,
-  initialScenarioId = 'scenario_acme_netlify',
+  initialScenarioId = DEFAULT_SCENARIO_ID,
+  initialMode = 'simulation',
+  initialOpportunityFromDb = true,
 }: QualificationWorkbenchProps) {
-  const [mode, setMode] = useState<WorkbenchMode>('simulation');
+  const [mode, setMode] = useState<WorkbenchMode>(initialMode);
   const [scenarioId, setScenarioId] = useState<string>(initialScenarioId);
   const [selectedModel, setSelectedModel] = useState<System2ModelOption>(DEFAULT_SYSTEM2_MODEL);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -140,6 +145,33 @@ export function QualificationWorkbench({
       handleScenarioChange(initialScenarioId);
     }
   }, [initialScenarioId, handleScenarioChange]);
+
+  // Synchronize ?scenario= and ?mode= with browser URL without triggering navigation
+  const hasMountedUrlSyncRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!hasMountedUrlSyncRef.current) {
+      hasMountedUrlSyncRef.current = true;
+      return;
+    }
+    const url = new URL(window.location.href);
+    if (scenarioId === DEFAULT_SCENARIO_ID) {
+      url.searchParams.delete('scenario');
+    } else {
+      url.searchParams.set('scenario', scenarioId);
+    }
+    if (mode === 'simulation') {
+      url.searchParams.delete('mode');
+    } else {
+      url.searchParams.set('mode', mode);
+    }
+    const nextSearch = url.searchParams.toString();
+    const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ''}${url.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(null, '', nextUrl);
+    }
+  }, [scenarioId, mode]);
 
   // Synchronize activeStageView with WorkflowState transitions guarded by prevWorkflowStateRef
   useEffect(() => {
@@ -331,6 +363,7 @@ export function QualificationWorkbench({
         hideTopNavBar={false}
         settingsOpen={settingsOpen}
         onSettingsOpenChange={setSettingsOpen}
+        forceInitialFetch={!initialOpportunityFromDb}
       />
     );
   }
@@ -397,7 +430,7 @@ export function QualificationWorkbench({
                     <button
                       type="button"
                       onClick={handleStartAssessment}
-                      aria-label="Start assessment"
+                      aria-label="Run MEDDPICC Deal Audit — Start assessment"
                       className="btn-action-primary inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-[#0F52BA] px-4 py-2 font-sans text-xs sm:text-sm font-semibold leading-none text-[#FFFFFF] hover:bg-[#0C4196] active:scale-[0.98] transition cursor-pointer"
                     >
                       <span className="ui-pill-label">Run MEDDPICC Deal Audit →</span>

@@ -101,16 +101,32 @@ describe('LiveQualificationWorkbench on useEveAgent', () => {
     assertZeroInternalJargon(container);
   });
 
-  it('renders crisp monochrome LIVE pill in TopNavBar and opens Workbench Settings on click', () => {
-    renderShell();
+  it('renders crisp monochrome LIVE pill in TopNavBar that toggles directly to Simulation, and opens Workbench Settings from Settings button', async () => {
+    const onModeChangeSpy = vi.fn();
+    render(
+      <LiveQualificationWorkbench
+        initialOpportunity={base}
+        initialScenarioId="scenario_acme_netlify"
+        onModeChange={onModeChangeSpy}
+      />
+    );
     const livePill = screen.getByRole('button', { name: /^LIVE$/i });
     expect(livePill).toBeTruthy();
-    expect(livePill.getAttribute('title')).toBe('Live AI inference via Gateway — click to configure');
+    expect(livePill.getAttribute('title')).toBe(
+      'Live AI inference via Gateway — click to switch to Simulation mode'
+    );
     expect(livePill.className).toContain('bg-[#111215]');
     expect(livePill.className).toContain('text-[#FFFFFF]');
 
-    // Clicking the LIVE pill opens Workbench Settings dialog
-    fireEvent.click(livePill);
+    // Clicking the LIVE pill toggles directly to simulation mode without opening Settings
+    await act(async () => {
+      fireEvent.click(livePill);
+    });
+    expect(onModeChangeSpy).toHaveBeenCalledWith('simulation');
+    expect(screen.queryByRole('dialog', { name: /Workbench settings/i })).toBeNull();
+
+    // Clicking the Settings button opens Workbench Settings dialog
+    fireEvent.click(screen.getByRole('button', { name: /Workbench settings/i }));
     expect(screen.getByRole('dialog', { name: /Workbench settings/i })).toBeTruthy();
   });
 

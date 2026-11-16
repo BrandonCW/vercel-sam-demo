@@ -122,6 +122,12 @@ describe('Middleware Security Gate (tests/middleware.test.ts)', () => {
       expect(iconSvgRes.headers.get('x-middleware-next')).toBe('1');
       expect(middlewareConfig.matcher[0]).toContain('icon.svg');
 
+      const robotsReq = createRequest('http://localhost:3000/robots.txt');
+      const robotsRes = await middleware(robotsReq);
+      expect(robotsRes.status).toBe(200);
+      expect(robotsRes.headers.get('x-middleware-next')).toBe('1');
+      expect(middlewareConfig.matcher[0]).toContain('robots.txt');
+
       const staticFolderReq = createRequest('http://localhost:3000/static/images/logo.png');
       const staticFolderRes = await middleware(staticFolderReq);
       expect(staticFolderRes.status).toBe(200);

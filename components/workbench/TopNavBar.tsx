@@ -110,23 +110,25 @@ export function TopNavBar({
 
         {/* Right Section: Monochrome Mode Pill & Settings Trigger */}
         <div className="flex items-center gap-2 font-sans text-xs text-[#52545D]">
-          {/* Monochrome Execution Mode Pill */}
+          {/* Monochrome Execution Mode Toggle Pill */}
           <button
             ref={modePillRef}
             type="button"
+            disabled={controlsLocked}
             title={
               isLive
-                ? 'Live AI inference via Gateway — click to configure'
+                ? 'Live AI inference via Gateway — click to switch to Simulation mode'
                 : 'AI Simulation mode (deterministic responses) — click to switch to Live AI'
             }
             onClick={() => {
-              lastTriggerRef.current = modePillRef.current;
-              setIsOpen(!isOpen);
+              if (!controlsLocked) {
+                void onModeChange?.(isLive ? 'simulation' : 'live');
+              }
             }}
             className={
               isLive
-                ? 'h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#111215] bg-[#111215] px-3 font-sans text-xs font-medium leading-none text-[#FFFFFF] hover:bg-[#111215]/90 transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]'
-                : 'h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 font-sans text-xs font-medium leading-none text-[#111215] hover:border-[#111215] transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215]'
+                ? 'h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#111215] bg-[#111215] px-3 font-sans text-xs font-medium leading-none text-[#FFFFFF] hover:bg-[#111215]/90 transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215] disabled:opacity-50 disabled:cursor-not-allowed'
+                : 'h-8 inline-flex items-center justify-center gap-2 rounded-md border border-[#E2E0D8] bg-[#F1F0EC] px-3 font-sans text-xs font-medium leading-none text-[#111215] hover:border-[#111215] transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111215] disabled:opacity-50 disabled:cursor-not-allowed'
             }
           >
             <span
